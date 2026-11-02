@@ -1,0 +1,818 @@
+// prisma/schema.prisma
+// Total exacto: 33 modelos relacionales (tablas) y 15 tipos enumerados (enums)
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// 15 ENUMERACIONES DEL DOMINIO
+// ============================================================================
+
+enum RolUsuario {
+  ADMIN
+  VENDEDOR
+  CLIENTE
+}
+
+enum TipoUbicacion {
+  CENTRAL
+  PUNTO_VENTA
+}
+
+// 14 operaciones conceptuales desglosadas en 26 tipos granulares por signo y condición
+enum TipoMovimientoStock {
+  CARGA_INICIAL
+  COMPRA_RECIBIDA
+  TRASLADO_ENVIADO
+  TRASLADO_RECIBIDO_BUENO
+  TRASLADO_RECIBIDO_DANADO
+  TRASLADO_CANCELADO_REINGRESO
+  NOVEDAD_LLEGO_DESTINO
+  NOVEDAD_RETORNO_ORIGEN
+  NOVEDAD_PERDIDA
+  NOVEDAD_EXCEDENTE_INCORPORADO
+  VENTA_POS
+  ANULACION_VENTA_POS
+  DEVOLUCION_POS_VENDIBLE
+  DEVOLUCION_POS_NO_VENDIBLE
+  RESERVA_WEB
+  LIBERACION_RESERVA_WEB
+  ENDURECIMIENTO_RESERVA_WEB
+  DESPACHO_WEB
+  RETORNO_LOGISTICO_WEB_VENDIBLE
+  RETORNO_LOGISTICO_WEB_NO_VENDIBLE
+  DEVOLUCION_COMERCIAL_WEB_VENDIBLE
+  DEVOLUCION_COMERCIAL_WEB_NO_VENDIBLE
+  AJUSTE_POSITIVO_FISICO
+  AJUSTE_NEGATIVO_FISICO
+  AJUSTE_POSITIVO_NO_VENDIBLE
+  BAJA_NO_VENDIBLE
+}
+
+enum EstadoCompra {
+  PEDIDA
+  RECIBIDA
+  CANCELADA
+}
+
+enum EstadoTraslado {
+  SOLICITADO
+  APROBADO
+  ENVIADO
+  RETORNANDO_A_CENTRAL
+  RECIBIDO
+  RECIBIDO_CON_NOVEDAD
+  CERRADO
+  RECHAZADO
+  CANCELADO
+}
+
+enum TipoResolucionNovedad {
+  LLEGO_A_PUNTO
+  RETORNO_A_CENTRAL
+  PERDIDA_AJUSTE
+  EXCEDENTE_INCORPORADO_DESDE_CENTRAL
+  EXCEDENTE_DESCARTADO_O_DEVUELTO
+}
+
+enum EstadoSesionCaja {
+  ABIERTA
+  CERRADA
+}
+
+enum TipoMovimientoCaja {
+  SANGRIA_RETIRO
+  GASTO_MENOR
+  INGRESO_MANUAL
+}
+
+enum EstadoVentaPOS {
+  COMPLETADA
+  ANULADA
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TRANSFERENCIA
+  CONTRAENTREGA
+  COMPENSACION_CAMBIO
+}
+
+enum TipoDescuento {
+  PORCENTAJE
+  VALOR_FIJO
+  MANUAL_VENDEDOR_PORCENTAJE
+  MANUAL_VENDEDOR_FIJO
+  HEREDADO_CAMBIO_VARIANTE
+}
+
+enum AlcancePromocion {
+  TODA_LA_COMPRA
+  CATEGORIAS
+  PRODUCTOS
+}
+
+enum CanalVenta {
+  POS
+  WEB
+  AMBOS
+}
+
+enum CondicionFisicaDevolucion {
+  VENDIBLE
+  NO_VENDIBLE
+}
+
+enum EstadoPedidoWeb {
+  RECIBIDO
+  CONFIRMADO
+  EN_PREPARACION
+  ENVIADO
+  ENTREGADO
+  NO_ENTREGADO
+  CANCELADO
+}
+
+enum EstadoPagoWeb {
+  PENDIENTE
+  PAGADO
+  REEMBOLSADO
+  ANULADO
+}
+
+// ============================================================================
+// 33 MODELOS RELACIONALES (TABLAS) CON CLAVES FORÁNEAS COMPLETAS
+// ============================================================================
+
+// 1. Región geográfica para cálculo de Zona 3 y Zona 4 (RN-ENV-02)
+model RegionEnvio {
+  id            Int                 @id @default(autoincrement())
+  nombre        String              @unique
+  departamentos DepartamentoDane[]
+}
+
+// 2. Departamento DANE para cálculo de Zona 2 (RN-ENV-02)
+model DepartamentoDane {
+  codigoDane String          @id // Ej: "54" (Norte de Santander), "11" (Bogotá D.C.)
+  nombre     String
+  regionId   Int
+  region     RegionEnvio     @relation(fields: [regionId], references: [id])
+  municipios MunicipioDane[]
+}
+
+// 3. Municipio DANE y bandera de ciudad atendida (RN-ENV-02, RN-ENV-04)
+model MunicipioDane {
+  codigoDane          String                 @id // Ej: "54001" (Cúcuta), "11001" (Bogotá D.C.)
+  nombre              String
+  departamentoId      String
+  departamento        DepartamentoDane       @relation(fields: [departamentoId], references: [codigoDane])
+  atendidoWeb         Boolean                @default(false)
+  ubicaciones         Ubicacion[]
+  usuariosDefault     Usuario[]              @relation("MunicipioDefaultUsuario")
+  pedidosDestino      PedidoWeb[]
+  excepcionesOrigen   ExcepcionTarifaEnvio[] @relation("ExcepcionMunicipioOrigen")
+  excepcionesDestino  ExcepcionTarifaEnvio[] @relation("ExcepcionMunicipioDestino")
+}
+
+// 4. Tarifas por Zona DANE 1 a 4 (RN-ENV-03)
+model TarifaZonaEnvio {
+  zona          Int    @id // 1: Mismo municipio, 2: Mismo depto, 3: Misma región, 4: Otra región
+  nombre        String
+  tarifaCop     Int    // Entero >= 0 (RN-GEN-04)
+  diasEstimados Int
+}
+
+// 5. Excepciones específicas Origen-Destino con FK a MunicipioDane (RN-ENV-03)
+model ExcepcionTarifaEnvio {
+  id                 Int           @id @default(autoincrement())
+  municipioOrigenId  String
+  municipioOrigen    MunicipioDane @relation("ExcepcionMunicipioOrigen", fields: [municipioOrigenId], references: [codigoDane])
+  municipioDestinoId String
+  municipioDestino   MunicipioDane @relation("ExcepcionMunicipioDestino", fields: [municipioDestinoId], references: [codigoDane])
+  tarifaCop          Int
+  diasEstimados      Int
+
+  @@unique([municipioOrigenId, municipioDestinoId])
+}
+
+// 6. Ubicaciones: Bodega Central (única) y Puntos de Venta (RN-UBI-01 a 06)
+model Ubicacion {
+  id                        Int                      @id @default(autoincrement())
+  nombre                    String                   @unique
+  tipo                      TipoUbicacion
+  municipioDaneId           String
+  municipio                 MunicipioDane            @relation(fields: [municipioDaneId], references: [codigoDane])
+  direccion                 String
+  activa                    Boolean                  @default(true)
+  despachaWeb               Boolean                  @default(true)
+  prioridadDespacho         Int                      @default(100) // Menor número gana en empates (RN-UBI-04)
+  baseCajaCop               Int                      @default(200000)
+
+  vendedores                Usuario[]
+  saldosStock               SaldoStock[]
+  movimientosStock          MovimientoInventario[]
+  trasladosOrigen           Traslado[]               @relation("UbicacionOrigenTraslado")
+  trasladosDestino          Traslado[]               @relation("UbicacionDestinoTraslado")
+  sesionesCaja              SesionCaja[]
+  consecutivos              ConsecutivoUbicacion[]
+  ventasPOS                 VentaPOS[]
+  devolucionesPOS           DevolucionPOS[]
+  pedidosWebAsignados       PedidoWeb[]              @relation("UbicacionAsignadaPedido")
+  pedidosWebDespachados     PedidoWeb[]              @relation("UbicacionDespachoReconocido")
+  devolucionesWebImputadas  DevolucionComercialWeb[] @relation("UbicacionImputacionDevolucionWeb")
+  devolucionesWebReingreso  DevolucionComercialWeb[] @relation("UbicacionReingresoDevolucionWeb")
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+}
+
+// 7. Usuarios: Administradores, Vendedores y Clientes Web (RN-ROL-01 a 08)
+model Usuario {
+  id                    Int           @id @default(autoincrement())
+  nombreCompleto        String
+  correo                String        @unique
+  passwordHash          String?       // Opcional si el usuario se autentica vía Google OAuth
+  googleId              String?       @unique // Identificador de Google para inicio de sesión social
+  authProvider          String        @default("LOCAL") // "LOCAL" | "GOOGLE"
+  telefono              String?
+  direccionDefault      String?
+  municipioDefaultId    String?
+  municipioDefault      MunicipioDane? @relation("MunicipioDefaultUsuario", fields: [municipioDefaultId], references: [codigoDane])
+  rol                   RolUsuario
+  ubicacionId           Int?          // Obligatorio si rol == VENDEDOR (RN-ROL-04)
+  ubicacion             Ubicacion?    @relation(fields: [ubicacionId], references: [id])
+  topeDescuentoPorc     Int           @default(0) // 0 a 100 (RN-DES-01)
+  activo                Boolean       @default(true)
+  intentosFallidosLogin Int           @default(0)
+  bloqueadoHasta        DateTime?
+  aceptoPrivacidadEn    DateTime?     // Ley 1581 (RN-SEG-04)
+
+  // Matriz de 11 permisos configurables del vendedor (Tabla 2.2 - RN-ROL-05)
+  permVender            Boolean       @default(true)
+  permCaja              Boolean       @default(true)
+  permDescuentoManual   Boolean       @default(false)
+  permAnularVentas      Boolean       @default(false)
+  permDevoluciones      Boolean       @default(false)
+  permVerInventario     Boolean       @default(true)
+  permSolicitarTraslado Boolean       @default(true)
+  permRecibirTraslado   Boolean       @default(true)
+  permVerOtrosPuntos    Boolean       @default(false)
+  permPedidosWeb        Boolean       @default(false)
+  permVerVentasPunto    Boolean       @default(true)
+
+  movimientosRegistrados MovimientoInventario[]
+  comprasCreadas        CompraProveedor[]      @relation("CompraCreadaPor")
+  comprasRecibidas      CompraProveedor[]      @relation("CompraRecibidaPor")
+  trasladosCreados      Traslado[]             @relation("TrasladoCreadoPor")
+  ventasRealizadasPOS   VentaPOS[]             @relation("VendedorVentaPOS")
+  devolucionesProcesadas DevolucionPOS[]       @relation("UsuarioProcesaDevolucionPOS")
+  pedidosClienteWeb         PedidoWeb[]            @relation("PedidosDelCliente")
+  movimientosCajaRealizados MovimientoCaja[]
+  relevosTurnoSaliente      RelevoTurnoCaja[]      @relation("CajeroSalienteRelevo")
+  relevosTurnoEntrante      RelevoTurnoCaja[]      @relation("CajeroEntranteRelevo")
+  registrosIdempotencia     RegistroIdempotencia[]
+  registrosAuditoria    RegistroAuditoria[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+}
+
+// 8. Categorías del catálogo (Ropa/Camisetas, Accesorios, Cosméticos, Artesanías)
+model Categoria {
+  id                     Int        @id @default(autoincrement())
+  nombre                 String     @unique
+  esCosmeticoUsoPersonal Boolean    @default(false) // Si true, productos nacen con reintegrable = false
+  activa                 Boolean    @default(true)
+  productos              Producto[]
+}
+
+// 9. Productos físicos terminados (sin personalización) (RN-CAT-01, RN-CAT-02)
+model Producto {
+  id                       Int        @id @default(autoincrement())
+  nombre                   String
+  slug                     String     @unique
+  descripcion              String
+  categoriaId              Int
+  categoria                Categoria  @relation(fields: [categoriaId], references: [id])
+  imagenesUrls             String[]
+  reintegrableEnDevolucion Boolean    @default(true) // RN-CAT-02 (false por defecto en cosméticos)
+  activo                   Boolean    @default(true)
+  variantes                Variante[]
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+}
+
+// 10. Variantes inventariables por SKU (Talla, Color, Presentación) (RN-CAT-03 a 06)
+model Variante {
+  id                Int                   @id @default(autoincrement())
+  productoId        Int
+  producto          Producto              @relation(fields: [productoId], references: [id])
+  sku               String                @unique // Inmutable una vez tenga movimientos (RN-CAT-03)
+  codigoBarras      String?               @unique
+  talla             String                // Ej: "S", "M", "L", "30ml", "Única"
+  color             String                // Ej: "Negro", "Blanco", "Natural", "N/A"
+  precioVentaCop    Int                   // Entero > 0 único en todo el sistema (RN-CAT-04)
+  umbralStockBajo   Int?                  // Sobrescribe umbral global si se define (RN-INV-07)
+  tieneMovimientos  Boolean               @default(false)
+  activa            Boolean               @default(true)
+
+  saldosStock       SaldoStock[]
+  movimientosStock  MovimientoInventario[]
+  lineasCompra      LineaCompra[]
+  lineasTraslado    LineaTraslado[]
+  lineasVentaPOS    LineaVentaPOS[]
+  lineasDevolucionPOS LineaDevolucionPOS[]
+  lineasPedidoWeb   LineaPedidoWeb[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+}
+
+// 11. Proyección de Saldo de Stock por Ubicación y Variante con Reservas en 2 Niveles (RN-INV-01, RN-VTA-03, RN-WEB-16)
+model SaldoStock {
+  id                   Int       @id @default(autoincrement())
+  ubicacionId          Int
+  ubicacion            Ubicacion @relation(fields: [ubicacionId], references: [id])
+  varianteId           Int
+  variante             Variante  @relation(fields: [varianteId], references: [id])
+  fisico               Int       @default(0) // >= 0 y >= (reservadoBlando + reservadoDuro)
+  reservadoBlando      Int       @default(0) // >= 0 (Pedidos en RECIBIDO o CONFIRMADO: preemptable por POS)
+  reservadoDuro        Int       @default(0) // >= 0 (Pedidos EN_PREPARACION: protegido frente al POS)
+  noVendible           Int       @default(0) // >= 0 (Dañados o cosméticos devueltos)
+  bloqueadoDespachoWeb Boolean   @default(false) // Cuarentena por «No puedo despachar» (RN-WEB-16)
+  motivoBloqueoWeb     String?
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([ubicacionId, varianteId])
+}
+
+// 12. Kardex Inmutable de Movimientos de Inventario (RN-GEN-02, RN-INV-04)
+model MovimientoInventario {
+  id               BigInt              @id @default(autoincrement())
+  fechaHora        DateTime            @default(now())
+  tipo             TipoMovimientoStock
+  ubicacionId      Int
+  ubicacion        Ubicacion           @relation(fields: [ubicacionId], references: [id])
+  varianteId       Int
+  variante         Variante            @relation(fields: [varianteId], references: [id])
+  cantidadConSigno Int                 // Positivo (+) o Negativo (-)
+  afectaSaldo      String              // "FISICO", "RESERVADO_BLANDO", "RESERVADO_DURO", "NO_VENDIBLE"
+  saldoResultante  Int
+  documentoTipo    String              // "COMPRA", "TRASLADO", "VENTA_POS", "DEVOLUCION_POS", "PEDIDO_WEB", "AJUSTE"
+  documentoId      Int
+  usuarioId        Int
+  usuario          Usuario             @relation(fields: [usuarioId], references: [id])
+  motivo           String?
+
+  @@index([ubicacionId, varianteId, fechaHora])
+  @@index([documentoTipo, documentoId])
+}
+
+// 13. Compras Simplificadas a Proveedores (RN-COM-01 a 07)
+model CompraProveedor {
+  id                Int           @id @default(autoincrement())
+  proveedorNombre   String
+  proveedorContacto String?
+  estado            EstadoCompra  @default(PEDIDA)
+  notas             String?
+  creadoPorId       Int
+  creadoPor         Usuario       @relation("CompraCreadaPor", fields: [creadoPorId], references: [id])
+  recibidoPorId     Int?
+  recibidoPor       Usuario?      @relation("CompraRecibidaPor", fields: [recibidoPorId], references: [id])
+  fechaCreacion     DateTime      @default(now())
+  fechaRecepcion    DateTime?
+  version           Int           @default(1)
+  lineas            LineaCompra[]
+}
+
+// 14. Líneas de Compra a Proveedor (RN-COM-02, RN-COM-03)
+model LineaCompra {
+  id                    Int             @id @default(autoincrement())
+  compraId              Int
+  compra                CompraProveedor @relation(fields: [compraId], references: [id])
+  varianteId            Int
+  variante              Variante        @relation(fields: [varianteId], references: [id])
+  cantidadPedida        Int
+  cantidadRecibida      Int?
+  costoUnitarioCop      Int?            // Opcional en el MVP (RN-COM-02)
+  observacionDiferencia String?
+}
+
+// 15. Traslados entre Ubicaciones (Unifica Solicitud y Envío Directo - RN-TRA-01 a 19)
+model Traslado {
+  id                       Int                        @id @default(autoincrement())
+  esEnvioDirecto           Boolean                    @default(false)
+  ubicacionOrigenId        Int
+  ubicacionOrigen          Ubicacion                  @relation("UbicacionOrigenTraslado", fields: [ubicacionOrigenId], references: [id])
+  ubicacionDestinoId       Int
+  ubicacionDestino         Ubicacion                  @relation("UbicacionDestinoTraslado", fields: [ubicacionDestinoId], references: [id])
+  estado                   EstadoTraslado
+  creadoPorId              Int
+  creadoPor                Usuario                    @relation("TrasladoCreadoPor", fields: [creadoPorId], references: [id])
+  aprobadoPorId            Int?
+  enviadoPorId             Int?
+  recibidoPorId            Int?
+  motivoRechazoCancelacion String?
+  observacionRecepcion     String?
+  fechaSolicitud           DateTime                   @default(now())
+  fechaAprobacion          DateTime?
+  fechaEnvio               DateTime?
+  fechaRecepcion           DateTime?
+  fechaCierre              DateTime?
+  version                  Int                        @default(1)
+
+  lineas                   LineaTraslado[]
+  resolucionesNovedad      ResolucionNovedadTraslado[]
+}
+
+// 16. Líneas de Traslado con Control de Faltantes, Dañados y Excedentes (RN-TRA-08, RN-TRA-17)
+model LineaTraslado {
+  id                          Int      @id @default(autoincrement())
+  trasladoId                  Int
+  traslado                    Traslado @relation(fields: [trasladoId], references: [id])
+  varianteId                  Int
+  variante                    Variante @relation(fields: [varianteId], references: [id])
+  cantidadSolicitada          Int
+  cantidadAprobada            Int?
+  cantidadEnviada             Int?
+  cantidadRecibidaBuena       Int?
+  cantidadRecibidaDanada      Int?
+  excedenteReportado          Int      @default(0)
+  unidadesFaltantesPendientes Int      @default(0)
+  excedentePendienteResolver  Int      @default(0)
+}
+
+// 17. Resoluciones de Novedad de Traslado (RN-TRA-18)
+model ResolucionNovedadTraslado {
+  id               Int                   @id @default(autoincrement())
+  trasladoId       Int
+  traslado         Traslado              @relation(fields: [trasladoId], references: [id])
+  lineaTrasladoId  Int
+  tipoResolucion   TipoResolucionNovedad
+  cantidadResuelta Int
+  motivo           String
+  responsable      String?
+  adminUsuarioId   Int
+  fechaResolucion  DateTime              @default(now())
+}
+
+// 18. Sesiones de Caja por Punto de Venta (RN-CAJ-01 a 12)
+model SesionCaja {
+  id                        Int              @id @default(autoincrement())
+  ubicacionId               Int
+  ubicacion                 Ubicacion        @relation(fields: [ubicacionId], references: [id])
+  estado                    EstadoSesionCaja @default(ABIERTA)
+  fechaNegocioColombia      String           // "YYYY-MM-DD" en America/Bogota (RN-CAJ-11)
+  abiertaPorId              Int
+  cerradaPorId              Int?
+  fechaApertura             DateTime         @default(now())
+  fechaCierre               DateTime?
+  baseConfiguradaCop        Int              // Snapshot de la base del punto ($200.000)
+  baseContadaCop            Int              // Base física real al abrir (RN-CAJ-04, RN-CAJ-06)
+  observacionApertura       String?
+  efectivoEsperadoCierreCop Int?
+  efectivoContadoCierreCop  Int?
+  diferenciaCierreCop       Int?             // contado - esperado
+  efectivoAEntregarCop      Int?             // max(0, contado - baseConfiguradaCop) (RN-CAJ-10)
+  observacionCierre         String?
+  version                   Int              @default(1)
+
+  ventas                    VentaPOS[]
+  devoluciones              DevolucionPOS[]
+  movimientosCaja           MovimientoCaja[]
+  relevosTurno              RelevoTurnoCaja[]
+}
+
+// 18.1 Movimientos de Efectivo de Caja: Sangrías, Gastos Menores e Ingresos de Sencillo (RN-CAJ-06, RN-CAJ-07)
+model MovimientoCaja {
+  id                 Int                @id @default(autoincrement())
+  sesionCajaId       Int
+  sesionCaja         SesionCaja         @relation(fields: [sesionCajaId], references: [id])
+  usuarioId          Int
+  usuario            Usuario            @relation(fields: [usuarioId], references: [id])
+  tipo               TipoMovimientoCaja
+  montoCop           Int                // Entero > 0 (RN-GEN-04)
+  concepto           String
+  comprobanteSoporte String?
+  fechaHora          DateTime           @default(now())
+
+  @@index([sesionCajaId, fechaHora])
+}
+
+// 18.2 Relevos de Turno / Cortes X dentro de la misma Sesión (RN-CAJ-13)
+model RelevoTurnoCaja {
+  id                            Int        @id @default(autoincrement())
+  sesionCajaId                  Int
+  sesionCaja                    SesionCaja @relation(fields: [sesionCajaId], references: [id])
+  cajeroSalienteId              Int
+  cajeroSaliente                Usuario    @relation("CajeroSalienteRelevo", fields: [cajeroSalienteId], references: [id])
+  cajeroEntranteId              Int
+  cajeroEntrante                Usuario    @relation("CajeroEntranteRelevo", fields: [cajeroEntranteId], references: [id])
+  efectivoContadoCop            Int        // Conteo del cajero saliente al entregar
+  efectivoEsperadoHastaCorteCop Int        // Foto matemática del sistema al momento del relevo
+  diferenciaCop                 Int        // contado - esperado
+  observacion                   String?
+  fechaHora                     DateTime   @default(now())
+
+  @@index([sesionCajaId, fechaHora])
+}
+
+// 19. Secuencias de Consecutivos por Punto de Venta (RN-VTA-09, RN-DEV-13)
+model ConsecutivoUbicacion {
+  ubicacionId   Int
+  ubicacion     Ubicacion @relation(fields: [ubicacionId], references: [id])
+  tipoDocumento String    // "VENTA_POS", "DEVOLUCION_POS"
+  ultimoNumero  Int       @default(0)
+
+  @@id([ubicacionId, tipoDocumento])
+}
+
+// 20. Promociones por Código (RN-DES-02 a 13)
+model Promocion {
+  id                     Int              @id @default(autoincrement())
+  codigo                 String           @unique
+  nombre                 String
+  tipo                   TipoDescuento    // PORCENTAJE o VALOR_FIJO
+  valor                  Int              // % (1-100) o COP (>0)
+  alcance                AlcancePromocion
+  idsCategoriasElegibles Int[]
+  idsProductosElegibles  Int[]
+  canalPermitido         CanalVenta
+  minimoCompraCop        Int              @default(0)
+  fechaInicio            DateTime
+  fechaFin               DateTime
+  activa                 Boolean          @default(true)
+  tieneUsos              Boolean          @default(false)
+}
+
+// 21. Ventas en Punto de Venta (POS) con Snapshots y Referencia a Venta Raíz (RN-VTA-01 a 15)
+model VentaPOS {
+  id                        Int            @id @default(autoincrement())
+  numeroComprobante         Int
+  ubicacionId               Int
+  ubicacion                 Ubicacion      @relation(fields: [ubicacionId], references: [id])
+  sesionCajaId              Int
+  sesionCaja                SesionCaja     @relation(fields: [sesionCajaId], references: [id])
+  vendedorId                Int
+  vendedor                  Usuario        @relation("VendedorVentaPOS", fields: [vendedorId], references: [id])
+  clienteNombreOpcional     String?
+  clienteDocumentoOpcional  String?
+  estado                    EstadoVentaPOS @default(COMPLETADA)
+  fechaHora                 DateTime       @default(now())
+  fechaNegocioColombia      String         // "YYYY-MM-DD"
+  mesNegocioColombia        String         // "YYYY-MM"
+
+  subtotalListaCop          Int
+  descuentoTotalCop         Int            @default(0)
+  totalNetoProductosCop     Int
+
+  descuentoTipoSnapshot     TipoDescuento?
+  descuentoCodigoSnapshot   String?
+  descuentoValorSnapshot    Int?
+  descuentoMotivoManual     String?
+  descuentoAutorizadoPorId  Int?
+
+  esVentaDeCambio           Boolean        @default(false)
+  ventaOrigenRaizId         Int?           // Ancla los 5 días siempre a la compra raíz (RN-DEV-03)
+  fechaVentaRaiz            DateTime?
+  tieneMedioPagoMixtoCambio Boolean        @default(false)
+  anuladaPorId              Int?
+  fechaAnulacion            DateTime?
+  motivoAnulacion           String?
+
+  lineas                    LineaVentaPOS[]
+  pagos                     PagoVentaPOS[]
+  devoluciones              DevolucionPOS[]
+
+  @@unique([ubicacionId, numeroComprobante])
+  @@index([ubicacionId, mesNegocioColombia])
+}
+
+// 22. Líneas de Venta POS con Prorrateo y Acumulado de Devolución (RN-DES-09, RN-DEV-07)
+model LineaVentaPOS {
+  id                      Int                  @id @default(autoincrement())
+  ventaId                 Int
+  venta                   VentaPOS             @relation(fields: [ventaId], references: [id])
+  varianteId              Int
+  variante                Variante             @relation(fields: [varianteId], references: [id])
+  productoIdSnapshot      Int
+  nombreProductoSnapshot  String
+  skuSnapshot             String
+  tallaSnapshot           String
+  colorSnapshot           String
+  esReintegrableSnapshot  Boolean
+  cantidadVendida         Int
+  cantidadDevueltaAcum    Int                  @default(0)
+  precioListaUnitarioCop  Int
+  subtotalListaLineaCop   Int
+  descuentoProrrateadoCop Int                  @default(0)
+  netoPagadoLineaCop      Int
+  reembolsadoAcumuladoCop Int                  @default(0)
+  lineasDevolucion        LineaDevolucionPOS[]
+}
+
+// 23. Pagos de Venta POS (Preparado para pagos mixtos futuros - RN-VTA-04)
+model PagoVentaPOS {
+  id                       Int        @id @default(autoincrement())
+  ventaId                  Int
+  venta                    VentaPOS   @relation(fields: [ventaId], references: [id])
+  metodo                   MetodoPago
+  montoCop                 Int
+  montoRecibidoEfectivoCop Int?
+  vueltoEfectivoCop        Int?
+  referenciaTransferencia  String?
+  verificadoPorAdmin       Boolean    @default(false)
+  verificadoPorId          Int?
+  fechaVerificacion        DateTime?
+}
+
+// 24. Devoluciones en Punto de Venta y Enlace a Cambios (RN-DEV-01 a 13)
+model DevolucionPOS {
+  id                        Int                  @id @default(autoincrement())
+  numeroComprobante         Int
+  ventaOriginalId           Int
+  ventaOriginal             VentaPOS             @relation(fields: [ventaOriginalId], references: [id])
+  ubicacionId               Int
+  ubicacion                 Ubicacion            @relation(fields: [ubicacionId], references: [id])
+  sesionCajaId              Int
+  sesionCaja                SesionCaja           @relation(fields: [sesionCajaId], references: [id])
+  procesadoPorId            Int
+  procesadoPor              Usuario              @relation("UsuarioProcesaDevolucionPOS", fields: [procesadoPorId], references: [id])
+  autorizadoFueraPlazoPorId Int?
+  motivoFueraPlazo          String?
+  esParteDeCambio           Boolean              @default(false)
+  ventaNuevaCambioId        Int?                 @unique
+  fechaHora                 DateTime             @default(now())
+  fechaNegocioColombia      String
+  mesNegocioColombia        String
+  totalReembolsadoCop       Int
+  medioReembolso            MetodoPago
+  esExcepcionIliquidezCaja  Boolean              @default(false)
+  referenciaReembolsoTransf String?
+  observacion               String?
+
+  lineas                    LineaDevolucionPOS[]
+
+  @@unique([ubicacionId, numeroComprobante])
+  @@index([ubicacionId, mesNegocioColombia])
+}
+
+model LineaDevolucionPOS {
+  id                   Int                       @id @default(autoincrement())
+  devolucionId         Int
+  devolucion           DevolucionPOS             @relation(fields: [devolucionId], references: [id])
+  lineaVentaOriginalId Int
+  lineaVentaOriginal   LineaVentaPOS             @relation(fields: [lineaVentaOriginalId], references: [id])
+  varianteId           Int
+  variante             Variante                  @relation(fields: [varianteId], references: [id])
+  cantidadDevuelta     Int
+  condicionFisica      CondicionFisicaDevolucion
+  montoReembolsadoCop  Int
+}
+
+// 25. Pedidos Web, Líneas, Historial, Devoluciones Comerciales Web, Festivos, Parámetros, Idempotencia y Auditoría
+model PedidoWeb {
+  id                              Int             @id @default(autoincrement())
+  referenciaLegible               String          @unique // Ej: "PED-2026-000142"
+  clienteId                       Int
+  cliente                         Usuario         @relation("PedidosDelCliente", fields: [clienteId], references: [id])
+  ubicacionAsignadaId             Int             // SIEMPRE NOT NULL (Custodia en Central si hay incidencia)
+  ubicacionAsignada               Ubicacion       @relation("UbicacionAsignadaPedido", fields: [ubicacionAsignadaId], references: [id])
+  ubicacionDespachoReconocidoId   Int?
+  ubicacionDespacho               Ubicacion?      @relation("UbicacionDespachoReconocido", fields: [ubicacionDespachoReconocidoId], references: [id])
+  tieneIncidenciaStock            Boolean         @default(false)
+  tieneReservaActiva              Boolean         @default(true)
+
+  estadoPedido                    EstadoPedidoWeb @default(RECIBIDO)
+  estadoPago                      EstadoPagoWeb   @default(PENDIENTE)
+  metodoPago                      MetodoPago      // TRANSFERENCIA o CONTRAENTREGA
+  reservaExpiraEn                 DateTime?
+
+  municipioDestinoId              String
+  municipioDestino                MunicipioDane   @relation(fields: [municipioDestinoId], references: [codigoDane])
+  direccionEntrega                String
+  destinatarioNombre              String
+  destinatarioTelefono            String
+  zonaEnvioCalculada              Int
+  costoEnvioCop                   Int
+  diasEstimadosSnapshot           Int
+  transportadora                  String?
+  numeroGuia                      String?
+
+  subtotalListaCop                Int
+  descuentoTotalCop               Int             @default(0)
+  totalNetoProductosCop           Int
+  totalAPagarCop                  Int
+  descuentoTipoSnapshot           TipoDescuento?
+  descuentoCodigoSnapshot         String?
+  descuentoValorSnapshot          Int?
+
+  ventaReconocida                 Boolean         @default(false)
+  fechaReconocimientoVenta        DateTime?
+  mesReconocimientoColombia       String?
+
+  fechaCreacion                   DateTime        @default(now())
+  fechaConfirmacion               DateTime?
+  fechaEnPreparacion              DateTime?
+  fechaEnvio                      DateTime?
+  fechaEntrega                    DateTime?
+  fechaCancelacion                DateTime?
+  motivoCancelacionNoEntrega      String?
+  referenciaPagoRecaudo           String?
+  referenciaReembolsoCancelacion  String?
+  version                         Int             @default(1)
+
+  lineas                          LineaPedidoWeb[]
+  historialEstados                HistorialEstadoPedidoWeb[]
+  devolucionesWeb                 DevolucionComercialWeb[]
+
+  @@index([ubicacionDespachoReconocidoId, mesReconocimientoColombia])
+  @@index([estadoPedido, metodoPago, reservaExpiraEn])
+}
+
+model LineaPedidoWeb {
+  id                      Int       @id @default(autoincrement())
+  pedidoId                Int
+  pedido                  PedidoWeb @relation(fields: [pedidoId], references: [id])
+  varianteId              Int
+  variante                Variante  @relation(fields: [varianteId], references: [id])
+  nombreProductoSnapshot  String
+  skuSnapshot             String
+  tallaSnapshot           String
+  colorSnapshot           String
+  esReintegrableSnapshot  Boolean
+  cantidad                Int
+  cantidadDevueltaAcum    Int       @default(0)
+  precioListaUnitarioCop  Int
+  subtotalListaLineaCop   Int
+  descuentoProrrateadoCop Int       @default(0)
+  netoPagadoLineaCop      Int
+  reembolsadoAcumuladoCop Int       @default(0)
+}
+
+model HistorialEstadoPedidoWeb {
+  id           Int             @id @default(autoincrement())
+  pedidoId     Int
+  pedido       PedidoWeb       @relation(fields: [pedidoId], references: [id])
+  estadoPedido EstadoPedidoWeb
+  estadoPago   EstadoPagoWeb
+  usuarioId    Int?
+  observacion  String?
+  fechaHora    DateTime        @default(now())
+}
+
+model DevolucionComercialWeb {
+  id                               Int       @id @default(autoincrement())
+  pedidoId                         Int
+  pedido                           PedidoWeb @relation(fields: [pedidoId], references: [id])
+  ubicacionImputacionVentaId       Int
+  ubicacionImputacionVenta         Ubicacion @relation("UbicacionImputacionDevolucionWeb", fields: [ubicacionImputacionVentaId], references: [id])
+  ubicacionReingresoFisicoId       Int
+  ubicacionReingresoFisico         Ubicacion @relation("UbicacionReingresoDevolucionWeb", fields: [ubicacionReingresoFisicoId], references: [id])
+  registradoPorAdminId             Int
+  autorizadoFueraPlazo             Boolean   @default(false)
+  motivo                           String
+  totalReembolsadoProductosCop     Int
+  referenciaTransferenciaReembolso String
+  fechaHora                        DateTime  @default(now())
+  mesNegocioColombia               String
+}
+
+model FestivoColombia {
+  fecha       String @id // "YYYY-MM-DD"
+  descripcion String
+}
+
+model ParametroSistema {
+  clave       String   @id
+  valor       String
+  descripcion String
+  updatedAt   DateTime @updatedAt
+}
+
+model RegistroIdempotencia {
+  idempotencyKey String
+  usuarioId      Int
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+  endpoint       String
+  statusCode     Int
+  responseBody   Json
+  createdAt      DateTime @default(now())
+
+  @@id([idempotencyKey, usuarioId])
+}
+
+model RegistroAuditoria {
+  id           BigInt   @id @default(autoincrement())
+  fechaHora    DateTime @default(now())
+  usuarioId    Int
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+  accion       String
+  entidadTipo  String
+  entidadId    String
+  datosMinimos Json
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "qmd-pos-vault": {
+      "command": "qmd",
+      "args": [
+        "mcp"
+      ],
+      "description": "Buscador RAG híbrido (BM25 + Vectorial) sobre el Obsidian Vault en ./docs/vault"
+    }
+  }
+}
