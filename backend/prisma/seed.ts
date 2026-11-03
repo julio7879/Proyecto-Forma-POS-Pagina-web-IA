@@ -194,10 +194,10 @@ async function main() {
       reintegrableEnDevolucion: true,
       imagenesUrls: ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518'],
       variantes: [
-        { sku: 'ROP-CAM-NEG-S', talla: 'S', color: 'Negro', precioVentaCop: 45000, codigoBarras: '7701234567801' },
-        { sku: 'ROP-CAM-NEG-M', talla: 'M', color: 'Negro', precioVentaCop: 45000, codigoBarras: '7701234567802' },
-        { sku: 'ROP-CAM-NEG-L', talla: 'L', color: 'Negro', precioVentaCop: 45000, codigoBarras: '7701234567803' },
-        { sku: 'ROP-CAM-BLA-M', talla: 'M', color: 'Blanco', precioVentaCop: 45000, codigoBarras: '7701234567804' },
+        { sku: 'ROP-CAM-NEG-S', talla: 'S', color: 'Negro', precioVentaCop: 45000 },
+        { sku: 'ROP-CAM-NEG-M', talla: 'M', color: 'Negro', precioVentaCop: 45000 },
+        { sku: 'ROP-CAM-NEG-L', talla: 'L', color: 'Negro', precioVentaCop: 45000 },
+        { sku: 'ROP-CAM-BLA-M', talla: 'M', color: 'Blanco', precioVentaCop: 45000 },
       ],
     },
     // 2. Accesorios (RN-CAT-01: Gorras / Talla única)
@@ -209,8 +209,8 @@ async function main() {
       reintegrableEnDevolucion: true,
       imagenesUrls: ['https://images.unsplash.com/photo-1588850561407-ed78c282e89b'],
       variantes: [
-        { sku: 'ACC-GOR-NEG-U', talla: 'Única', color: 'Negro', precioVentaCop: 38000, codigoBarras: '7701234567805' },
-        { sku: 'ACC-GOR-AZU-U', talla: 'Única', color: 'Azul', precioVentaCop: 38000, codigoBarras: '7701234567806' },
+        { sku: 'ACC-GOR-NEG-U', talla: 'Única', color: 'Negro', precioVentaCop: 38000 },
+        { sku: 'ACC-GOR-AZU-U', talla: 'Única', color: 'Azul', precioVentaCop: 38000 },
       ],
     },
     // 3. Cosméticos (RN-CAT-02: reintegrableEnDevolucion = false obligatorio)
@@ -222,7 +222,7 @@ async function main() {
       reintegrableEnDevolucion: false, // RN-CAT-02: no reintegrable
       imagenesUrls: ['https://images.unsplash.com/photo-1620916566398-39f1143ab7be'],
       variantes: [
-        { sku: 'COS-SER-30ML', talla: '30ml', color: 'Neutro', precioVentaCop: 65000, codigoBarras: '7701234567807' },
+        { sku: 'COS-SER-30ML', talla: '30ml', color: 'Neutro', precioVentaCop: 65000 },
       ],
     },
     {
@@ -233,8 +233,8 @@ async function main() {
       reintegrableEnDevolucion: false, // RN-CAT-02: no reintegrable
       imagenesUrls: ['https://images.unsplash.com/photo-1586495777744-4413f21062fa'],
       variantes: [
-        { sku: 'COS-LAB-ROJ-U', talla: 'Única', color: 'Rojo Carmín', precioVentaCop: 28000, codigoBarras: '7701234567808' },
-        { sku: 'COS-LAB-ROS-U', talla: 'Única', color: 'Rosa Palo', precioVentaCop: 28000, codigoBarras: '7701234567809' },
+        { sku: 'COS-LAB-ROJ-U', talla: 'Única', color: 'Rojo Carmín', precioVentaCop: 28000 },
+        { sku: 'COS-LAB-ROS-U', talla: 'Única', color: 'Rosa Palo', precioVentaCop: 28000 },
       ],
     },
     // 4. Artesanías (RN-CAT-01: Piezas terminadas)
@@ -246,7 +246,7 @@ async function main() {
       reintegrableEnDevolucion: true,
       imagenesUrls: ['https://images.unsplash.com/photo-1590874103328-eac38a683ce7'],
       variantes: [
-        { sku: 'ART-MOC-GEO-M', talla: 'Mediana', color: 'Multicolor', precioVentaCop: 140000, codigoBarras: '7701234567810' },
+        { sku: 'ART-MOC-GEO-M', talla: 'Mediana', color: 'Multicolor', precioVentaCop: 140000 },
       ],
     },
   ];
@@ -284,7 +284,6 @@ async function main() {
           talla: v.talla,
           color: v.color,
           precioVentaCop: v.precioVentaCop,
-          codigoBarras: v.codigoBarras,
           activa: true,
         },
         create: {
@@ -293,7 +292,6 @@ async function main() {
           talla: v.talla,
           color: v.color,
           precioVentaCop: v.precioVentaCop,
-          codigoBarras: v.codigoBarras,
           activa: true,
           tieneMovimientos: false,
         },

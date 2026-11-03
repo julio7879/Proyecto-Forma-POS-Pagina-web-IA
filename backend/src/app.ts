@@ -3,6 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import 'express-async-errors';
 
+// Serialización segura de BigInt a nivel global (JSON.stringify / res.json)
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import { errorHandler } from './shared/middlewares/errorHandler.js';
 import { identidadRouter, authRouter } from './modules/01-identidad/index.js';
 import { ubicacionesRouter } from './modules/02-ubicaciones/index.js';
