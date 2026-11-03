@@ -33,4 +33,8 @@ export class AppError extends Error {
   static unprocessable(message: string, code?: string): AppError {
     return new AppError(message, 422, code);
   }
+
+  static locked(message = 'Cuenta bloqueada temporalmente', code = 'CUENTA_BLOQUEADA'): AppError {
+    return new AppError(message, 423, code);
+  }
 }

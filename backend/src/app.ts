@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import 'express-async-errors';
 
 import { errorHandler } from './shared/middlewares/errorHandler.js';
-import { identidadRouter } from './modules/01-identidad/index.js';
+import { identidadRouter, authRouter } from './modules/01-identidad/index.js';
 import { ubicacionesRouter } from './modules/02-ubicaciones/index.js';
 import { catalogoRouter } from './modules/03-catalogo/index.js';
 import { inventarioRouter } from './modules/04-inventario/index.js';
@@ -34,6 +34,7 @@ app.get('/health', (_req, res) => {
 });
 
 // 12 Módulos de Dominio (Vertical Slices)
+app.use('/api/auth', authRouter);
 app.use('/api/identidad', identidadRouter);
 app.use('/api/ubicaciones', ubicacionesRouter);
 app.use('/api/catalogo', catalogoRouter);
