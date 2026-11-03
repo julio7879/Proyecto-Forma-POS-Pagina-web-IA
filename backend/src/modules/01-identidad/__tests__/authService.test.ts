@@ -107,7 +107,7 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
       });
     });
 
-    it('debe incrementar el contador de intentos fallidos en contraseñas incorrectas', async () => {
+    it('debe incrementar atómicamente el contador de intentos fallidos en contraseñas incorrectas', async () => {
       vi.spyOn(prisma.usuario, 'findUnique').mockResolvedValue({
         id: 20,
         correo: 'carlos@forma.com',
@@ -117,7 +117,10 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
         bloqueadoHasta: null,
       } as any);
 
-      const updateSpy = vi.spyOn(prisma.usuario, 'update').mockResolvedValue({} as any);
+      const updateSpy = vi.spyOn(prisma.usuario, 'update').mockResolvedValue({
+        id: 20,
+        intentosFallidosLogin: 3,
+      } as any);
 
       await expect(
         AuthService.login({
@@ -128,7 +131,8 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
 
       expect(updateSpy).toHaveBeenCalledWith({
         where: { id: 20 },
-        data: { intentosFallidosLogin: 3 },
+        data: { intentosFallidosLogin: { increment: 1 } },
+        select: { id: true, intentosFallidosLogin: true },
       });
     });
 
@@ -142,7 +146,9 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
         bloqueadoHasta: null,
       } as any);
 
-      const updateSpy = vi.spyOn(prisma.usuario, 'update').mockResolvedValue({} as any);
+      const updateSpy = vi.spyOn(prisma.usuario, 'update')
+        .mockResolvedValueOnce({ id: 20, intentosFallidosLogin: 5 } as any)
+        .mockResolvedValueOnce({} as any);
 
       const errorPromesa = AuthService.login({
         correo: 'carlos@forma.com',
@@ -154,13 +160,13 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
         'Ha superado el límite de 5 intentos fallidos. Su cuenta ha sido bloqueada temporalmente por 15 minutos.'
       );
 
-      expect(updateSpy).toHaveBeenCalledTimes(1);
-      const updateData = updateSpy.mock.calls[0]![0].data as any;
-      expect(updateData.intentosFallidosLogin).toBe(5);
-      expect(updateData.bloqueadoHasta).toBeInstanceOf(Date);
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+      expect(updateSpy.mock.calls[0]![0].data).toEqual({ intentosFallidosLogin: { increment: 1 } });
+      const updateData2 = updateSpy.mock.calls[1]![0].data as any;
+      expect(updateData2.bloqueadoHasta).toBeInstanceOf(Date);
 
       // Comprobar que la fecha de bloqueo sea ~15 minutos en el futuro
-      const diffMin = (updateData.bloqueadoHasta.getTime() - Date.now()) / (60 * 1000);
+      const diffMin = (updateData2.bloqueadoHasta.getTime() - Date.now()) / (60 * 1000);
       expect(Math.round(diffMin)).toBe(15);
     });
 
@@ -262,6 +268,44 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
         data: { googleId: 'g-987654321', authProvider: 'GOOGLE' },
       });
       expect(resultado.usuario.id).toBe(55);
+    });
+
+    it('debe rechazar el login con Google si la cuenta está bloqueada temporalmente por fuerza bruta (RF-USU-02)', async () => {
+      vi.spyOn(prisma.usuario, 'findFirst').mockResolvedValue({
+        id: 60,
+        correo: 'bloqueado@gmail.com',
+        googleId: 'g-6060',
+        rol: 'CLIENTE',
+        activo: true,
+        bloqueadoHasta: new Date(Date.now() + 10 * 60 * 1000), // Bloqueada 10 min más
+      } as any);
+
+      await expect(
+        AuthService.loginGoogle({
+          googleId: 'g-6060',
+          correo: 'bloqueado@gmail.com',
+          nombreCompleto: 'Bloqueado User',
+        })
+      ).rejects.toThrow('Cuenta bloqueada por seguridad debido a múltiples intentos fallidos');
+    });
+
+    it('debe rechazar el login con Google si el usuario existente tiene rol ADMIN o VENDEDOR (Anti-Takeover RN-ROL-06)', async () => {
+      vi.spyOn(prisma.usuario, 'findFirst').mockResolvedValue({
+        id: 1,
+        correo: 'admin@forma.com',
+        googleId: null,
+        rol: 'ADMIN',
+        activo: true,
+        bloqueadoHasta: null,
+      } as any);
+
+      await expect(
+        AuthService.loginGoogle({
+          googleId: 'g-attacker-id',
+          correo: 'admin@forma.com',
+          nombreCompleto: 'Attacker Admin',
+        })
+      ).rejects.toThrow('El inicio de sesión con Google está restringido exclusivamente a clientes');
     });
   });
 

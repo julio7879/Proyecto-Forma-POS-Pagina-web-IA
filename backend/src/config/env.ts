@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es obligatoria'),
   DIRECT_URL: z.string().optional(),
-  JWT_SECRET: z.string().min(16, 'JWT_SECRET debe tener al menos 16 caracteres'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres (256 bits para HS256)'),
 });
 
 export const env = envSchema.parse(process.env);

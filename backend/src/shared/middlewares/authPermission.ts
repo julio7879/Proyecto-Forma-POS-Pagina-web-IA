@@ -89,7 +89,7 @@ export function generateToken(
   payload: { userId: number; correo: string; rol: 'ADMIN' | 'VENDEDOR' | 'CLIENTE' },
   expiresIn: string | number = '8h'
 ): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn } as jwt.SignOptions);
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn, algorithm: 'HS256' } as jwt.SignOptions);
 }
 
 export async function authenticateJWT(req: Request, _res: Response, next: NextFunction): Promise<void> {
@@ -104,7 +104,7 @@ export async function authenticateJWT(req: Request, _res: Response, next: NextFu
   }
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number };
+    const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] }) as { userId: number };
     let userSnapshot = UserPermissionCache.get(decoded.userId);
 
     if (!userSnapshot) {
