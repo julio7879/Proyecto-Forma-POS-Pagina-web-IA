@@ -27,12 +27,16 @@ Todo Pull Request debe cumplir estrictamente la nomenclatura de ramas:
 
 Antes de emitir aprobación, el revisor debe verificar punto por punto:
 
+0. **Alineación con el Contrato del Issue (DoR vs DoD):** ¿El PR cumple con el contrato técnico de DTOs, esquemas Zod y rutas especificado en el Issue correspondiente? Si el Issue estaba sub-especificado, la revisión debe documentar los ajustes requeridos con soluciones exactas y enriquecer el Issue.
 1. **Dinero Entero (`RN-GEN-04`):** ¿Todos los montos en COP son enteros `INT`? ¿Se usó `MoneyCOP.ts` para cálculos y prorrateos con residuo a la última línea elegible (`RN-DES-09`)?
 2. **Hora Oficial de Colombia (`RN-GEN-05`):** ¿Las fechas se guardan en UTC pero los cortes de día (`YYYY-MM-DD`), mes (`YYYY-MM`) y sesiones de caja se evalúan en `America/Bogota` usando `ColombiaTime.ts`?
 3. **Kardex Único (`RN-GEN-02`):** ¿Toda modificación de `SaldoStock` pasa obligatoriamente por `InventoryLedgerService.ts`? (Rechazo inmediato si se detecta `prisma.saldoStock.update()` suelto).
 4. **Orden Anti-Deadlock (`RNF-003`):** ¿Las transacciones que bloquean múltiples variantes ejecutan ordenamiento canónico `varianteId ASC` antes de `SELECT ... FOR UPDATE`?
 5. **Validación Zod (`RN-SEG-02`):** ¿Cada endpoint valida sus entradas con esquema Zod exigiendo enteros positivos y formatos válidos?
-6. **Compilación y Tests:** ¿Se ejecutó `npx tsc --noEmit` sin errores y `npx vitest run` con todos los tests en verde?
+6. **Configuración de Entorno y Arquitectura Multi-Portal (`ARQ-05`):**
+   - En frontend: ¿Se preserva `AppRouter.tsx` con carga diferida (`React.lazy`) para Storefront, POS y Admin?
+   - ¿Está configurado el proxy de Vite (`server.proxy` para `/api`) para conectar el dev server con Express?
+7. **Compilación y Tests:** ¿Se ejecutó `npx tsc --noEmit` sin errores y `npx vitest run` con todos los tests en verde?
 
 ---
 

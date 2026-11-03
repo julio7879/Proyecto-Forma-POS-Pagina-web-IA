@@ -112,16 +112,18 @@ export class AuthService {
     const passwordValido = await bcrypt.compare(dto.password, usuario.passwordHash);
 
     if (!passwordValido) {
-      const nuevosIntentos = usuario.intentosFallidosLogin + 1;
+      // Incremento atómico a nivel de base de datos para prevenir race conditions concurrentes (RF-USU-02)
+      const usuarioActualizado = await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: { intentosFallidosLogin: { increment: 1 } },
+        select: { id: true, intentosFallidosLogin: true },
+      });
 
-      if (nuevosIntentos >= MAX_INTENTOS_FALLIDOS) {
+      if (usuarioActualizado.intentosFallidosLogin >= MAX_INTENTOS_FALLIDOS) {
         const bloqueadoHasta = new Date(Date.now() + MINUTOS_BLOQUEO * 60 * 1000);
         await prisma.usuario.update({
           where: { id: usuario.id },
-          data: {
-            intentosFallidosLogin: nuevosIntentos,
-            bloqueadoHasta,
-          },
+          data: { bloqueadoHasta },
         });
 
         throw AppError.locked(
@@ -129,12 +131,7 @@ export class AuthService {
         );
       }
 
-      await prisma.usuario.update({
-        where: { id: usuario.id },
-        data: { intentosFallidosLogin: nuevosIntentos },
-      });
-
-      const intentosRestantes = MAX_INTENTOS_FALLIDOS - nuevosIntentos;
+      const intentosRestantes = Math.max(0, MAX_INTENTOS_FALLIDOS - usuarioActualizado.intentosFallidosLogin);
       throw AppError.unauthorized(
         `Credenciales incorrectas. Intentos restantes antes del bloqueo: ${intentosRestantes}`
       );
@@ -211,6 +208,23 @@ export class AuthService {
         throw AppError.unauthorized('Cuenta inactiva o suspendida');
       }
 
+      // Blindaje contra bypass de bloqueo temporal por fuerza bruta
+      if (usuario.bloqueadoHasta && usuario.bloqueadoHasta > new Date()) {
+        const minutosRestantes = Math.ceil(
+          (usuario.bloqueadoHasta.getTime() - Date.now()) / (60 * 1000)
+        );
+        throw AppError.locked(
+          `Cuenta bloqueada por seguridad debido a múltiples intentos fallidos. Intente nuevamente en ${minutosRestantes} minuto(s).`
+        );
+      }
+
+      // Blindaje contra Account Takeover: Google OAuth restringido a CLIENTE (RN-ROL-06)
+      if (usuario.rol !== 'CLIENTE') {
+        throw AppError.forbidden(
+          'El inicio de sesión con Google está restringido exclusivamente a clientes de la tienda web (RN-ROL-06).'
+        );
+      }
+
       // Si existía por correo pero sin googleId enlazado, lo enlazamos
       if (!usuario.googleId) {
         usuario = await prisma.usuario.update({
@@ -246,6 +260,30 @@ export class AuthService {
         },
       });
     }
+
+    // Poblado de snapshot en caché en memoria para O(1) en peticiones subsecuentes (CA-50)
+    const googleUserSnapshot: UserAuthSnapshot = {
+      id: usuario.id,
+      correo: usuario.correo,
+      rol: usuario.rol,
+      ubicacionId: usuario.ubicacionId,
+      activo: usuario.activo,
+      topeDescuentoPorc: usuario.topeDescuentoPorc,
+      permisos: {
+        permVender: usuario.permVender,
+        permCaja: usuario.permCaja,
+        permDescuentoManual: usuario.permDescuentoManual,
+        permAnularVentas: usuario.permAnularVentas,
+        permDevoluciones: usuario.permDevoluciones,
+        permVerInventario: usuario.permVerInventario,
+        permSolicitarTraslado: usuario.permSolicitarTraslado,
+        permRecibirTraslado: usuario.permRecibirTraslado,
+        permVerOtrosPuntos: usuario.permVerOtrosPuntos,
+        permPedidosWeb: usuario.permPedidosWeb,
+        permVerVentasPunto: usuario.permVerVentasPunto,
+      },
+    };
+    UserPermissionCache.set(usuario.id, googleUserSnapshot);
 
     const token = generateToken({
       userId: usuario.id,

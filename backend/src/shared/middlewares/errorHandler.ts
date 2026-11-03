@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import { Prisma } from '@prisma/client';
 import { AppError } from '../domain/AppError.js';
 
 export function errorHandler(
@@ -31,6 +32,29 @@ export function errorHandler(
       },
     });
     return;
+  }
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === 'P2003') {
+      res.status(400).json({
+        ok: false,
+        error: {
+          message: 'Referencia inválida: la entidad relacionada no existe.',
+          code: 'FOREIGN_KEY_VIOLATION',
+        },
+      });
+      return;
+    }
+    if (err.code === 'P2025') {
+      res.status(404).json({
+        ok: false,
+        error: {
+          message: 'El registro solicitado no fue encontrado.',
+          code: 'NOT_FOUND',
+        },
+      });
+      return;
+    }
   }
 
   console.error('[Unhandled Error]:', err);
