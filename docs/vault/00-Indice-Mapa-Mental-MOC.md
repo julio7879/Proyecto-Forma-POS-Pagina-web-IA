@@ -19,6 +19,7 @@ Cada nota en este vault está autocontenida (50 a 140 líneas), cuenta con metad
 - [[RN-DES-Promociones-y-Prorrateo]] — Regla de no acumulación, topes de descuento manual, promociones a $0 y fórmula exacta de prorrateo (`Math.floor` + residuo).
 - [[RN-DEV-Devoluciones-y-Cambios]] — Plazo de 5 días anclado a la venta raíz, excepción de iliquidez en caja (`CA-54`), cambios a $0 y regla de mes cerrado.
 - [[RN-WEB-ENV-Pedidos-y-Zonas-DANE]] — Asignación determinista por Zonas DANE 1-4, TTL de 24h para transferencias, cuarentena de SKU, custodia en Central y retorno logístico vs devolución comercial.
+- [[RN-REP-AUD-Reportes-y-Auditoria]] — Fórmula canónica de Ventas Netas (`RN-REP-01 a 06`), exclusión de fletes/bases, imputación de devoluciones web y bitácora append-only (`RN-AUD-01 a 03`).
 
 ---
 

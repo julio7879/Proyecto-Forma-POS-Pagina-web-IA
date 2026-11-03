@@ -16,8 +16,8 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 
 | Integrante | Rol en el Proyecto | Estado Actual | Tareas Activas / Asignadas |
 | :--- | :--- | :--- | :--- |
-| **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · Motor Kardex Fusionado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02: incremento atómico contra race conditions, anti-takeover Google y JWT HS256). **PR #12 fusionado en `develop`** (eliminación de códigos de barras, motor Kardex con orden canónico y bloqueo pesimista, worker blindado, 59 tests en verde). Tarea de QA asignada a Duvan en Issue #16. |
-| **Thomas** | Junior Backend (Tareas Acotadas) | **Hito SP1-04 Culminado** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`). Códigos de barras retirados del sistema (arquitectura basada 100% en SKU). Listo para asignación de siguiente tarea acotada. |
+| **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · Motor Kardex Fusionado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02). **PR #12 fusionado en `develop`** (motor Kardex con orden canónico y bloqueo pesimista). Tarea de QA en Issue #16.<br>**Issue #23 (`SP3-03`):** Asignado para construir el motor canónico de descuentos `DiscountEngine.ts`. |
+| **Thomas** | Junior Backend & Frontend (Tareas Acotadas) | **Activo en Fase 3** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`).<br>**Issue #22 (`SP3-05`):** Asignado para diseñar la plantilla de Comprobante POS 80 mm y recibo digital Telegram. |
 | **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio. |
 | **Sofía** | Diseñadora UX/UI & Prototipado (0% Código) | En Progreso | **Issue #6 (`SP1-06`):** Prototipos POS Mostrador (`CA-53`).<br>**Issue #8 (`SP1-08`):** Guía de diseño y sistema visual multi-portal en Figma. |
 | **Exneider** | Frontend Lead (React + Tailwind) | En Revisión / Ajustes | **PR #17:** En revisión con 27 observaciones técnicas de seguridad, routing multi-portal y Ley 1581.<br>**Issue #5 (`SP1-05`):** Enriquecido con contrato DoR completo. |
@@ -47,9 +47,9 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 
 - [x] **SP1-01 (Julio):** Middleware Auth JWT + Caché en memoria `UserPermissionCache` ($O(1)$) y revocación (`CA-50`). *(PR #9 Merged)*
 - [x] **SP1-02 (Julio):** Endpoints de Autenticación Híbrida y Bloqueo de Intentos (`RF-USU-01`, `02`, `RN-ROL-06`). *(PR #10 y Hotfix PR #18 Merged)*
-- [ ] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(Issue #3)*
+- [ ] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(En desarrollo por Yeimer - Issue #3)*
 - [x] **SP1-04 (Thomas - Issue #T2):** Carga Semilla del Catálogo por SKU (`RN-CAT-01` a `04`). *(PR #13 Merged - Issue #4 Closed)*
-- [ ] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(Issue #5)*
+- [ ] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(PR #17 en revisión por Julio - Issue #5)*
 - [ ] **SP1-06 (Sofía):** Prototipos UX/UI de la Terminal POS en Pantalla Mostrador (`CA-53`). *(Issue #6)*
 - [ ] **SP1-07 (Duvan):** QA Gate Sprint 1: Certificación de Seguridad y Permisos (`QA-001`, `QA-022`). *(Issue #7)*
 - [ ] **SP1-08 (Sofía):** Guía de Diseño y Sistema Visual Multi-Portal (Apple Liquid Glass UI, Tipografía y Paleta). *(Issue #8)*
@@ -64,7 +64,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 - [x] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 Merged - Issue #11 Closed / QA Issue #16)*
 - [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`).
 - [ ] **SP2-03 (Julio):** Traslados entre Ubicaciones (Solicitud, Aprobación, Despacho y Novedades de Recepción).
-- [ ] **SP2-04 (Thomas):** Endpoint de Ajustes Manuales Motivados y Bajas de No Vendible (`RF-INV-02`, `03`).
+- [ ] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`).
 - [ ] **SP2-05 (Exneider):** Módulo de Administración de Inventarios y Alertas de Stock Bajo.
 - [ ] **SP2-06 (Sofía):** Prototipo UX/UI del Módulo de Inventarios y Recepción de Mercancía.
 - [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Simulación de Deadlocks e Idempotencia (`QA-003`).
@@ -73,9 +73,18 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 
 ---
 
+### Sprint 3: Caja, Terminal POS, Descuentos y Devoluciones (Apertura Temprana de Tareas Desacopladas)
+**Objetivo:** Operación de caja física, comprobantes térmicos, motor canónico de descuentos y terminal de cobro.
+
+- [ ] **SP3-03 (Julio):** Motor Canónico de Descuentos y Prorrateo Exacto (`DiscountEngine.ts`, `RN-DES-09`, `CA-19` a `25`). *(Issue #23)*
+- [ ] **SP3-05 (Thomas):** Plantilla de Comprobante de Venta POS (80 mm) y Recibo Digital Telegram (`RN-VTA-09`, `10`). *(Issue #22)*
+
+---
+
 ## 4. Próximos Pasos Inmediatos
 1. **Duvan:** Certificar el catálogo en el Issue #15 (PR #13 de Thomas) y realizar las pruebas de concurrencia pesimista en el Issue #16 (PR #12 de Julio integrado en `develop`).
 2. **Yeimer:** Iniciar desarrollo de la rama `feature/SP1-03-gestion-sedes-segura` para los endpoints de puntos de venta (`RN-UBI-05`) siguiendo el contrato DoR del Issue #3.
 3. **Exneider:** Subir los ajustes al PR #17 resolviendo las 27 observaciones técnicas reportadas conforme al contrato DoR del Issue #5.
 4. **Sofía:** Finalizar los prototipos de POS Mostrador (`SP1-06`) y la guía de diseño visual (`SP1-08`).
-5. **Thomas:** Recibir su siguiente tarea acotada (por ejemplo, apoyar en la semilla de parámetros o el siguiente módulo de compras/inventario acotado).
+5. **Thomas:** Desarrollar la plantilla de ticket de venta 80 mm en `feature/SP3-05-comprobante-ticket-pos` (Issue #22).
+6. **Julio:** Desarrollar el motor canónico de descuentos y pruebas unitarias en `feature/SP3-03-motor-descuentos-prorrateo` (Issue #23).

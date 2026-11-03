@@ -1,0 +1,3 @@
+# Representación Monetaria en Pesos Colombianos Enteros (COP)
+
+Todos los importes monetarios (precios de venta, costos de compra, descuentos, subtotales, recaudos e impuestos) se almacenan en PostgreSQL como enteros (`INT`) y se manipulan en runtime como enteros seguros de TypeScript (`Number.isSafeInteger`) mediante la clase `MoneyCOP`, prorrateando con `Math.floor()` y asignando el residuo entero a la última línea elegible. Decidimos prohibir completamente el uso de números de punto flotante (`FLOAT`/`DOUBLE`) para evitar desajustes por redondeo binario de IEEE 754 y porque la moneda legal de Colombia no utiliza centavos en el comercio minorista.

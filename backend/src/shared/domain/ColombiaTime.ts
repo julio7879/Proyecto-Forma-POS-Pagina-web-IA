@@ -52,4 +52,49 @@ export class ColombiaTime {
 
     return diffDias <= plazoDias;
   }
+
+  /**
+   * Verifica si una devolución comercial web está dentro de los N días hábiles desde la entrega (RN-DEV-14, CA-65).
+   * Excluye sábados, domingos y días festivos de Colombia.
+   */
+  static estaDentroDePlazoHabilesWeb(
+    fechaEntregaUtc: Date,
+    festivosYyyyMmDd: string[] = [],
+    plazoDiasHabiles = 5,
+    ahora: Date = new Date()
+  ): boolean {
+    const fechaEntregaStr = this.toFechaNegocioColombia(fechaEntregaUtc);
+    const fechaActualStr = this.toFechaNegocioColombia(ahora);
+
+    if (fechaActualStr < fechaEntregaStr) return true;
+    if (fechaActualStr === fechaEntregaStr) return true;
+
+    const [y1 = 0, m1 = 1, d1 = 1] = fechaEntregaStr.split('-').map(Number);
+    const [y2 = 0, m2 = 1, d2 = 1] = fechaActualStr.split('-').map(Number);
+
+    let curr = new Date(Date.UTC(y1, m1 - 1, d1 + 1));
+    const target = new Date(Date.UTC(y2, m2 - 1, d2));
+
+    const festivosSet = new Set(festivosYyyyMmDd);
+    let diasHabilesTranscurridos = 0;
+
+    while (curr <= target) {
+      const dayOfWeek = curr.getUTCDay(); // 0 = Domingo, 6 = Sábado
+      const yyyy = curr.getUTCFullYear();
+      const mm = String(curr.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(curr.getUTCDate()).padStart(2, '0');
+      const fechaIso = `${yyyy}-${mm}-${dd}`;
+
+      const esFinDeSemana = dayOfWeek === 0 || dayOfWeek === 6;
+      const esFestivo = festivosSet.has(fechaIso);
+
+      if (!esFinDeSemana && !esFestivo) {
+        diasHabilesTranscurridos++;
+      }
+
+      curr.setUTCDate(curr.getUTCDate() + 1);
+    }
+
+    return diasHabilesTranscurridos <= plazoDiasHabiles;
+  }
 }

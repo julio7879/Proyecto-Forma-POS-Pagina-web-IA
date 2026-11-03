@@ -1,0 +1,3 @@
+# Preempción Física del Punto de Venta (POS) sobre Reservas Web Blandas
+
+Cuando un cliente en tienda física compra una prenda en mostrador, el sistema POS tiene prioridad absoluta para tomar unidades que se encuentren en `reservadoBlando` (pedidos web en estado `RECIBIDO` o `CONFIRMADO`), forzando la reasignación automática del pedido web a otra sede o custodia en Bodega Central. Decidimos priorizar al cliente presencial con dinero en mano frente a reservas tentativas digitales para maximizar la conversión en tienda y evitar fricción en mostrador, mientras que protegemos el pedido web reasignándolo en tiempo real a otra tienda del inventario unificado.

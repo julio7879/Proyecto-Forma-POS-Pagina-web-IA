@@ -35,6 +35,16 @@ export function errorHandler(
   }
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === 'P2002') {
+      res.status(409).json({
+        ok: false,
+        error: {
+          message: 'Conflicto de unicidad: el registro o clave única ya existe en el sistema.',
+          code: 'UNIQUE_CONSTRAINT_VIOLATION',
+        },
+      });
+      return;
+    }
     if (err.code === 'P2003') {
       res.status(400).json({
         ok: false,

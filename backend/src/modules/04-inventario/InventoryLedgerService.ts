@@ -455,13 +455,20 @@ export class InventoryLedgerService {
   ): Promise<{ valido: boolean; faltantes: Array<{ varianteId: number; requerido: number; disponible: number }> }> {
     const faltantes: Array<{ varianteId: number; requerido: number; disponible: number }> = [];
 
+    // Agrupar items por varianteId para sumar cantidades duplicadas del carrito
+    const cantidadesPorVariante = new Map<number, number>();
     for (const item of items) {
-      const saldo = await this.obtenerSaldo(db, ubicacionId, item.varianteId);
+      const actual = cantidadesPorVariante.get(item.varianteId) ?? 0;
+      cantidadesPorVariante.set(item.varianteId, actual + item.cantidad);
+    }
+
+    for (const [varianteId, requerido] of cantidadesPorVariante.entries()) {
+      const saldo = await this.obtenerSaldo(db, ubicacionId, varianteId);
       const disponible = saldo?.disponible ?? 0;
-      if (disponible < item.cantidad) {
+      if (disponible < requerido) {
         faltantes.push({
-          varianteId: item.varianteId,
-          requerido: item.cantidad,
+          varianteId,
+          requerido,
           disponible,
         });
       }

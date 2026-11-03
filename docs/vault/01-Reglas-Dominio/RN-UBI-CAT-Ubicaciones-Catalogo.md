@@ -13,11 +13,12 @@ Relacionado con: [[MOD-02-Ubicaciones]] | [[MOD-03-Catalogo]] | [[RN-GEN-Princip
 - **RN-UBI-02 [D] (Puntos de Venta):** Cada tienda física (`tipo = PUNTO_VENTA`) posee su propia caja registradora (`baseCajaCop` objetivo de $200.000 COP) y puede tener activo el flag `despachaWeb`.
 - **RN-UBI-03 [D] (Prioridad de Despacho):** Cada ubicación tiene un entero `prioridadDespacho` (menor número = mayor prioridad de despacho web: Centro: 10, Ocaña: 20, Bucaramanga: 30, Central: 40).
 - **RN-UBI-04 [D] (Custodia en Central):** Si un pedido web no puede ser atendido por ninguna tienda por falta de stock o avería, pasa en custodia a Bodega Central con `tieneIncidenciaStock = true` (`RN-WEB-16`).
-- **RN-UBI-05 [D] (Condiciones de Desactivación):** Para desactivar un punto de venta (`activa = false`), se deben cumplir en transacción las 5 condiciones:
-  1) `SUM(fisico) == 0` y `SUM(noVendible) == 0`.
-  2) Cero traslados abiertos donde sea origen o destino.
-  3) Cero pedidos web asignados en curso.
-  4) Cero sesiones de caja en estado `ABIERTA`.
+- **RN-UBI-05 [D] (Condiciones de Desactivación Segura):** Para desactivar un punto de venta (`activa = false`), se deben cumplir en transacción las 5 condiciones obligatorias:
+  1) La ubicación debe ser de tipo `PUNTO_VENTA` (la Bodega Central `tipo = CENTRAL` jamás puede ser desactivada).
+  2) `SUM(fisico) == 0` y `SUM(noVendible) == 0` en `SaldoStock` (sin mercancía viva).
+  3) Cero traslados abiertos donde la sede figure como origen o destino.
+  4) Cero pedidos web asignados en curso (`RECIBIDO`, `CONFIRMADO`, `EN_PREPARACION`).
+  5) Cero sesiones de caja en estado `ABIERTA`.
 - **RN-UBI-06 [D]:** Todo registro histórico de una tienda desactivada permanece accesible para reportes y arqueos pasados.
 
 ## 2. Catálogo de Mercancía Estándar (`RN-CAT-01` a `RN-CAT-08`)

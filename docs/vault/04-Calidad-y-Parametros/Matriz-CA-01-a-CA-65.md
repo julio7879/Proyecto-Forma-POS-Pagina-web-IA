@@ -19,7 +19,9 @@ Esta matriz define los 65 criterios de aceptación normativos y los 25 casos de 
 | **CA-06** | Se envían 30 y el punto recibe 27 buenas | Con observación obligatoria suma 27 a físico y pasa a `RECIBIDO_CON_NOVEDAD`. |
 | **CA-07** | Se intenta digitar `recibidaBuena + recibidaDanada = 31` sobre 30 enviadas | Se rechaza; la suma no puede superar lo enviado. |
 | **CA-08** | La misma confirmación de recepción de traslado se envía dos veces | Respuesta idempotente; el stock jamás se duplica. |
-| **CA-09 / CA-59 / QA-012** | Cancelar traslado en estado `ENVIADO` | Pasa a `RETORNANDO_A_CENTRAL`. Solo al confirmar reingreso físico en Central pasa a `CANCELADO` y repone stock. |
+| **CA-09** | Cancelar traslado en estado `ENVIADO` | Pasa a `RETORNANDO_A_CENTRAL`. La mercancía continúa en tránsito y el punto destino queda bloqueado de recibirla. |
+| **CA-59 / QA-012** | Confirmar reingreso físico en Bodega Central de traslado retornando | Pasa a `CANCELADO` y repone el stock físico en Central. |
+| **QA-014** | Dos administradores o procesos intentan cambiar de estado el mismo traslado a la vez | Manejo por versión de entidad (`version`); uno completa la transición y el otro recibe `409 Conflict`. |
 | **CA-10** | Vendedor intenta resolver novedad de traslado | Se rechaza (`403`). Solo el Admin resuelve novedades pasando el traslado a `CERRADO`. |
 | **CA-11** | Solicitado 30, aprobado 20, se intenta enviar 25 | Se rechaza: lo enviado no puede superar lo aprobado. |
 | **CA-57 / QA-010** | Se envían 30 y llegan 28 buenas y 2 dañadas | Con observación, suma 28 a físico, 2 a no vendible y pasa directo a `RECIBIDO`. |
@@ -79,10 +81,23 @@ Esta matriz define los 65 criterios de aceptación normativos y los 25 casos de 
 | **CA-40** | Pedido contraentrega entregado con pago pendiente | No suma a ventas reconocidas hasta que el Admin registra `PAGADO`. |
 | **CA-41** | Vendedor de otra sede intenta despachar pedido | Rechazado (`403 Forbidden`). |
 | **CA-42** | Reasignar pedido en estado `EN_PREPARACION` | Se rechaza: reserva dura está blindada. |
-| **CA-43 / CA-62 / QA-013** | Tienda marca «No puedo despachar» | Cuarentena de SKU en esa tienda (`bloqueadoDespachoWeb = true`) y reasignación; si nadie tiene stock va a custodia en Central con incidencia. |
+| **CA-43 / QA-013** | Tienda asignada marca «No puedo despachar» | Cuarentena de SKU en esa tienda (`bloqueadoDespachoWeb = true`), liberación de reserva blanda y reasignación automática a siguiente sede candidata. |
+| **CA-62** | Ninguna sede candidata tiene stock completo para pedido web reasignado | Asignación forzosa en custodia a **Bodega Central** con `tieneIncidenciaStock = true` y alerta inmediata al Admin (sin quedar sede `NULL` ni rebotar en bucle). |
 | **CA-44 / QA-022** | Cliente consulta pedidos de otro cliente | `403/404 Forbidden`. |
 | **CA-45** | Pedido pagado el 30-Nov y enviado el 02-Dic | Venta web se reconoce el 02-Dic (fecha del último hito). |
 | **CA-46** | Cliente intenta cancelar pedido `EN_PREPARACION` | Bloqueado: debe tramitarlo con soporte. |
-| **CA-47 a CA-53** | Reportes por sede, persistencia y responsive | Cumplen invariantes de permisos, dinero entero y diseño adaptativo. |
-| **CA-64 / QA-020** | Contraentrega no entregado pasa a `NO_ENTREGADO` | Retorno logístico: repone stock sin restar de Ventas Netas. |
-| **CA-65 / QA-021** | Devolución comercial web de prenda en Central | Prenda reingresa a Central pero la resta de Ventas Netas se imputa al punto que despachó. |
+| **CA-64 / QA-020** | Contraentrega no entregado pasa a `NO_ENTREGADO` | Retorno logístico: repone stock sin restar de Ventas Netas ni contar como devolución financiera. |
+| **CA-65 / QA-021** | Devolución comercial web de prenda en Central | Prenda reingresa a Central pero la resta de Ventas Netas se imputa al punto que despachó (`ubicacionImputacionVentaId`). |
+
+## E. Reportes, Seguridad, Invariantes y UI
+| ID | Escenario Verificable | Resultado Esperado Exacto |
+| :--- | :--- | :--- |
+| **CA-47** | Cálculo de Ventas Netas de un período en hora legal Colombia | `ventasNetas = ventasBrutas - devolucionesAprobadas`; excluye estrictamente fletes de envío y bases iniciales de caja. |
+| **CA-48** | Reporte financiero de mes cerrado | Una devolución procesada en diciembre de una compra de noviembre no altera el reporte histórico de noviembre. |
+| **CA-49** | Consulta de reportes y métricas según el rol | Vendedor solo puede consultar métricas de su sede; Administrador consulta reportes consolidados y de cualquier sede. |
+| **CA-50** | Revocación instantánea de permisos en memoria ($O(1)$) | Admin revoca permiso a usuario; siguiente petición rechaza la acción de inmediato sin esperar expiración del JWT (`UserPermissionCache`). |
+| **CA-51** | Validación de precio de venta unitario en catálogo | Rechaza variantes con precio <= 0 o con decimales (`chk_precio_venta_positivo`). |
+| **CA-52** | Agrupación temporal y vigencia de caja en `America/Bogota` | Fechas UTC se convierten a hora legal colombiana (UTC-5) para determinar pertenencia al día o mes de negocio (`ColombiaTime`). |
+| **CA-53** | UI de Terminal POS adaptativa sin scroll vertical | A resolución mínima 1024x768px la pantalla de cobro se visualiza completa, con zonas táctiles y botones numéricos >= 48x48px. |
+| **QA-023** | Bitácora inmutable de auditoría *append-only* | Acciones sensibles (permisos, anulaciones, ajustes) quedan en `RegistroAuditoria`; prohibido `UPDATE` o `DELETE`. |
+| **QA-024** | Intento de acceso cruzado entre sedes por rol VENDEDOR | Vendedor de Sede A intenta consultar o mutar recursos transaccionales de Sede B; el backend bloquea con `403 Forbidden`. |

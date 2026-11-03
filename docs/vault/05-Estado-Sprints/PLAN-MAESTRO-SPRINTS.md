@@ -45,6 +45,7 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 | **SP1-05** | Maquetación del Login, Registro con Ley 1581 y Navbar de navegación en `StorefrontLayout`. | **Exneider** | Frontend | Basado en prototipo de Sofía. |
 | **SP1-06** | Prototipar flujo visual de la Terminal POS (buscador rápido, carrito de compra, teclado numérico). | **Sofía** | UX/UI | Prototipo para tablet/PC (`>= 1024px`). |
 | **SP1-07** | **QA Gate:** Probar intento de inicio de sesión tras 5 fallos, revocación inmediata de permisos de vendedor y bloqueo de doble Bodega Central. | **Duvan** | QA Tester | `CA-50`, `QA-001`, `QA-002`, `QA-022`. |
+| **SP1-08** | Guía de Diseño y Sistema Visual Multi-Portal (`ARQ-06`): tokens Tailwind, paleta y estados UI (Loading, Empty, Error, Success). | **Sofía** | UX/UI | `ARQ-06`, `CA-53`, componentes base. |
 
 ---
 
