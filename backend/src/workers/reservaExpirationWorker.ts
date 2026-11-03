@@ -1,8 +1,10 @@
 import { prisma } from '../config/database.js';
+import { InventoryLedgerService } from '../modules/04-inventario/InventoryLedgerService.js';
 
 /**
  * Worker para cancelar transferencias web vencidas con SKIP LOCKED (RN-WEB-09, CA-39).
  * Se ejecuta periódicamente sin bloquear transacciones concurrentes del Admin o del POS.
+ * Cumple con Kardex Único (RN-GEN-02) liberando reserva blanda a través de InventoryLedgerService.
  */
 export async function procesarExpiracionReservasWeb(): Promise<number> {
   const ahora = new Date();
@@ -26,19 +28,20 @@ export async function procesarExpiracionReservasWeb(): Promise<number> {
         where: { pedidoId: pedido.id },
       });
 
-      for (const linea of lineas) {
-        await tx.saldoStock.update({
-          where: {
-            ubicacionId_varianteId: {
-              ubicacionId: pedido.ubicacionAsignadaId,
-              varianteId: linea.varianteId,
-            },
-          },
-          data: {
-            reservadoBlando: { decrement: linea.cantidad },
-          },
-        });
-      }
+      // Libera la reserva blanda a través del Kardex Ledger (RN-GEN-02, RN-WEB-09)
+      const movimientos = lineas.map((linea) => ({
+        tipo: 'LIBERACION_RESERVA_WEB' as const,
+        ubicacionId: pedido.ubicacionAsignadaId,
+        varianteId: linea.varianteId,
+        cantidadConSigno: -linea.cantidad,
+        afectaSaldo: 'RESERVADO_BLANDO' as const,
+        documentoTipo: 'PEDIDO_WEB' as const,
+        documentoId: pedido.id,
+        usuarioId: 1, // Sistema / Administrador
+        motivo: 'Expiración automática TTL 24h transferencia bancaria (RN-WEB-09)',
+      }));
+
+      await InventoryLedgerService.registrarMovimientosBatch(tx, movimientos);
 
       // 3. Pasa el pedido a CANCELADO
       await tx.pedidoWeb.update({
