@@ -35,8 +35,11 @@ Para mantener el consumo de tokens al mínimo, cada skill se consulta **únicame
 | **`@Vigía-Requerimientos`** | `pos-evaluador-solicitudes` | Harness v2.1 | Pre-vuelo obligatorio (Paso 0). Audita solicitudes, dependencias de equipo y DoR. |
 | **`@Inquisidor-Dudas`** | `pos-clarification-interview` | `mattpocock/skills` (`/grill-me`) | **OBLIGATORIA ante la duda.** Interroga al usuario con opciones interactivas (`ask_question`). |
 | **`@Oraculo-Analista`** | `orquestador-pos-rag-audit` | RAG Quirúrgico + QMD | Extrae contratos de 30 líneas de `docs/vault/` sin cargar el vault entero. |
+| **`@Arquitecto-Dominio`** | `pos-clean-architecture` | `nathankim0/clean-architecture-skills` | Módulos nuevos, puertos/adaptadores y desacoplamiento de Prisma/Express del dominio. |
 | **`@Forja-Backend`** | `pos-postgres-concurrency-optimizer` | `microsoft/postgres-skills` | Alta concurrencia, `SELECT ... FOR UPDATE`, locks a nivel de fila y transacciones ACID. |
 | **`@Forja-Backend`** | `pos-kardex-transaction` | Guardrails POS | Toda mutación de inventario (`InventoryLedgerService`) o sesiones de caja. |
+| **`@Forja-Backend` / `@Vitral-UI`** | `pos-ecommerce-checkout-machine` | `finsilabs/awesome-ecommerce-skills` | Máquina de estados de pedidos web, carrito de compras, webhooks y checkout idempotente. |
+| **`@Forja-Backend` / `@Sabueso`** | `pos-financial-ledger-audit` | `openaccountant/skills` | Arqueos ciegos de caja, bases iniciales, prorrateo de descuentos y cuadre de Ventas Netas. |
 | **`@Vitral-UI`** | `pos-storefront-ui-designer` | `anthropics/skills` + `tailwind-design-system` | Vistas React, Tailwind CSS, Apple Liquid Glass UI, estados vacíos/error y accesibilidad WCAG. |
 | **`@Sabueso-Hunter`** | `pos-adversarial-audit` / `security-audit` | Cloudflare Adversarial Review | Búsqueda exhaustiva de fallos de lógica, concurrencia, precios y fugas multisede. |
 | **`@Juez-Esceptico`** | `pos-adversarial-audit` | Cloudflare Adversarial Review | Desmonta falsas alarmas verificando constraints SQL, Zod y middlewares. |
