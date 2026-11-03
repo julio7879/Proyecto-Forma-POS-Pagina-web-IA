@@ -122,3 +122,20 @@ Todo Issue debe contener antes de iniciar desarrollo:
 
 Si se detecta un Issue existente sub-especificado o escueto, `@Vigía-Requerimientos` debe actualizar de inmediato el cuerpo del Issue en GitHub (`gh issue edit <ID> -F <archivo>`) para evitar que el desarrollador trabaje a ciegas o asuma reglas erróneas.
 
+---
+
+## 7. Protocolo Obligatorio de Parada y Consulta Activa ante Ambigüedad o Falta de Certeza
+
+**Regla de Oro de Cero Suposición e Interrogación al Usuario:**
+Si `@Vigía-Requerimientos` (o cualquier agente en el flujo) detecta:
+1. Requerimientos o instrucciones ambiguas, incompletas o abiertas a múltiples interpretaciones.
+2. Inexistencia de la regla de negocio en `docs/vault/` o discrepancia entre lo solicitado y las notas atómicas.
+3. Incertidumbre técnica, de diseño visual o de flujos alternativos/fallback.
+4. Cualquier punto donde el agente sienta la tentación de "asumir" o "deducir" el comportamiento.
+
+**Acción Inquebrantable:**
+1. **DETENER LA EJECUCIÓN:** No generar código, no abrir PRs, no crear archivos ni ejecutar comandos modificadores.
+2. **FORMULAR PREGUNTAS AL USUARIO:** Usar la herramienta `ask_question` para presentar opciones múltiples bien fundamentadas (o formular preguntas directas en lenguaje claro).
+3. **BLOQUEO HASTA RESPUESTA:** La tarea se pausa por completo hasta recibir la respuesta explícita y decisión del usuario.
+4. **PROSEGUIR TRAS LA RESPUESTA:** Solo una vez resuelta la duda y documentada la decisión en el Vault, se continúa con la planificación y construcción.
+

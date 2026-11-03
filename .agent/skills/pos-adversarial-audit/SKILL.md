@@ -18,3 +18,6 @@ Busca estas 6 vulnerabilidades críticas:
 
 ## Fase 3: Verificación Escéptica (`@Juez-Esceptico`)
 Para cada sospecha de la Fase 2, intenta desmontarla verificando si un middleware, esquema Zod o constraint SQL ya cubría el caso. Reporta y corrige únicamente los hallazgos `CONFIRMADOS`.
+
+## Regla de Consulta ante Vacíos o Ambigüedades de Negocio
+Si durante la auditoría se descubre un caso de borde, colisión de reglas o comportamiento no contemplado en `docs/vault/`, **está terminantemente prohibido asumir la regla de negocio**. El agente debe detenerse, formular de 1 a 3 preguntas estructuradas al usuario y aguardar la respuesta antes de emitir el reporte final o implementar un arreglo.
