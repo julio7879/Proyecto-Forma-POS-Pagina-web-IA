@@ -15,39 +15,86 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_AUTHOR: ${{ github.event.sender.login }}
+          ISSUE_ACTION: ${{ github.event.action }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            EVENT_TYPE="🚀 NUEVO PULL REQUEST"
-            TITLE="${{ github.event.pull_request.title }}"
-            AUTHOR="${{ github.event.pull_request.user.login }}"
-            URL="${{ github.event.pull_request.html_url }}"
-            BRANCH="${{ github.event.pull_request.head.ref }} -> ${{ github.event.pull_request.base.ref }}"
-            BODY="${{ github.event.pull_request.body }}"
-            # Truncar descripción a 400 caracteres para legibilidad en Telegram
-            BODY_SHORT=$(echo "$BODY" | head -c 400)
-            
-            MSG="<b>${EVENT_TYPE}</b>%0A%0A"
-            MSG="${MSG}<b>📌 Título:</b> ${TITLE}%0A"
-            MSG="${MSG}<b>👤 Autor:</b> @${AUTHOR}%0A"
-            MSG="${MSG}<b>🌿 Rama:</b> <code>${BRANCH}</code>%0A"
-            MSG="${MSG}<b>🔗 Enlace:</b> <a href=\"${URL}\">Ver PR #${{ github.event.pull_request.number }}</a>%0A%0A"
-            MSG="${MSG}<b>📝 Descripción:</b>%0A<i>${BODY_SHORT}...</i>"
-          else
-            EVENT_TYPE="📋 EVENTO EN TAREA (ISSUE #${{ github.event.issue.number }})"
-            TITLE="${{ github.event.issue.title }}"
-            AUTHOR="${{ github.event.sender.login }}"
-            ACTION="${{ github.event.action }}"
-            URL="${{ github.event.issue.html_url }}"
-            
-            MSG="<b>${EVENT_TYPE}</b>%0A%0A"
-            MSG="${MSG}<b>📌 Título:</b> ${TITLE}%0A"
-            MSG="${MSG}<b>⚙️ Acción:</b> ${ACTION}%0A"
-            MSG="${MSG}<b>👤 Por:</b> @${AUTHOR}%0A"
-            MSG="${MSG}<b>🔗 Enlace:</b> <a href=\"${URL}\">Ver Tarea</a>"
-          fi
+          node -e '
+            const https = require("https");
+            const token = process.env.TELEGRAM_BOT_TOKEN;
+            const chatId = process.env.TELEGRAM_CHAT_ID;
+            const eventName = process.env.EVENT_NAME;
 
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            -d "text=${MSG}" \
-            -d "parse_mode=HTML" \
-            -d "disable_web_page_preview=true"
+            const escapeHtml = (str) =>
+              str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            let text = "";
+            if (eventName === "pull_request") {
+              const title = escapeHtml(process.env.PR_TITLE || "");
+              const author = escapeHtml(process.env.PR_AUTHOR || "");
+              const url = process.env.PR_URL || "";
+              const num = process.env.PR_NUMBER || "";
+              const branch = escapeHtml(`${process.env.PR_HEAD || ""} -> ${process.env.PR_BASE || ""}`);
+              const rawBody = process.env.PR_BODY || "";
+              const body = escapeHtml(rawBody.slice(0, 300));
+
+              text = `🚀 <b>NUEVO PULL REQUEST (#${num})</b>\n\n` +
+                     `📌 <b>Título:</b> ${title}\n` +
+                     `👤 <b>Autor:</b> @${author}\n` +
+                     `🌿 <b>Rama:</b> <code>${branch}</code>\n` +
+                     `🔗 <b>Enlace:</b> <a href="${url}">Ver PR en GitHub</a>\n\n` +
+                     `📝 <b>Descripción:</b>\n<i>${body}...</i>`;
+            } else {
+              const title = escapeHtml(process.env.ISSUE_TITLE || "");
+              const author = escapeHtml(process.env.ISSUE_AUTHOR || "");
+              const url = process.env.ISSUE_URL || "";
+              const num = process.env.ISSUE_NUMBER || "";
+              const action = escapeHtml(process.env.ISSUE_ACTION || "");
+
+              text = `📋 <b>EVENTO EN TAREA (ISSUE #${num})</b>\n\n` +
+                     `📌 <b>Título:</b> ${title}\n` +
+                     `⚙️ <b>Acción:</b> ${action}\n` +
+                     `👤 <b>Por:</b> @${author}\n` +
+                     `🔗 <b>Enlace:</b> <a href="${url}">Ver Tarea en GitHub</a>`;
+            }
+
+            const payload = JSON.stringify({
+              chat_id: chatId,
+              text,
+              parse_mode: "HTML",
+              disable_web_page_preview: true
+            });
+
+            const req = https.request({
+              hostname: "api.telegram.org",
+              path: `/bot${token}/sendMessage`,
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(payload)
+              }
+            }, (res) => {
+              res.resume();
+            });
+
+            req.on("error", (e) => {
+              console.error(e);
+              process.exit(1);
+            });
+
+            req.write(payload);
+            req.end();
+          '
