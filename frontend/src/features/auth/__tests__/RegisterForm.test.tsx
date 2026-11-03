@@ -65,7 +65,7 @@ describe('Formulario de Registro - Cumplimiento Ley 1581 (RF-USU-01)', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('muestra error si las contraseñas no coinciden', async () => {
+  it('muestra error si las contraseñas no coinciden (Caso 2.2)', async () => {
     render(
       <MemoryRouter>
         <RegisterForm />
@@ -90,6 +90,10 @@ describe('Formulario de Registro - Cumplimiento Ley 1581 (RF-USU-01)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Las contraseñas no coinciden/i)).toBeInTheDocument();
     });
+
+    // Aserciones negativas (Caso 2.2): no se envió petición ni se navegó
+    expect(apiRequest).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('registra exitosamente, guarda sesión y redirige a / (auto-login, Caso 24)', async () => {
@@ -141,6 +145,11 @@ describe('Formulario de Registro - Cumplimiento Ley 1581 (RF-USU-01)', () => {
     expect(payload).toHaveProperty('nombreCompleto', 'Test User');
     expect(payload).toHaveProperty('correo', 'test@test.com');
     expect(payload).toHaveProperty('aceptoPrivacidad', true);
+
+    // Verificar sanitización: los campos opcionales vacíos no se envían (Caso 1.2)
+    expect(payload).not.toHaveProperty('telefono');
+    expect(payload).not.toHaveProperty('direccionDefault');
+    expect(payload).not.toHaveProperty('municipioDefaultId');
   });
 
   it('muestra error del backend si el correo ya está registrado (HTTP 409)', async () => {

@@ -11,7 +11,7 @@ export const StorefrontLayout: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 pt-24 flex justify-center items-center">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 pt-24">
         <Outlet />
       </main>
 

@@ -58,69 +58,87 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="w-full max-w-md p-8 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl rounded-2xl">
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Iniciar Sesión</h2>
+    <div className="flex justify-center items-center min-h-[calc(100vh-12rem)] py-8">
+      <div className="w-full max-w-md p-8 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl rounded-2xl">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Iniciar Sesión</h2>
 
-      {isLocked && (
-        <div className="bg-amber-100 border border-amber-300 text-amber-800 p-3 rounded-lg mb-4 text-xs font-medium">
-          Cuenta bloqueada por seguridad tras 5 intentos fallidos. Espere 15 minutos antes de volver a intentar (RF-USU-02).
-        </div>
-      )}
+        {isLocked && (
+          <div className="bg-amber-100 border border-amber-300 text-amber-800 p-3 rounded-lg mb-4 text-xs font-medium">
+            Cuenta bloqueada por seguridad tras 5 intentos fallidos. Espere 15 minutos antes de volver a intentar (RF-USU-02).
+          </div>
+        )}
 
-      {apiError && !isLocked && (
-        <div className="bg-red-100 text-red-600 p-2.5 rounded-lg mb-4 text-xs">{apiError}</div>
-      )}
+        {apiError && !isLocked && (
+          <div className="bg-red-100 text-red-600 p-2.5 rounded-lg mb-4 text-xs">{apiError}</div>
+        )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <input
-            {...register('correo')}
-            type="email"
-            disabled={isPending}
-            placeholder="Correo electrónico"
-            aria-invalid={!!errors.correo}
-            className="w-full p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 ring-indigo-500 text-sm disabled:opacity-50"
-          />
-          {errors.correo && (
-            <span className="text-xs text-red-500 mt-1 block">{errors.correo.message}</span>
-          )}
-        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label
+              htmlFor="login-correo"
+              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+            >
+              Correo electrónico
+            </label>
+            <input
+              id="login-correo"
+              {...register('correo')}
+              type="email"
+              disabled={isPending}
+              placeholder="Correo electrónico"
+              aria-invalid={!!errors.correo}
+              className="w-full p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 outline-none focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-50"
+            />
+            {errors.correo && (
+              <span className="text-xs text-red-500 mt-1 block">{errors.correo.message}</span>
+            )}
+          </div>
 
-        <div className="relative">
-          <input
-            {...register('password')}
-            type={showPassword ? 'text' : 'password'}
-            disabled={isPending}
-            placeholder="Contraseña"
-            aria-invalid={!!errors.password}
-            className="w-full p-3 pr-10 rounded-lg bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 ring-indigo-500 text-sm disabled:opacity-50"
-          />
+          <div>
+            <label
+              htmlFor="login-password"
+              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+            >
+              Contraseña
+            </label>
+            <div className="relative">
+              <input
+                id="login-password"
+                {...register('password')}
+                type={showPassword ? 'text' : 'password'}
+                disabled={isPending}
+                placeholder="Contraseña"
+                aria-invalid={!!errors.password}
+                className="w-full p-3 pr-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 outline-none focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            {errors.password && (
+              <span className="text-xs text-red-500 mt-1 block">{errors.password.message}</span>
+            )}
+          </div>
+
           <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            type="submit"
+            disabled={isPending}
+            className="w-full py-3 mt-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold rounded-lg transition-all disabled:opacity-50 flex justify-center items-center"
           >
-            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ingresar'}
           </button>
-          {errors.password && (
-            <span className="text-xs text-red-500 mt-1 block">{errors.password.message}</span>
-          )}
+        </form>
+
+        <div className="mt-4 text-center">
+          <Link to="/register" className="text-sm text-indigo-600 hover:underline">
+            ¿No tienes cuenta? Regístrate
+          </Link>
         </div>
-
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full py-3 mt-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold rounded-lg transition-all disabled:opacity-50 flex justify-center items-center"
-        >
-          {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ingresar'}
-        </button>
-      </form>
-
-      <div className="mt-4 text-center">
-        <Link to="/register" className="text-sm text-indigo-600 hover:underline">
-          ¿No tienes cuenta? Regístrate
-        </Link>
       </div>
     </div>
   );

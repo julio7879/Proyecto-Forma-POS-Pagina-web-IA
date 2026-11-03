@@ -27,7 +27,15 @@ export async function apiRequest<T>(
     headers,
   });
 
-  const data = await response.json();
+  // Salvaguarda ante respuestas sin cuerpo o que no sean JSON (ej: HTML 502/504 o 204)
+  let data: any = {};
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    data = await response.json();
+  } else {
+    const rawText = await response.text();
+    data = { error: { message: rawText || 'Error en la petición' } };
+  }
 
   if (!response.ok) {
     // Preservamos status, código de error y detalles de validación para la UI
