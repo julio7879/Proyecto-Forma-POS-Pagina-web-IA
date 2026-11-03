@@ -68,11 +68,11 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 
 | ID Tarea | Descripción de la Tarea | Asignado | Rol | Criterios / Dependencias |
 | :--- | :--- | :--- | :--- | :--- |
-| **SP3-01** | Sesiones de Caja: Apertura con `baseContadaCop`, guardián de vigencia Bogotá (`CA-56`), arqueo y cálculo de `efectivoAEntregar`. | **Julio** | Backend Lead | `RF-CAJ-01 a 03`, `CA-12`, `CA-15`, `CA-55`, `CA-56`. |
+| **SP3-01** | Sesiones de Caja: Apertura con `baseContadaCop`, guardián de vigencia Bogotá (`CA-56`), arqueo, cálculo de `efectivoAEntregar` y **alerta automática a Telegram ante descuadres**. | **Julio** | Backend Lead | `RF-CAJ-01 a 03`, `CA-12`, `CA-15`, `CA-55`, `CA-56`, Telegram Bot API. |
 | **SP3-02** | Confirmación atómica de Venta POS con preempción sobre reservas blandas y protección de reservas duras (`EN_PREPARACION`). | **Julio** | Backend Lead | `RF-POS-02`, `RN-VTA-03`, `CA-13 a 18`, `CA-60`, `CA-61`. |
 | **SP3-03** | Motor de descuentos y promociones con prorrateo exacto (`Math.floor` + residuo a última línea elegible). | **Yeimer** | Junior Backend | `RF-DES-01 a 02`, `CA-19 a 25`. |
 | **SP3-04** | Anulaciones del día, Devoluciones en POS con plazo de 5 días raíz, excepción de iliquidez en caja y Cambios mano a mano ($0). | **Julio** | Backend Lead | `RF-DEV-01 a 03`, `CA-26 a 34`, `CA-54`, `CA-63`. |
-| **SP3-05** | **Issue #T3 de Thomas:** Diseñar la vista imprimible del Comprobante Interno de Venta POS (80 mm para ticket térmico). | **Thomas** | Junior Frontend | `RN-VTA-09`, ticket de venta presencial. |
+| **SP3-05** | **Issue #T3 de Thomas:** Diseñar la vista imprimible del Comprobante Interno de Venta POS (80 mm para ticket térmico) y formato de recibo digital por Telegram. | **Thomas** | Junior Frontend | `RN-VTA-09`, ticket de venta presencial (sin WhatsApp). |
 | **SP3-06** | Implementación completa de la Terminal POS en `PosLayout` (buscador rápido, teclado en pantalla, modal de cobro y cambios). | **Exneider** | Frontend | React + Tailwind + estado anti-doble clic. |
 | **SP3-07** | Prototipar catálogo público web con semáforo de disponibilidad y checkout en 3 pasos. | **Sofía** | UX/UI | Mobile-first para compradores web. |
 | **SP3-08** | **QA Gate:** Pruebas de venta con preempción de reserva web, devolución de producto con descuento prorrateado, cambio de talla a $0 y corte de caja vencida. | **Duvan** | QA Tester | `CA-12 a 34`, `CA-54 a 56`, `CA-60`, `CA-61`, `CA-63`. |
@@ -88,7 +88,7 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 | **SP4-02** | Worker periódico de expiración de reservas TTL por transferencia vencida con `FOR UPDATE SKIP LOCKED`. | **Julio** | Backend Lead | `RF-WEB-04`, `CA-39`, `QA-015`. |
 | **SP4-03** | Flujo «No puedo despachar» con flag `bloqueadoDespachoWeb` por SKU y custodia automática en Bodega Central si no hay stock. | **Julio** | Backend Lead | `RF-WEB-06`, `CA-43`, `CA-62`, `QA-013`. |
 | **SP4-04** | **Issue #T4 de Thomas:** Diseñar plantilla HTML del correo transaccional de confirmación de pedido con número de guía y flujo de seguimiento. | **Thomas** | Junior Backend/HTML | `NotificacionPort`, plantilla de correo. |
-| **SP4-05** | Integrar servicio de correos (Resend / Nodemailer) en el adaptador `ResendNotificacionAdapter`. | **Yeimer** | Junior Backend | `NotificacionPort`. |
+| **SP4-05** | Integrar `TelegramNotificationAdapter` (alertas a `@FormaNotifier_bot` ante nuevos pedidos web e incidencias) y servicio de correos transaccionales. | **Yeimer** | Junior Backend | `NotificacionPort`, Telegram Bot API (sin WhatsApp). |
 | **SP4-06** | Separación estricta entre Retorno Logístico (contraentrega rechazada) y Devolución Comercial Web imputada a la tienda despachadora. | **Julio** | Backend Lead | `RF-WEB-07`, `RF-DEV-04`, `CA-64`, `CA-65`. |
 | **SP4-07** | Construcción de la Tienda Web en `StorefrontLayout` (catálogo con semáforo, carrito, checkout por zonas DANE y Mis Pedidos). | **Exneider** | Frontend | Mobile-First en React. |
 | **SP4-08** | **QA Gate:** Pruebas de expiración automática de reservas web, compra concurrente del último stock web, cuarentena de SKU y retorno logístico sin alterar ventas netas. | **Duvan** | QA Tester | `CA-35 a 46`, `CA-62`, `CA-64`, `CA-65`, `QA-013 a 021`. |
