@@ -1,0 +1,1662 @@
+{
+  "info": {
+    "_postman_id": "931d1f7a-d84e-5ccd-9490-be14bb4836fe",
+    "name": "Forma POS · SP1-07 QA Gate Sprint 1",
+    "description": "Colección de certificación de seguridad del Sprint 1 (Issue #7). Matriz: docs/qa/SP1-07/MATRIZ-PRUEBAS-SP1-07.md. Importable en Postman y Thunder Client.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 · Salud del backend",
+      "description": "Verifica que el backend responde y que helmet está activo.",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status ok y moneda COP', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('ok'); pm.expect(b.moneda).to.eql('COP'); });",
+                  "pm.test('helmet: X-Content-Type-Options nosniff', () => pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 · QA-001 Bloqueo por fuerza bruta (RF-USU-02, RN-ROL-08)",
+      "description": "Ejecutar en orden con el Runner. Usa una cuenta desechable creada en QA001-00. Las peticiones [MANUAL] se lanzan aparte.",
+      "item": [
+        {
+          "name": "QA001-00 · Setup: registrar cliente de prueba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "Crea una cuenta nueva solo para esta prueba. Precondición del DADO: usuario activo, sin bloqueos, intentosFallidosLogin = 0.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"QA Bloqueo SP1-07\",\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"{{passwordBloqueo}}\",\n  \"aceptoPrivacidad\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cuenta desechable por ejecución: así no se bloquea admin@forma.com en la BD compartida",
+                  "pm.collectionVariables.set('correoBloqueo', `qa.bloqueo.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Rol CLIENTE', () => pm.expect(b.datos.usuario.rol).to.eql('CLIENTE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-01 · Login correcto inicial (contador en 0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"{{passwordBloqueo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve token JWT', () => pm.expect(pm.response.json().datos.token).to.be.a('string'));",
+                  "pm.test('No expone passwordHash', () => pm.expect(pm.response.text()).to.not.include('passwordHash'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-02 · Contraseña incorrecta #1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"ClaveIncorrecta!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje indica 4 intento(s) restante(s)', () => pm.expect(pm.response.json().error.message).to.include('Intentos restantes antes del bloqueo: 4'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-03 · Contraseña incorrecta #2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"ClaveIncorrecta!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje indica 3 intento(s) restante(s)', () => pm.expect(pm.response.json().error.message).to.include('Intentos restantes antes del bloqueo: 3'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-04 · Contraseña incorrecta #3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"ClaveIncorrecta!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje indica 2 intento(s) restante(s)', () => pm.expect(pm.response.json().error.message).to.include('Intentos restantes antes del bloqueo: 2'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-05 · Contraseña incorrecta #4",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"ClaveIncorrecta!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje indica 1 intento(s) restante(s)', () => pm.expect(pm.response.json().error.message).to.include('Intentos restantes antes del bloqueo: 1'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-06 · Contraseña incorrecta #5 → BLOQUEO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "ENTONCES del caso QA-001-E1. Verificar después en BD: intentosFallidosLogin = 5 y bloqueadoHasta ≈ ahora + 15 min (SQL en la matriz).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"ClaveIncorrecta!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423 Locked', () => pm.response.to.have.status(423));",
+                  "const e = pm.response.json().error;",
+                  "pm.test('code = CUENTA_BLOQUEADA', () => pm.expect(e.code).to.eql('CUENTA_BLOQUEADA'));",
+                  "pm.test('Mensaje menciona 15 minutos', () => pm.expect(e.message).to.include('15 minutos'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-07 · Contraseña CORRECTA durante el bloqueo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"{{passwordBloqueo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423 Locked aunque la clave sea correcta', () => pm.response.to.have.status(423));",
+                  "pm.test('Informa minutos restantes', () => pm.expect(pm.response.json().error.message).to.match(/Intente nuevamente en \\d+ minuto/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-08 · Mismo correo en MAYÚSCULAS durante el bloqueo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueoMayus}}\",\n  \"password\": \"{{passwordBloqueo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoBloqueoMayus', pm.collectionVariables.get('correoBloqueo').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423: el bloqueo no se evade cambiando mayúsculas', () => pm.response.to.have.status(423));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-09 · Login Google durante el bloqueo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"googleId\": \"qa-google-{{$timestamp}}\",\n  \"correo\": \"{{correoBloqueo}}\",\n  \"nombreCompleto\": \"QA Bloqueo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423: el bloqueo no se evade por /google', () => pm.response.to.have.status(423));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-10 · Usuario inexistente (no revela existencia)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"no.existe.{{$timestamp}}@forma-qa.test\",\n  \"password\": \"Cualquiera123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje genérico', () => pm.expect(pm.response.json().error.message).to.eql('Credenciales incorrectas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-11 · [MANUAL] Tras expirar el bloqueo: login correcto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Ejecutar SOLO después de esperar 15 min o de correr en BD de desarrollo:\nUPDATE \"Usuario\" SET \"bloqueadoHasta\" = now() - interval '1 minute' WHERE correo = '<correoBloqueo>';\nVerificar luego en BD: intentosFallidosLogin = 0 y bloqueadoHasta = NULL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"{{passwordBloqueo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK al expirar el bloqueo', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA001-12 · [MANUAL] Tras expirar el bloqueo: 1 fallo (sin login correcto antes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Repetir QA001-00 a QA001-06 con una cuenta nueva, expirar el bloqueo por SQL y lanzar ESTA petición (no la 11).\nCódigo actual: el contador sigue en 5, sube a 6 y vuelve a bloquear al primer fallo (423). Si da 423 → defecto DEF-SP107-03.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"ClaveIncorrecta!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Esperado por RN-ROL-08: 401 con 4 intentos restantes (contador reiniciado)', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 · QA-002 Sanitización XSS / SQLi / validación de entradas",
+      "description": "Independientes entre sí; QA002-06 usa la cuenta de la carpeta 01.",
+      "item": [
+        {
+          "name": "QA002-01 · XSS en nombreCompleto (registro)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "Hoy el backend guarda el texto literal (no sanea). Es aceptable SOLO si toda salida se escapa: React {} y escapeHtml en Telegram. Ver decisión DEC-02 en la matriz.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"<script>alert('XSS')</script>\",\n  \"correo\": \"{{correoSan}}\",\n  \"password\": \"ClaveSegura2026\",\n  \"aceptoPrivacidad\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoSan', `qa.san.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 (Zod no filtra HTML) o 400 si el equipo decide restringir', () => pm.expect(pm.response.code).to.be.oneOf([201, 400]));",
+                  "pm.test('Respuesta es JSON, no HTML', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('tokenXss', pm.response.json().datos.token); }",
+                  "pm.test('Nunca 500 (error controlado)', () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-02 · XSS persistido: GET /me devuelve el texto como dato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenXss}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Después: abrir el frontend con ese usuario y confirmar que el nombre se ve como texto y NO aparece alert()."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('Content-Type JSON (el navegador no lo ejecuta)', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "pm.test('nosniff presente', () => pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-03 · XSS con <img onerror> en nombre",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"<img src=x onerror=alert(1)>\",\n  \"correo\": \"{{correoSan}}\",\n  \"password\": \"ClaveSegura2026\",\n  \"aceptoPrivacidad\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoSan', `qa.san.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 o 400', () => pm.expect(pm.response.code).to.be.oneOf([201, 400]));",
+                  "pm.test('Nunca 500 (error controlado)', () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-04 · SQLi clásica en correo (login)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"' OR '1'='1\",\n  \"password\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 por formato de correo', () => pm.response.to.have.status(400));",
+                  "pm.test('Detalle en campo correo', () => pm.expect(JSON.stringify(pm.response.json().error.detalles)).to.include('correo'));",
+                  "pm.test('No filtra stack ni SQL', () => { const t = pm.response.text(); pm.expect(t).to.not.match(/at .*\\.(ts|js):\\d+|SELECT |prisma\\./i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-05 · SQLi con correo de forma válida (admin'--@...)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Si Zod acepta el apóstrofo, Prisma parametriza la consulta: debe responder 401 'Credenciales incorrectas'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin'--@forma.com\",\n  \"password\": \"' OR '1'='1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 o 401, nunca 200', () => pm.expect(pm.response.code).to.be.oneOf([400, 401]));",
+                  "pm.test('Nunca 500 (error controlado)', () => pm.expect(pm.response.code).to.be.below(500));",
+                  "pm.test('No filtra stack ni SQL', () => { const t = pm.response.text(); pm.expect(t).to.not.match(/at .*\\.(ts|js):\\d+|SELECT |prisma\\./i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-06 · SQLi en contraseña sobre cuenta real",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoBloqueo}}\",\n  \"password\": \"' OR '1'='1' --\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No autentica (400 si se corre sin la carpeta 01, 401 o 423)', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 423]));",
+                  "pm.test('Nunca 500 (error controlado)', () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-07 · Inyección tipo NoSQL (objeto en correo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": {\"$ne\": null},\n  \"password\": {\"$ne\": null}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 validación de tipos', () => pm.response.to.have.status(400));",
+                  "pm.test('Nunca 500 (error controlado)', () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-08 · Escalada: enviar rol ADMIN y permisos en el registro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"QA Sanitizacion\",\n  \"correo\": \"{{correoSan}}\",\n  \"password\": \"ClaveSegura2026\",\n  \"aceptoPrivacidad\": true,\n  \"rol\": \"ADMIN\",\n  \"activo\": true,\n  \"permVender\": true,\n  \"permCaja\": true,\n  \"ubicacionId\": 1,\n  \"topeDescuentoPorc\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoSan', `qa.san.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.test('Rol forzado a CLIENTE (campos extra ignorados)', () => pm.expect(pm.response.json().datos.usuario.rol).to.eql('CLIENTE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-09 · Nombre de 101 caracteres",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\n  \"correo\": \"{{correoSan}}\",\n  \"password\": \"ClaveSegura2026\",\n  \"aceptoPrivacidad\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoSan', `qa.san.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 (máx. 100)', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-10 · Carácter nulo \\u0000 en nombre",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"QA\\u0000Nulo\",\n  \"correo\": \"{{correoSan}}\",\n  \"password\": \"ClaveSegura2026\",\n  \"aceptoPrivacidad\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoSan', `qa.san.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Esperado 400 (PostgreSQL no admite NUL). Si da 500 → DEF-SP107-04', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-11 · JSON malformado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"correo\": \"a@b.com\", \"password\": ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Esperado 400. Si da 500 → DEF-SP107-05', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-12 · Cuerpo de más de 100 KB",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"correo\": \"a@b.com\", \"password\": \"{{payloadGrande}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('payloadGrande', 'x'.repeat(120 * 1024));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Esperado 413. Si da 500 → DEF-SP107-05', () => pm.response.to.have.status(413));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QA002-13 · Privacidad no aceptada (Ley 1581)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"QA\",\n  \"correo\": \"qa.priv@forma-qa.test\",\n  \"password\": \"ClaveSegura2026\",\n  \"aceptoPrivacidad\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 con detalle aceptoPrivacidad', () => { pm.response.to.have.status(400); pm.expect(JSON.stringify(pm.response.json().error.detalles)).to.include('aceptoPrivacidad'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 · CA-50 Revocación de permisos en caliente (BLOQUEADO: falta endpoint)",
+      "description": "Hoy no existe endpoint para editar permisos (RF-USU-03) ni ruta protegida con requirePermission. Se dejan las peticiones base; completar cuando llegue el PR correspondiente.",
+      "item": [
+        {
+          "name": "CA50-00 · Login vendedor de prueba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Precondición: Julio/Admin crea un VENDEDOR de prueba en desarrollo y comparte sus credenciales (environment).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correoVendedor}}\",\n  \"password\": \"{{passwordVendedor}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().datos; pm.collectionVariables.set('tokenVendedor', d.token);",
+                  "pm.test('permVender = true al inicio', () => pm.expect(d.usuario.permisos.permVender).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CA50-01 · Acción protegida ANTES de revocar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Sustituir por la ruta real protegida con requirePermission('permVender') cuando exista (p. ej. POST /api/ventas-pos)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con token vigente', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CA50-02 · [PENDIENTE] Admin revoca permVender por API",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/identidad/usuarios/{{vendedorId}}/permisos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "identidad",
+                "usuarios",
+                "{{vendedorId}}",
+                "permisos"
+              ]
+            },
+            "description": "Ruta supuesta: confirmar el nombre real con el PR de RF-USU-03. El servicio DEBE llamar invalidateUserPermissions(id).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permVender\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 al revocar', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CA50-03 · [PENDIENTE] Acción protegida DESPUÉS de revocar (mismo JWT)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Sustituir por la misma ruta protegida de CA50-01. Debe dar 403 en la primera petición tras revocar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 inmediato sin re-login', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 · SEC-01 Suplantación por /api/auth/google (DEF-SP107-01, CRÍTICO)",
+      "description": "Prueba de concepto SOLO contra entorno de desarrollo y con cuentas propias de QA.",
+      "item": [
+        {
+          "name": "SEC01-00 · Registrar víctima (cuenta propia de QA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registro-cliente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registro-cliente"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"QA Victima\",\n  \"correo\": \"{{correoVictima}}\",\n  \"password\": \"ClaveVictima2026\",\n  \"aceptoPrivacidad\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('correoVictima', `qa.victima.${Date.now()}@forma-qa.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SEC01-01 · Atacante llama /google solo con el correo de la víctima",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"googleId\": \"atacante-{{$timestamp}}\",\n  \"correo\": \"{{correoVictima}}\",\n  \"nombreCompleto\": \"Atacante\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ESPERADO: 401/403 (sin ID token de Google no debe autenticar)', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 403]));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('tokenAtacante', pm.response.json().datos.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SEC01-02 · Atacante usa el token obtenido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAtacante}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Si responde 200 con el correo de la víctima, el defecto está confirmado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ESPERADO: 401 (no debería tener token válido)', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "passwordBloqueo",
+      "value": "ClaveQaBloqueo2026"
+    },
+    {
+      "key": "correoBloqueo",
+      "value": ""
+    },
+    {
+      "key": "correoBloqueoMayus",
+      "value": ""
+    },
+    {
+      "key": "correoSan",
+      "value": ""
+    },
+    {
+      "key": "tokenXss",
+      "value": ""
+    },
+    {
+      "key": "payloadGrande",
+      "value": ""
+    },
+    {
+      "key": "tokenVendedor",
+      "value": ""
+    },
+    {
+      "key": "correoVictima",
+      "value": ""
+    },
+    {
+      "key": "tokenAtacante",
+      "value": ""
+    }
+  ]
+}

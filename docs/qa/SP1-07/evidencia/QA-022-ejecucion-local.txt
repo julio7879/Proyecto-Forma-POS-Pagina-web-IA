@@ -1,0 +1,54 @@
+# Evidencia local QA-022 — 2026-11-03 21:51 UTC
+# PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)  · migraciones init + add_movimientos_caja_y_relevos + constraints_post_migrate.sql + fixture equivalente a seed.ts
+
+## 1) BD con constraints (estado esperado de Supabase)
+ orden |      caso       |                     descripcion                     | resultado | sqlstate |            constraint_real             |                                           mensaje_postgres                                           
+-------+-----------------+-----------------------------------------------------+-----------+----------+----------------------------------------+------------------------------------------------------------------------------------------------------
+     0 | P0-INVENTARIO   | Existe chk_saldo_stock_no_negativo                  | PASA      |          | chk_saldo_stock_no_negativo            | Encontrado
+     0 | P0-INVENTARIO   | Existe uq_unica_bodega_central                      | PASA      |          | uq_unica_bodega_central                | Encontrado
+     0 | P0-INVENTARIO   | Existe uq_unica_sesion_caja_abierta_por_punto       | PASA      |          | uq_unica_sesion_caja_abierta_por_punto | Encontrado
+     0 | P0-INVENTARIO   | Existe chk_precio_venta_positivo                    | PASA      |          | chk_precio_venta_positivo              | Encontrado
+     0 | P0-INVENTARIO   | Existe chk_movimiento_caja_monto_positivo           | PASA      |          | chk_movimiento_caja_monto_positivo     | Encontrado
+     0 | P0-PRECONDICION | Hay exactamente 1 ubicación CENTRAL antes de probar | PASA      |          |                                        | Centrales encontradas: 1
+     1 | A1-RN-UBI-01    | INSERT segunda Bodega Central                       | PASA      | 23505    | uq_unica_bodega_central                | duplicate key value violates unique constraint "uq_unica_bodega_central"
+     2 | A2-RN-UBI-01    | UPDATE de Punto de Venta a CENTRAL                  | PASA      | 23505    | uq_unica_bodega_central                | duplicate key value violates unique constraint "uq_unica_bodega_central"
+     3 | B1-RN-INV-01    | SaldoStock con fisico = -5                          | PASA      | 23514    | chk_saldo_stock_no_negativo            | new row for relation "SaldoStock" violates check constraint "chk_saldo_stock_no_negativo"
+     4 | B2-RN-INV-01    | reservadoBlando (3) > fisico (2)                    | PASA      | 23514    | chk_saldo_stock_no_negativo            | new row for relation "SaldoStock" violates check constraint "chk_saldo_stock_no_negativo"
+     5 | B3-RN-INV-01    | SaldoStock con noVendible = -1                      | PASA      | 23514    | chk_saldo_stock_no_negativo            | new row for relation "SaldoStock" violates check constraint "chk_saldo_stock_no_negativo"
+     6 | B4-RN-INV-01    | UPDATE de saldo a fisico = -1                       | PASA      | 23514    | chk_saldo_stock_no_negativo            | new row for relation "SaldoStock" violates check constraint "chk_saldo_stock_no_negativo"
+     7 | C1-CA-51        | Variante con precioVentaCop = 0                     | PASA      | 23514    | chk_precio_venta_positivo              | new row for relation "Variante" violates check constraint "chk_precio_venta_positivo"
+     8 | D1-QA-007       | Segunda SesionCaja ABIERTA en el mismo punto        | PASA      | 23505    | uq_unica_sesion_caja_abierta_por_punto | duplicate key value violates unique constraint "uq_unica_sesion_caja_abierta_por_punto"
+     9 | E1-RN-CAJ-07    | MovimientoCaja con montoCop = 0                     | PASA      | 23514    | chk_movimiento_caja_monto_positivo     | new row for relation "MovimientoCaja" violates check constraint "chk_movimiento_caja_monto_positivo"
+    10 | P1-LIMPIEZA     | No quedaron registros de prueba en la BD            | PASA      |          |                                        | Centrales: 1
+(16 rows)
+
+
+## 2) Control negativo: misma BD SIN chk_saldo_stock_no_negativo ni uq_unica_bodega_central
+ orden |      caso       |                     descripcion                     |               resultado               | sqlstate |            constraint_real             |                                           mensaje_postgres                                           
+-------+-----------------+-----------------------------------------------------+---------------------------------------+----------+----------------------------------------+------------------------------------------------------------------------------------------------------
+     0 | P0-INVENTARIO   | Existe chk_saldo_stock_no_negativo                  | FALLA                                 |          | chk_saldo_stock_no_negativo            | NO existe: ejecutar backend/prisma/constraints_post_migrate.sql
+     0 | P0-INVENTARIO   | Existe uq_unica_bodega_central                      | FALLA                                 |          | uq_unica_bodega_central                | NO existe: ejecutar backend/prisma/constraints_post_migrate.sql
+     0 | P0-INVENTARIO   | Existe uq_unica_sesion_caja_abierta_por_punto       | PASA                                  |          | uq_unica_sesion_caja_abierta_por_punto | Encontrado
+     0 | P0-INVENTARIO   | Existe chk_precio_venta_positivo                    | PASA                                  |          | chk_precio_venta_positivo              | Encontrado
+     0 | P0-INVENTARIO   | Existe chk_movimiento_caja_monto_positivo           | PASA                                  |          | chk_movimiento_caja_monto_positivo     | Encontrado
+     0 | P0-PRECONDICION | Hay exactamente 1 ubicación CENTRAL antes de probar | PASA                                  |          |                                        | Centrales encontradas: 1
+     1 | A1-RN-UBI-01    | INSERT segunda Bodega Central                       | FALLA (la BD ACEPTÓ el dato inválido) | QA001    |                                        | INSERT aceptado: no existe protección de Central única
+     2 | A2-RN-UBI-01    | UPDATE de Punto de Venta a CENTRAL                  | FALLA (la BD ACEPTÓ el dato inválido) | QA001    |                                        | UPDATE aceptado: quedaron 2 Centrales
+     3 | B1-RN-INV-01    | SaldoStock con fisico = -5                          | FALLA (la BD ACEPTÓ el dato inválido) | QA001    |                                        | INSERT aceptado con fisico negativo
+     4 | B2-RN-INV-01    | reservadoBlando (3) > fisico (2)                    | FALLA (la BD ACEPTÓ el dato inválido) | QA001    |                                        | INSERT aceptado con reservas > físico
+     5 | B3-RN-INV-01    | SaldoStock con noVendible = -1                      | FALLA (la BD ACEPTÓ el dato inválido) | QA001    |                                        | INSERT aceptado con noVendible negativo
+     6 | B4-RN-INV-01    | UPDATE de saldo a fisico = -1                       | FALLA (la BD ACEPTÓ el dato inválido) | QA001    |                                        | UPDATE aceptado: saldo quedó negativo
+     7 | C1-CA-51        | Variante con precioVentaCop = 0                     | PASA                                  | 23514    | chk_precio_venta_positivo              | new row for relation "Variante" violates check constraint "chk_precio_venta_positivo"
+     8 | D1-QA-007       | Segunda SesionCaja ABIERTA en el mismo punto        | PASA                                  | 23505    | uq_unica_sesion_caja_abierta_por_punto | duplicate key value violates unique constraint "uq_unica_sesion_caja_abierta_por_punto"
+     9 | E1-RN-CAJ-07    | MovimientoCaja con montoCop = 0                     | PASA                                  | 23514    | chk_movimiento_caja_monto_positivo     | new row for relation "MovimientoCaja" violates check constraint "chk_movimiento_caja_monto_positivo"
+    10 | P1-LIMPIEZA     | No quedaron registros de prueba en la BD            | PASA                                  |          |                                        | Centrales: 1
+(16 rows)
+
+
+## 3) Consultas de ejemplo del Issue #7 ejecutadas tal cual (falso positivo)
+ERROR:  column "codigo" of relation "Ubicacion" does not exist
+LINE 1: INSERT INTO "Ubicacion" ("id", "codigo", "nombre", "tipo", "...
+                                       ^
+ERROR:  column "cantidadFisica" of relation "SaldoStock" does not exist
+LINE 1: ... "SaldoStock" ("id", "ubicacionId", "varianteId", "cantidadF...
+                                                             ^
