@@ -9,11 +9,10 @@ vi.mock('../../../api/apiClient', () => ({
   apiRequest: vi.fn(),
 }));
 
-// Mockeamos useNavigate para verificar la redirección
+// Mockeamos useNavigate con tipado estricto (Caso 25)
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  // Casteamos 'actual' a any para evitar el error TS2698
-  const actual: any = await vi.importActual('react-router-dom');
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -26,10 +25,12 @@ describe('LoginForm - Flujo de Autenticación', () => {
     localStorage.clear();
   });
 
-  it('guarda el token y redirige al POS si el usuario es ADMIN', async () => {
-    // Configuramos el mock para que simule una respuesta exitosa del backend
+  it('guarda el token y el usuario, y redirige a /admin/dashboard si es ADMIN', async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce({
-      datos: { token: 'fake-jwt-token', usuario: { rol: 'ADMIN' } }
+      datos: {
+        token: 'fake-jwt-token',
+        usuario: { id: 1, rol: 'ADMIN', nombreCompleto: 'Admin Test' },
+      },
     });
 
     render(
@@ -38,14 +39,100 @@ describe('LoginForm - Flujo de Autenticación', () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Correo electrónico'), { target: { value: 'admin@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText('Contraseña'), { target: { value: 'password123' } });
-    
+    fireEvent.change(screen.getByPlaceholderText('Correo electrónico'), {
+      target: { value: 'admin@test.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'password123' },
+    });
+
     fireEvent.click(screen.getByRole('button', { name: /Ingresar/i }));
 
     await waitFor(() => {
       expect(localStorage.getItem('token')).toBe('fake-jwt-token');
-      expect(mockNavigate).toHaveBeenCalledWith('/pos');
+      expect(JSON.parse(localStorage.getItem('usuario') || '{}').rol).toBe('ADMIN');
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/dashboard');
+    });
+  });
+
+  it('redirige a /pos/venta si el usuario es VENDEDOR', async () => {
+    vi.mocked(apiRequest).mockResolvedValueOnce({
+      datos: {
+        token: 'vendedor-token',
+        usuario: { id: 2, rol: 'VENDEDOR', nombreCompleto: 'Vendedor Test' },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginForm />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Correo electrónico'), {
+      target: { value: 'vendedor@test.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ingresar/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/pos/venta');
+    });
+  });
+
+  it('muestra mensaje de error si las credenciales son incorrectas (HTTP 401, Caso 23)', async () => {
+    vi.mocked(apiRequest).mockRejectedValueOnce(
+      Object.assign(new Error('Credenciales incorrectas'), { status: 401 })
+    );
+
+    render(
+      <MemoryRouter>
+        <LoginForm />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Correo electrónico'), {
+      target: { value: 'fail@test.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'wrongpass' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ingresar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Credenciales incorrectas/i)).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('muestra alerta de bloqueo si el backend responde HTTP 423', async () => {
+    vi.mocked(apiRequest).mockRejectedValueOnce(
+      Object.assign(new Error('Cuenta bloqueada'), {
+        status: 423,
+        code: 'CUENTA_BLOQUEADA',
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <LoginForm />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Correo electrónico'), {
+      target: { value: 'locked@test.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'wrongpass' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ingresar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Cuenta bloqueada por seguridad/i)).toBeInTheDocument();
     });
   });
 });

@@ -1,5 +1,6 @@
 /**
  * Cliente HTTP centralizado con inyección de Idempotency-Key (RN-GEN-08)
+ * y propagación de códigos de estado y detalles de validación del backend.
  */
 export async function apiRequest<T>(
   endpoint: string,
@@ -29,7 +30,12 @@ export async function apiRequest<T>(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error?.message || 'Error en la petición');
+    // Preservamos status, código de error y detalles de validación para la UI
+    const error: any = new Error(data.error?.message || data.message || 'Error en la petición');
+    error.status = response.status;
+    error.code = data.error?.code;
+    error.detalles = data.error?.detalles;
+    throw error;
   }
 
   return data as T;
