@@ -62,9 +62,34 @@ export class UserPermissionCache {
     this.cache.delete(userId);
   }
 
+  static has(userId: number): boolean {
+    return this.get(userId) !== null;
+  }
+
+  static size(): number {
+    return this.cache.size;
+  }
+
   static clear(): void {
     this.cache.clear();
   }
+}
+
+/**
+ * Función pública de invalidación para ser llamada desde servicios (ej. al editar permisos en caliente).
+ */
+export function invalidateUserPermissions(userId: number): void {
+  UserPermissionCache.invalidate(userId);
+}
+
+/**
+ * Genera un token JWT firmado para la sesión de usuario.
+ */
+export function generateToken(
+  payload: { userId: number; correo: string; rol: 'ADMIN' | 'VENDEDOR' | 'CLIENTE' },
+  expiresIn: string | number = '8h'
+): string {
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn } as jwt.SignOptions);
 }
 
 export async function authenticateJWT(req: Request, _res: Response, next: NextFunction): Promise<void> {
