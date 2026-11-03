@@ -20,7 +20,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | **Thomas** | Junior Backend & Frontend (Tareas Acotadas) | **Activo en Fase 3** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`).<br>**Issue #22 (`SP3-05`):** Asignado para diseñar la plantilla de Comprobante POS 80 mm y recibo digital Telegram. |
 | **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio.<br>**Issue #24 (`[QA] PR #17`):** Certificación funcional de vistas de login, registro Ley 1581 y Navbar Storefront. |
 | **Sofía** | Diseñadora UX/UI & Prototipado (0% Código) | En Progreso | **Issue #6 (`SP1-06`):** Prototipos POS Mostrador (`CA-53`).<br>**Issue #8 (`SP1-08`):** Guía de diseño y sistema visual multi-portal en Figma. |
-| **Exneider** | Frontend Lead (React + Tailwind) | Aprobado (En QA Gate) | **PR #17:** Aprobado técnicamente (`APPROVED`, commit `fc1ca63`) con 27/27 casos resueltos, 8/8 tests en verde y build Tailwind exitoso. Asignado a Duvan en Issue #24.<br>**Issue #5 (`SP1-05`):** Implementación completa en espera de certificación final. |
+| **Exneider** | Frontend Lead (React + Tailwind) | Activo en Catálogo Storefront | **PR #17:** Aprobado técnicamente (`APPROVED`, commit `fc1ca63`) y en QA Gate con Duvan (Issue #24).<br>**Issue #25 (`SP1-09`):** Asignado para construir el Catálogo de Productos, filtros por categoría y selector de variantes en `CatalogPage.tsx`. |
 | **Yeimer** | Backend Junior (Soporte) | Listo para Construcción | **Issue #3 (`SP1-03`):** Enriquecido con contrato DoR completo de `MOD-02`, DTOs de validación Zod y las 5 condiciones de `RN-UBI-05`. |
 
 ---
@@ -54,6 +54,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 - [ ] **SP1-06 (Sofía):** Prototipos UX/UI de la Terminal POS en Pantalla Mostrador (`CA-53`). *(Issue #6)*
 - [ ] **SP1-07 (Duvan):** QA Gate Sprint 1: Certificación de Seguridad y Permisos (`QA-001`, `QA-022`). *(Issue #7)*
 - [ ] **SP1-08 (Sofía):** Guía de Diseño y Sistema Visual Multi-Portal (Apple Liquid Glass UI, Tipografía y Paleta). *(Issue #8)*
+- [ ] **SP1-09 (Exneider):** Catálogo Público de Productos, Filtros por Categoría y Selector de Variantes (Storefront). *(Issue #25)*
 
 **Progreso del Sprint 1:** `38%` [████░░░░░░] (3/8 tareas completadas)
 
