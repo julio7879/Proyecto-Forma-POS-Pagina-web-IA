@@ -18,9 +18,9 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | :--- | :--- | :--- | :--- |
 | **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · Motor Kardex Fusionado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02). **PR #12 fusionado en `develop`** (motor Kardex con orden canónico y bloqueo pesimista). Tarea de QA en Issue #16.<br>**Issue #23 (`SP3-03`):** Asignado para construir el motor canónico de descuentos `DiscountEngine.ts`. |
 | **Thomas** | Junior Backend & Frontend (Tareas Acotadas) | **Activo en Fase 3** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`).<br>**Issue #22 (`SP3-05`):** Asignado para diseñar la plantilla de Comprobante POS 80 mm y recibo digital Telegram. |
-| **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio. |
+| **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio.<br>**Issue #24 (`[QA] PR #17`):** Certificación funcional de vistas de login, registro Ley 1581 y Navbar Storefront. |
 | **Sofía** | Diseñadora UX/UI & Prototipado (0% Código) | En Progreso | **Issue #6 (`SP1-06`):** Prototipos POS Mostrador (`CA-53`).<br>**Issue #8 (`SP1-08`):** Guía de diseño y sistema visual multi-portal en Figma. |
-| **Exneider** | Frontend Lead (React + Tailwind) | En Revisión / Ajustes | **PR #17:** En revisión con 27 observaciones técnicas de seguridad, routing multi-portal y Ley 1581.<br>**Issue #5 (`SP1-05`):** Enriquecido con contrato DoR completo. |
+| **Exneider** | Frontend Lead (React + Tailwind) | Aprobado (En QA Gate) | **PR #17:** Aprobado técnicamente (`APPROVED`, commit `fc1ca63`) con 27/27 casos resueltos, 8/8 tests en verde y build Tailwind exitoso. Asignado a Duvan en Issue #24.<br>**Issue #5 (`SP1-05`):** Implementación completa en espera de certificación final. |
 | **Yeimer** | Backend Junior (Soporte) | Listo para Construcción | **Issue #3 (`SP1-03`):** Enriquecido con contrato DoR completo de `MOD-02`, DTOs de validación Zod y las 5 condiciones de `RN-UBI-05`. |
 
 ---
@@ -37,6 +37,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | **2026-11-02** | **Hito SP1-04:** Catálogo semilla por SKU en `prisma/seed.ts` (4 categorías base, cosméticos `reintegrableEnDevolucion: false`, variantes con SKUs únicos y precios enteros COP `RN-CAT-01 a 04`). Probado en vivo contra Supabase. | Thomas | PR #13 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-03** | **Blindaje Hotfix SP1-02:** Incremento atómico en `intentosFallidosLogin` (anti race conditions), protección anti-takeover en Google OAuth para staff (`403 Forbidden`) y JWT HS256 con secret >= 32 chars. 19 tests en verde. | Julio | PR #18 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-03** | **Hito SP2-01 (Adelanto Sprint 2):** Motor Kardex Centralizado (`InventoryLedgerService.ts`), Bloqueo pesimista `SELECT ... FOR UPDATE`, Orden canónico anti-deadlock `varianteId ASC` (`RNF-003`), worker de reservas blindado contra pedidos en custodia (`tieneReservaActiva`) y serialización BigInt JSON. 59 tests en verde. | Julio | PR #12 Fusionado en `develop` | **COMPLETADO [x]** |
+| **2026-11-03** | **Aprobación Técnica SP1-05:** PR #17 de Exneider aprobado (`APPROVED`, commit `fc1ca63`), 27/27 casos resueltos, suite Vitest 8/8 y compilación con Tailwind impecable. Sincronización con `develop` completada sin conflictos. | Exneider / Julio | Aprobado (QA Gate en Issue #24) | **LISTO PARA QA [x]** |
 
 ---
 
@@ -49,7 +50,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 - [x] **SP1-02 (Julio):** Endpoints de Autenticación Híbrida y Bloqueo de Intentos (`RF-USU-01`, `02`, `RN-ROL-06`). *(PR #10 y Hotfix PR #18 Merged)*
 - [ ] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(En desarrollo por Yeimer - Issue #3)*
 - [x] **SP1-04 (Thomas - Issue #T2):** Carga Semilla del Catálogo por SKU (`RN-CAT-01` a `04`). *(PR #13 Merged - Issue #4 Closed)*
-- [ ] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(PR #17 en revisión por Julio - Issue #5)*
+- [ ] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(PR #17 Aprobado técnicamente - Issue #24 en manos de Duvan)*
 - [ ] **SP1-06 (Sofía):** Prototipos UX/UI de la Terminal POS en Pantalla Mostrador (`CA-53`). *(Issue #6)*
 - [ ] **SP1-07 (Duvan):** QA Gate Sprint 1: Certificación de Seguridad y Permisos (`QA-001`, `QA-022`). *(Issue #7)*
 - [ ] **SP1-08 (Sofía):** Guía de Diseño y Sistema Visual Multi-Portal (Apple Liquid Glass UI, Tipografía y Paleta). *(Issue #8)*
