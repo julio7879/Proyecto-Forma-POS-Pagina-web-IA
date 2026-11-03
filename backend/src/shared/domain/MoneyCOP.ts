@@ -80,12 +80,15 @@ export class MoneyCOP {
       throw new Error('La cantidad a devolver supera las unidades disponibles para devolución en esta línea (RN-DEV-06).');
     }
 
+    const saldoRemanente = Math.max(0, netoPagadoLineaCop - reembolsadoAcumuladoPrevioCop);
     const esUltimaDevolucionDeLaLinea = (cantidadDevueltaPrevia + cantidadADevolverAhora) === cantidadVendida;
     if (esUltimaDevolucionDeLaLinea) {
-      return Math.max(0, netoPagadoLineaCop - reembolsadoAcumuladoPrevioCop);
+      return saldoRemanente;
     }
 
-    return Math.round((netoPagadoLineaCop / cantidadVendida) * cantidadADevolverAhora);
+    // Usar Math.floor y techo de saldo remanente para blindar contra sobre-reembolsos acumulados (RN-DEV-06, CA-26)
+    const reembolsoCalculado = Math.floor((netoPagadoLineaCop * cantidadADevolverAhora) / cantidadVendida);
+    return Math.min(saldoRemanente, reembolsoCalculado);
   }
 
   /**

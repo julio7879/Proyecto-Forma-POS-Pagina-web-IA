@@ -48,6 +48,31 @@ describe('MoneyCOP', () => {
     expect(dev2).toBe(25000);
   });
 
+  it('blinda contra sobre-reembolsos en devoluciones parciales de baja cuantía o descuentos extremos', () => {
+    // 5 prendas vendidas por 3 COP en total neto
+    let reembolsado = 0;
+    for (let i = 0; i < 4; i++) {
+      const dev = MoneyCOP.calcularReembolsoDevolucionLinea({
+        netoPagadoLineaCop: 3,
+        cantidadVendida: 5,
+        cantidadDevueltaPrevia: i,
+        reembolsadoAcumuladoPrevioCop: reembolsado,
+        cantidadADevolverAhora: 1,
+      });
+      reembolsado += dev;
+    }
+    const devFinal = MoneyCOP.calcularReembolsoDevolucionLinea({
+      netoPagadoLineaCop: 3,
+      cantidadVendida: 5,
+      cantidadDevueltaPrevia: 4,
+      reembolsadoAcumuladoPrevioCop: reembolsado,
+      cantidadADevolverAhora: 1,
+    });
+    reembolsado += devFinal;
+
+    expect(reembolsado).toBe(3);
+  });
+
   it('calcula efectivo esperado considerando sangrias, gastos menores e ingresos (RN-CAJ-06)', () => {
     // Base contada: 200.000
     // Ventas efectivo: 1.500.000
