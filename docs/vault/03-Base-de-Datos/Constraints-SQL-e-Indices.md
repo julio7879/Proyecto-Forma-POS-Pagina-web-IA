@@ -38,6 +38,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_unica_sesion_caja_abierta_por_punto
 ALTER TABLE "Variante"
   ADD CONSTRAINT chk_precio_venta_positivo
   CHECK ("precioVentaCop" > 0);
+
+-- 5. Prohibir movimientos de caja con montos menores o iguales a cero (RN-CAJ-04, RN-GEN-04)
+ALTER TABLE "MovimientoCaja"
+  ADD CONSTRAINT chk_movimiento_caja_monto_positivo
+  CHECK ("montoCop" > 0);
 ```
 
 ## Justificación Técnica de los Guardrails SQL
@@ -45,3 +50,4 @@ ALTER TABLE "Variante"
 2. **`uq_unica_bodega_central`:** Asegura que a nivel físico no pueda crearse más de una Bodega Central mediante un índice único parcial condicionado a `tipo = 'CENTRAL'`.
 3. **`uq_unica_sesion_caja_abierta_por_punto`:** Previene aperturas simultáneas en el mismo punto de venta (`QA-007`), garantizando que un cajero no opere sobre dos cajas paralelas.
 4. **`chk_precio_venta_positivo`:** Garantiza que ninguna variante nazca con precio negativo o cero (`CA-51`).
+5. **`chk_movimiento_caja_monto_positivo`:** Asegura que todo ingreso o retiro manual de caja tenga un importe positivo en pesos enteros (`INT`).

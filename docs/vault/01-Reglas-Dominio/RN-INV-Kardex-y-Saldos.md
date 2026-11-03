@@ -34,7 +34,7 @@ En la tabla `SaldoStock` cada registro mantiene 4 valores enteros (`>= 0`):
   ```
 - **RN-INV-04 [D] (Centralización Absoluta):** Ningún controlador o servicio puede alterar `SaldoStock` directamente. Toda mutación pasa por `InventoryLedgerService.registrarMovimiento()`.
 - **RN-INV-05 [D] (Concurrencia Estricta, `CA-02`, `QA-003`):** Si dos transacciones intentan adquirir la última unidad disponible, una se procesa y la otra falla con error de stock insuficiente (`409 Conflict`), manteniendo el stock en 0 y jamás negativo.
-- **RN-INV-06 [D] (Carga Inicial):** La carga inicial de inventario se registra con tipo de movimiento `AJUSTE_POSITIVO_VENDIBLE` con motivo "Inventario inicial".
+- **RN-INV-06 [D] (Carga Inicial):** La carga inicial de inventario se registra con tipo de movimiento canónico `CARGA_INICIAL` con motivo "Inventario inicial".
 - **RN-INV-07 [D] (Alerta de Stock Bajo):** Cuando `disponible <= umbralStockBajo` (3 unidades por defecto), el sistema dispara alerta en el panel de inventario.
 - **RN-INV-08 [D] (Bajas de No Vendible):** Las unidades defectuosas solo salen de `noVendible` mediante baja motivada (`BAJA_NO_VENDIBLE`) o reincorporación motivada.
-- **RN-INV-09 [D] (26 Tipos Granulares en `TipoMovimientoStock`):** Cada inserción en Kardex tipifica el movimiento distinguiendo signo y condición física (`VENTA_POS_SALIDA`, `TRASLADO_SALIDA`, `COMPRA_INGRESO`, `DEVOLUCION_INGRESO_VENDIBLE`, `DEVOLUCION_INGRESO_NO_VENDIBLE`, etc.).
+- **RN-INV-09 [D] (26 Tipos Granulares en `TipoMovimientoStock`):** Cada inserción en Kardex tipifica el movimiento distinguiendo signo y condición física (`VENTA_POS`, `ANULACION_VENTA_POS`, `COMPRA_RECIBIDA`, `TRASLADO_ENVIADO`, `TRASLADO_RECIBIDO_BUENO`, `DEVOLUCION_POS_VENDIBLE`, `DEVOLUCION_POS_NO_VENDIBLE`, `RESERVA_WEB`, `ENDURECIMIENTO_RESERVA_WEB`, `DESPACHO_WEB`, etc., según `schema.prisma`).
