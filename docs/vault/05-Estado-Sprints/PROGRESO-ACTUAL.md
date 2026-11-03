@@ -16,7 +16,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 
 | Integrante | Rol en el Proyecto | Estado Actual | Tareas Activas / Asignadas |
 | :--- | :--- | :--- | :--- |
-| **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · PR #12 Conciliado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02: incremento atómico contra race conditions, anti-takeover Google y JWT HS256). **PR #12 conciliado con `develop`** (eliminación de códigos de barras en seed, blindaje de worker de reservas contra pedidos en custodia y serialización BigInt, 57 tests en verde). Esperando certificación de Duvan en Issue #16. |
+| **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · Motor Kardex Fusionado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02: incremento atómico contra race conditions, anti-takeover Google y JWT HS256). **PR #12 fusionado en `develop`** (eliminación de códigos de barras, motor Kardex con orden canónico y bloqueo pesimista, worker blindado, 59 tests en verde). Tarea de QA asignada a Duvan en Issue #16. |
 | **Thomas** | Junior Backend (Tareas Acotadas) | **Hito SP1-04 Culminado** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`). Códigos de barras retirados del sistema (arquitectura basada 100% en SKU). Listo para asignación de siguiente tarea acotada. |
 | **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio. |
 | **Sofía** | Diseñadora UX/UI & Prototipado (0% Código) | En Progreso | **Issue #6 (`SP1-06`):** Prototipos POS Mostrador (`CA-53`).<br>**Issue #8 (`SP1-08`):** Guía de diseño y sistema visual multi-portal en Figma. |
@@ -36,7 +36,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | **2026-11-02** | **Hito SP1-02:** Endpoints de autenticación híbrida (`/api/auth/login`, `/api/auth/registro-cliente`, `/api/auth/google`, `/api/auth/me`), consentimiento Ley 1581 y bloqueo de 15 min al 5.° fallo (`RF-USU-02`). 17 tests en verde. | Julio | PR #10 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-02** | **Hito SP1-04:** Catálogo semilla por SKU en `prisma/seed.ts` (4 categorías base, cosméticos `reintegrableEnDevolucion: false`, variantes con SKUs únicos y precios enteros COP `RN-CAT-01 a 04`). Probado en vivo contra Supabase. | Thomas | PR #13 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-03** | **Blindaje Hotfix SP1-02:** Incremento atómico en `intentosFallidosLogin` (anti race conditions), protección anti-takeover en Google OAuth para staff (`403 Forbidden`) y JWT HS256 con secret >= 32 chars. 19 tests en verde. | Julio | PR #18 Fusionado en `develop` | **COMPLETADO [x]** |
-| **2026-11-03** | **Hito SP2-01 (Adelanto Sprint 2):** Motor Kardex Centralizado (`InventoryLedgerService.ts`), Bloqueo pesimista `SELECT ... FOR UPDATE`, Orden canónico anti-deadlock `varianteId ASC` (`RNF-003`), worker de reservas blindado contra pedidos en custodia (`tieneReservaActiva`) y serialización BigInt JSON. 57 tests en verde. | Julio | PR #12 Conciliado hacia `develop` | **EN REVISIÓN / QA [x]** |
+| **2026-11-03** | **Hito SP2-01 (Adelanto Sprint 2):** Motor Kardex Centralizado (`InventoryLedgerService.ts`), Bloqueo pesimista `SELECT ... FOR UPDATE`, Orden canónico anti-deadlock `varianteId ASC` (`RNF-003`), worker de reservas blindado contra pedidos en custodia (`tieneReservaActiva`) y serialización BigInt JSON. 59 tests en verde. | Julio | PR #12 Fusionado en `develop` | **COMPLETADO [x]** |
 
 ---
 
@@ -61,7 +61,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 ### Sprint 2: Inventario, Compras y Traslados (Adelantado)
 **Objetivo:** Motor de consistencia de stock con Kardex append-only, órdenes canónicas anti-deadlock, compras simplificadas a proveedores y traslados seguros entre sedes.
 
-- [ ] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 Abierto - Issue #11 In progress / QA Issue #16)*
+- [x] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 Merged - Issue #11 Closed / QA Issue #16)*
 - [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`).
 - [ ] **SP2-03 (Julio):** Traslados entre Ubicaciones (Solicitud, Aprobación, Despacho y Novedades de Recepción).
 - [ ] **SP2-04 (Thomas):** Endpoint de Ajustes Manuales Motivados y Bajas de No Vendible (`RF-INV-02`, `03`).
@@ -69,10 +69,12 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 - [ ] **SP2-06 (Sofía):** Prototipo UX/UI del Módulo de Inventarios y Recepción de Mercancía.
 - [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Simulación de Deadlocks e Idempotencia (`QA-003`).
 
+**Progreso del Sprint 2:** `14%` [█░░░░░░░░░] (1/7 tareas completadas - Motor Kardex y Orden Canónico)
+
 ---
 
 ## 4. Próximos Pasos Inmediatos
-1. **Duvan:** Certificar el catálogo en el Issue #15 (PR #13 de Thomas) y realizar las pruebas de concurrencia pesimista en el Issue #16 (PR #12 de Julio) para habilitar su merge a develop.
+1. **Duvan:** Certificar el catálogo en el Issue #15 (PR #13 de Thomas) y realizar las pruebas de concurrencia pesimista en el Issue #16 (PR #12 de Julio integrado en `develop`).
 2. **Yeimer:** Iniciar desarrollo de la rama `feature/SP1-03-gestion-sedes-segura` para los endpoints de puntos de venta (`RN-UBI-05`) siguiendo el contrato DoR del Issue #3.
 3. **Exneider:** Subir los ajustes al PR #17 resolviendo las 27 observaciones técnicas reportadas conforme al contrato DoR del Issue #5.
 4. **Sofía:** Finalizar los prototipos de POS Mostrador (`SP1-06`) y la guía de diseño visual (`SP1-08`).
