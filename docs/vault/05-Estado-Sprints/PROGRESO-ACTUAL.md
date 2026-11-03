@@ -47,9 +47,9 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 
 - [x] **SP1-01 (Julio):** Middleware Auth JWT + Caché en memoria `UserPermissionCache` ($O(1)$) y revocación (`CA-50`). *(PR #9 Merged)*
 - [x] **SP1-02 (Julio):** Endpoints de Autenticación Híbrida y Bloqueo de Intentos (`RF-USU-01`, `02`, `RN-ROL-06`). *(PR #10 y Hotfix PR #18 Merged)*
-- [ ] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(Issue #3)*
+- [ ] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(PR #20 Abierto - QA Issue #21)*
 - [x] **SP1-04 (Thomas - Issue #T2):** Carga Semilla del Catálogo por SKU (`RN-CAT-01` a `04`). *(PR #13 Merged - Issue #4 Closed)*
-- [ ] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(Issue #5)*
+- [ ] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(PR #17 Verificado y Actualizado - QA Issue #19)*
 - [ ] **SP1-06 (Sofía):** Prototipos UX/UI de la Terminal POS en Pantalla Mostrador (`CA-53`). *(Issue #6)*
 - [ ] **SP1-07 (Duvan):** QA Gate Sprint 1: Certificación de Seguridad y Permisos (`QA-001`, `QA-022`). *(Issue #7)*
 - [ ] **SP1-08 (Sofía):** Guía de Diseño y Sistema Visual Multi-Portal (Apple Liquid Glass UI, Tipografía y Paleta). *(Issue #8)*
