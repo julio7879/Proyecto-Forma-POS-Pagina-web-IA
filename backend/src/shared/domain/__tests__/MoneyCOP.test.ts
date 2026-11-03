@@ -65,6 +65,17 @@ describe('MoneyCOP', () => {
       ingresosManualesCop: 30000,
     });
     expect(esperado).toBe(660000);
+
+    // Si los egresos superan los ingresos, no se trunca a 0 para no ocultar desfalcos
+    const desfalco = MoneyCOP.calcularEfectivoEsperadoSesion({
+      baseContadaCop: 100000,
+      ventasEfectivoCop: 0,
+      reembolsosEfectivoCop: 0,
+      sangriasRetirosCop: 150000,
+      gastosMenoresCop: 0,
+      ingresosManualesCop: 0,
+    });
+    expect(desfalco).toBe(-50000);
   });
 
   it('calcula efectivo a entregar al cierre de caja sin arrojar valores negativos (RN-CAJ-10)', () => {

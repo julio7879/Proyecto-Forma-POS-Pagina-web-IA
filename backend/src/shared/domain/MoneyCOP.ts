@@ -118,7 +118,7 @@ export class MoneyCOP {
     const totalIngresos = baseContadaCop + ventasEfectivoCop + ingresosManualesCop;
     const totalEgresos = reembolsosEfectivoCop + sangriasRetirosCop + gastosMenoresCop;
 
-    return Math.max(0, totalIngresos - totalEgresos);
+    return totalIngresos - totalEgresos;
   }
 
   /**
