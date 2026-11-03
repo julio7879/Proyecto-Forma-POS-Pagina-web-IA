@@ -107,3 +107,18 @@ Toda tarea o issue que se genere en el repositorio debe incluir obligatoriamente
    - **Duván (QA):** Cómo diseñar matrices Gherkin y validar constraints en Supabase.
    - **Thomas (Junior):** Cómo ejecutar `npx prisma db seed` de forma segura.
 
+---
+
+## 6. Regla Inquebrantable de Definición de Listo (DoR - Definition of Ready)
+
+**PROHIBIDO asignar, habilitar o dejar un Issue en GitHub sin su Ficha Técnica Oficial (Contrato Técnico de Máximo 30 líneas extraído de `docs/vault/`).**
+
+Todo Issue debe contener antes de iniciar desarrollo:
+1. **Contrato de Datos y DTOs:** Tabla de campos, tipos, obligatoriedad (opcional vs requerido) y transformaciones Zod (`.trim()`, `.toLowerCase()`).
+2. **Rutas y Verbos HTTP Canónicos:** URLs absolutas dentro de `/api` y métodos (`GET`, `POST`, `PUT`, `PATCH`).
+3. **Invariantes de Negocio Aplicables:** Reglas explícitas (`RN-*` y `CA-*`), constraints de base de datos e índices únicos.
+4. **Respuestas y Códigos HTTP:** Estructura JSON para éxito (`datos`) y error (`error: { message, code, detalles }`).
+5. **Matriz de Pruebas Obligatorias (Vitest):** Casos felices y casos de borde a incluir en el archivo `__tests__`.
+
+Si se detecta un Issue existente sub-especificado o escueto, `@Vigía-Requerimientos` debe actualizar de inmediato el cuerpo del Issue en GitHub (`gh issue edit <ID> -F <archivo>`) para evitar que el desarrollador trabaje a ciegas o asuma reglas erróneas.
+
