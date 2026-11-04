@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { WebOrderTtlWorker } from './domain/WebOrderTtlWorker.js';
 import { AppError } from '../../shared/domain/AppError.js';
 import { ColombiaTime } from '../../shared/domain/ColombiaTime.js';
 import type { UserAuthSnapshot } from '../../shared/middlewares/authPermission.js';
@@ -1271,4 +1272,13 @@ export class PedidoWebService {
       return respuesta;
     });
   }
+
+  /**
+   * Ejecuta el barrido del worker TTL de reservas web vencidas (> 24h por transferencia).
+   * Libera stock blando con InventoryLedgerService y cancela pedidos (CA-39, QA-015).
+   */
+  static async ejecutarWorkerExpiracion(usuarioId: number = 1, fechaCorte?: Date) {
+    return WebOrderTtlWorker.ejecutarBarridoExpiracion(prisma, fechaCorte ?? new Date(), usuarioId);
+  }
+
 }
