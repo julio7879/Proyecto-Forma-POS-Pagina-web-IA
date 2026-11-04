@@ -7,7 +7,12 @@ import { AdminLayout } from '../layouts/AdminLayout';
 // Carga diferida (React.lazy) por portal y por feature de auth para code-splitting
 const CatalogPage = lazy(() => import('../features/storefront/CatalogPage'));
 const PosTerminalPage = lazy(() => import('../features/pos/PosTerminalPage'));
-const AdminDashboardPage = lazy(() => import('../features/admin/AdminDashboardPage'));
+const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage'));
+
+// Nuevas vistas de Admin (SP2-05)
+const AdminInventarioPage = lazy(() => import('../features/admin/pages/AdminInventarioPage'));
+const AdminComprasPage = lazy(() => import('../features/admin/pages/AdminComprasPage'));
+const AdminTrasladosPage = lazy(() => import('../features/admin/pages/AdminTrasladosPage'));
 
 // Lazy load de los formularios de auth (que son componentes con export nombrado)
 const LoginForm = lazy(() =>
@@ -47,6 +52,9 @@ export const AppRouter: React.FC = () => {
           {/* Portal 3: Panel Admin */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="inventario" element={<AdminInventarioPage />} />
+            <Route path="compras" element={<AdminComprasPage />} />
+            <Route path="traslados" element={<AdminTrasladosPage />} />
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
 
