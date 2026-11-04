@@ -1,5 +1,5 @@
 // frontend/src/features/storefront/CatalogPage.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ProductoDTO,
   getProductosCatalogo,
@@ -40,6 +40,17 @@ export const CatalogPage: React.FC = () => {
 
   useEffect(() => {
     cargarProductos();
+  }, []);
+
+  // Fix Should-Fix 2: useCallback para evitar re-renderizados y re-suscripciones del listener Escape
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+  }, []);
+
+  const handleOpenDetail = useCallback((producto: ProductoDTO) => {
+    setSelectedProduct(producto);
+    setIsModalOpen(true);
   }, []);
 
   // Filtrado reactivo en cliente (Categoría + Texto)
@@ -124,10 +135,7 @@ export const CatalogPage: React.FC = () => {
             <ProductCard
               key={prod.id}
               producto={prod}
-              onOpenDetail={(p) => {
-                setSelectedProduct(p);
-                setIsModalOpen(true);
-              }}
+              onOpenDetail={handleOpenDetail}
             />
           ))}
         </div>
@@ -137,10 +145,7 @@ export const CatalogPage: React.FC = () => {
       <ProductDetailModal
         producto={selectedProduct}
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedProduct(null);
-        }}
+        onClose={handleCloseModal}
       />
     </div>
   );

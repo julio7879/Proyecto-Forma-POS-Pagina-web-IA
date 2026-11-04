@@ -8,10 +8,10 @@ interface Props {
 }
 
 export const ProductCard = ({ producto, onOpenDetail }: Props) => {
-  // Calculamos el stock consolidado del producto sumando sus variantes
+  // Stock consolidado del producto (suma de variantes) — solo para lógica, no para UI
   const stockConsolidado = producto.variantes.reduce((acc, v) => acc + v.stockDisponible, 0);
 
-  // Semáforo de disponibilidad web (RN-WEB-02 / CA-35)
+  // Semáforo de disponibilidad web sin cifras exactas (RN-WEB-02 / CA-35)
   const getSemaforoBadge = () => {
     if (stockConsolidado > 5) {
       return (
@@ -25,7 +25,7 @@ export const ProductCard = ({ producto, onOpenDetail }: Props) => {
       return (
         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/40 flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          ¡Últimas unidades! ({stockConsolidado})
+          ¡Últimas unidades!
         </span>
       );
     }

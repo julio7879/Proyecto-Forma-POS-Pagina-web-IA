@@ -11,34 +11,37 @@ interface Props {
 }
 
 export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: Props) => {
-  if (!isOpen || !producto) return null;
-
-  // Estado de variante seleccionada (por defecto la primera)
-  const [selectedVariante, setSelectedVariante] = useState<VarianteDTO>(producto.variantes[0]);
+  // 1. Hooks siempre arriba (Rules of Hooks)
+  const [selectedVariante, setSelectedVariante] = useState<VarianteDTO | null>(
+    producto?.variantes[0] || null
+  );
   const [cantidad, setCantidad] = useState(1);
 
   useEffect(() => {
-    if (producto.variantes.length > 0) {
+    if (producto && producto.variantes.length > 0) {
       setSelectedVariante(producto.variantes[0]);
       setCantidad(1);
     }
   }, [producto]);
 
-  // Cerrar con Escape
+  // 2. Listener de Escape condicionado a isOpen
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [isOpen, onClose]);
+
+  // 3. Retorno temprano después de los hooks
+  if (!isOpen || !producto || !selectedVariante) return null;
 
   // Opciones únicas de tallas y colores disponibles
   const tallasDisponibles = Array.from(new Set(producto.variantes.map((v) => v.talla)));
   const coloresDisponibles = Array.from(new Set(producto.variantes.map((v) => v.color)));
 
   const handleSelectTalla = (talla: string) => {
-    // Buscar una variante que coincida con la talla y el color actual, o la primera con esa talla
     const match =
       producto.variantes.find((v) => v.talla === talla && v.color === selectedVariante.color) ||
       producto.variantes.find((v) => v.talla === talla);
@@ -59,10 +62,11 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-product-title"
+      onClick={onClose} // 4. Cierra al hacer clic en el backdrop
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // Evita cerrar al hacer clic dentro del contenido
         className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-white/20 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
       >
         {/* Imagen del modal */}
@@ -180,19 +184,15 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
               </div>
             )}
 
-            {/* Semáforo de stock de la variante */}
+            {/* 5. Semáforo de stock SIN cifras exactas (RN-WEB-02) */}
             <div className="mb-4 text-xs font-medium">
               Disponibilidad:{' '}
               {selectedVariante.stockDisponible > 5 ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                  En Stock ({selectedVariante.stockDisponible} unidades)
-                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">Disponible</span>
               ) : selectedVariante.stockDisponible >= 1 ? (
-                <span className="text-amber-600 dark:text-amber-400 font-bold">
-                  ¡Últimas {selectedVariante.stockDisponible} unidades!
-                </span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold">¡Últimas unidades!</span>
               ) : (
-                <span className="text-red-500 font-bold">Agotado temporalmente</span>
+                <span className="text-red-500 font-bold">Agotado</span>
               )}
             </div>
           </div>
