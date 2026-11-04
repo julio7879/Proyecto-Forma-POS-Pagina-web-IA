@@ -12,11 +12,11 @@
 | Sprint / Fase | Objetivo Central | Tareas Totales | Completadas | En Progreso / QA | Estado Semáforo |
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **Sprint 1** | Identidad, Seguridad Híbrida, Sedes y Catálogo | 9 | 8 | 1 | 🟢 Estable (QA en curso) |
-| **Sprint 2** | Kardex Centralizado, Compras y Traslados | 7 | 2 | 2 | 🟡 En Desarrollo |
-| **Sprint 3** | Caja, Terminal POS, Descuentos y Tickets | 8 | 2 | 1 | 🟡 En Desarrollo |
+| **Sprint 2** | Kardex Centralizado, Compras y Traslados | 8 | 2 | 3 | 🟡 En Desarrollo |
+| **Sprint 3** | Caja, Terminal POS, Descuentos y Tickets | 9 | 2 | 2 | 🟡 En Desarrollo |
 | **Sprint 4** | E-Commerce, Despachos DANE, Worker TTL y Devoluciones | 8 | 4 | 0 | 🟢 En Progreso Avanzado |
 | **Sprint 5** | Reportes Financieros, Dashboard y Auditoría Final | 6 | 0 | 0 | ⚪ Planificado |
-| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **44** | **22** | **4** | **50.0% GLOBAL** |
+| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **22** | **6** | **47.8% GLOBAL** |
 
 ---
 
@@ -28,7 +28,7 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
     "Yeimer (Backend Dev)" : 6
     "Exneider (Frontend Lead)" : 8
     "Sofía (UI/UX Designer)" : 6
-    "Thomas (Frontend / POS)" : 4
+    "Thomas (Frontend / POS)" : 6
     "Duvan (QA Lead / Gate)" : 6
 ```
 
@@ -63,8 +63,9 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [ ] **SP2-05 (Exneider):** Panel Administrativo de Inventario, Compras y Traslados en AdminLayout (`RF-INV-02`). *(Issue #39)*
 - [ ] **SP2-06 (Sofía):** Prototipos UX/UI de Inventarios, Compras y Recepción con Novedades (`ARQ-06`). *(Issue #40)*
 - [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Traslados e Idempotencia (`QA-003`). *(Issue #41)*
+- [ ] **SP2-08 (Thomas):** Interfaz y Modal de Recepción de Traslados en Punto de Venta con Checklist de Novedades y Dañados (`RF-TRA-05`, `CA-07`, `CA-08`). *(Issue #58)*
 
-**Progreso del Sprint 2:** `28.6%` [███░░░░░░░] (2/7 tareas completadas en `develop`: SP2-01 y SP2-03)
+**Progreso del Sprint 2:** `25.0%` [███░░░░░░░] (2/8 tareas completadas en `develop`: SP2-01 y SP2-03)
 
 ---
 
@@ -79,8 +80,9 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [ ] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout (`RF-POS-01`).
 - [ ] **SP3-07 (Sofía):** Prototipos Catálogo Público Web y Checkout 3 Pasos.
 - [ ] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja.
+- [ ] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(Issue #59)*
 
-**Progreso del Sprint 3:** `25.0%` [███░░░░░░░] (2/8 tareas completadas en `develop`: SP3-03 y SP3-05)
+**Progreso del Sprint 3:** `22.2%` [██░░░░░░░░] (2/9 tareas completadas en `develop`: SP3-03 y SP3-05)
 
 ---
 
@@ -107,6 +109,6 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 ---
 
 ## 4. Consolidado General del Proyecto
-- **Total Entregables Principales:** 44 tareas.
+- **Total Entregables Principales:** 46 tareas.
 - **Entregables Concluidos / Auditados:** 22 hitos superados.
-- **Porcentaje de Avance Global del Proyecto:** `50.0%` [█████░░░░░]
+- **Porcentaje de Avance Global del Proyecto:** `47.8%` [█████░░░░░]
