@@ -44,6 +44,7 @@ export async function requireIdempotencyKey(req: Request, res: Response, next: N
           },
         })
         .catch((err) => {
+          // Log pero sin bloquear la respuesta si ya fue procesada exitosamente
           console.error('Error guardando registro de idempotencia:', err);
         });
     }
