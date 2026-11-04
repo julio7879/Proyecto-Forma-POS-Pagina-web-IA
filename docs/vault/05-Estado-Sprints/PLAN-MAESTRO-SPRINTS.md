@@ -61,6 +61,7 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 | **SP2-05** | Vistas de Inventario Admin, creación de compras y gestión de traslados en `AdminLayout`. | **Exneider** | Frontend | Conexión con TanStack Query. |
 | **SP2-06** | Prototipar vistas de arqueo de caja y pantalla de cobro rápido para POS. | **Sofía** | UX/UI | Prototipos de flujos de caja y venta. |
 | **SP2-07** | **QA Gate:** Pruebas concurrentes con `Promise.all` sobre la última unidad disponible, simulación de traslados con faltantes/dañados y cancelación en tránsito. | **Duvan** | QA Tester | `CA-01 a CA-11`, `CA-57 a 59`, `QA-003`, `QA-010 a 012`. |
+| **SP2-08** | **Issue #T2.1 de Thomas:** Interfaz y Modal de Recepción de Traslados en Punto de Venta con Checklist de Novedades y Dañados (`RecepcionTrasladoModal.tsx`). | **Thomas** | Junior Frontend | `RF-TRA-05`, `CA-07`, `CA-08`, `CA-57`, `CA-58`. |
 
 ---
 
@@ -77,6 +78,7 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 | **SP3-06** | Implementación completa de la Terminal POS en `PosLayout` (buscador rápido, teclado en pantalla, modal de cobro y cambios). | **Exneider** | Frontend | React + Tailwind + estado anti-doble clic. |
 | **SP3-07** | Prototipar catálogo público web con semáforo de disponibilidad y checkout en 3 pasos. | **Sofía** | UX/UI | Mobile-first para compradores web. |
 | **SP3-08** | **QA Gate:** Pruebas de venta con preempción de reserva web, devolución de producto con descuento prorrateado, cambio de talla a $0 y corte de caja vencida. | **Duvan** | QA Tester | `CA-12 a 34`, `CA-54 a 56`, `CA-60`, `CA-61`, `CA-63`. |
+| **SP3-09** | **Issue #T3.1 de Thomas:** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`CobroRapidoModal.tsx`). | **Thomas** | Junior Frontend | `RF-POS-01`, `CA-51`, `CA-52`. |
 
 ---
 

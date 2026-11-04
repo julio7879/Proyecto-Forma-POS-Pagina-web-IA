@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, EstadoTraslado } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { AppError } from '../../shared/domain/AppError.js';
 import type { UserAuthSnapshot } from '../../shared/middlewares/authPermission.js';
@@ -12,6 +12,8 @@ import type {
   DespacharTrasladoInput,
   EvaluarTrasladoInput,
   ListarTrasladosQuery,
+  RecibirTrasladoInput,
+  ResolverNovedadInput,
   SolicitarTrasladoInput,
 } from './traslado.schema.js';
 
@@ -546,6 +548,377 @@ export class TrasladoService {
       });
 
       return canceladoFinal;
+    });
+  }
+
+  /**
+   * RF-TRA-05 / RN-TRA-07..11 / CA-06..08 / CA-57 / CA-58 / QA-010 / QA-011:
+   * Recepción de mercancía de traslado en punto de venta con conteo físico, dañados y novedades.
+   */
+  static async recibir(id: number, data: RecibirTrasladoInput, user: UserAuthSnapshot) {
+    return prisma.$transaction(async (tx) => {
+      const traslado = await tx.traslado.findUnique({
+        where: { id },
+        include: { lineas: true, ubicacionOrigen: true, ubicacionDestino: true },
+      });
+
+      if (!traslado) {
+        throw AppError.notFound(`Traslado con id ${id} no encontrado`);
+      }
+
+      // Control de Concurrencia Optimista (QA-014)
+      if (data.version !== undefined && traslado.version !== data.version) {
+        throw AppError.conflict('Conflicto de concurrencia: el traslado fue modificado por otro proceso (QA-014)');
+      }
+
+      // Validar estado ENVIADO
+      if (traslado.estado !== 'ENVIADO') {
+        throw AppError.conflict(
+          `Solo se pueden recibir traslados en estado ENVIADO. Estado actual: ${traslado.estado}`
+        );
+      }
+
+      // Aislamiento territorial: el usuario debe pertenecer a la tienda destino (o ser ADMIN)
+      if (user.rol !== 'ADMIN') {
+        if (!user.permisos.permRecibirTraslado) {
+          throw AppError.forbidden('No tiene el permiso permRecibirTraslado para recibir mercancía');
+        }
+        if (user.ubicacionId !== traslado.ubicacionDestinoId) {
+          throw AppError.forbidden('No puede recibir un traslado cuyo destino no es su punto de venta asignado');
+        }
+      }
+
+      const lineasMap = new Map(traslado.lineas.map((l) => [l.id, l]));
+
+      // Validar que todas las líneas pertenezcan al traslado
+      for (const lineaInput of data.lineas) {
+        if (!lineasMap.has(lineaInput.lineaId)) {
+          throw AppError.badRequest(`La línea con id ${lineaInput.lineaId} no pertenece a este traslado`);
+        }
+      }
+
+      let totalFaltantes = 0;
+      let totalExcedentes = 0;
+      let totalDanadas = 0;
+      const movimientos: RegistrarMovimientoParams[] = [];
+
+      // Validar cada línea enviada
+      for (const lineaDb of traslado.lineas) {
+        const input = data.lineas.find((l) => l.lineaId === lineaDb.id);
+        if (!input) {
+          throw AppError.badRequest(`Falta reportar la línea ${lineaDb.id} correspondiente a la variante ${lineaDb.varianteId}`);
+        }
+
+        const cantidadEnviada = lineaDb.cantidadEnviada ?? 0;
+        const buena = input.cantidadRecibidaBuena;
+        const danada = input.cantidadRecibidaDanada;
+        const excedente = input.excedenteReportado ?? 0;
+
+        // CA-07: recibidaBuena + recibidaDanada no puede superar cantidadEnviada
+        if (buena + danada > cantidadEnviada) {
+          throw AppError.badRequest(
+            `En la línea ${lineaDb.id}, la suma de buenas (${buena}) y dañadas (${danada}) supera la cantidad enviada (${cantidadEnviada}) (CA-07)`
+          );
+        }
+
+        const faltante = cantidadEnviada - (buena + danada);
+        totalFaltantes += faltante;
+        totalExcedentes += excedente;
+        totalDanadas += danada;
+
+        // Movimiento para unidades buenas -> suma a FISICO destino
+        if (buena > 0) {
+          movimientos.push({
+            tipo: 'TRASLADO_RECIBIDO_BUENO',
+            ubicacionId: traslado.ubicacionDestinoId,
+            varianteId: lineaDb.varianteId,
+            cantidadConSigno: buena,
+            afectaSaldo: 'FISICO',
+            documentoTipo: 'TRASLADO',
+            documentoId: traslado.id,
+            usuarioId: user.id,
+            motivo: `Recepción conforme traslado #${traslado.id} (CA-57)`,
+          });
+        }
+
+        // Movimiento para unidades dañadas -> suma a NO_VENDIBLE destino (RN-TRA-09, CA-06)
+        if (danada > 0) {
+          movimientos.push({
+            tipo: 'TRASLADO_RECIBIDO_DANADO',
+            ubicacionId: traslado.ubicacionDestinoId,
+            varianteId: lineaDb.varianteId,
+            cantidadConSigno: danada,
+            afectaSaldo: 'NO_VENDIBLE',
+            documentoTipo: 'TRASLADO',
+            documentoId: traslado.id,
+            usuarioId: user.id,
+            motivo: `Mercancía averiada/dañada recibida en traslado #${traslado.id} (CA-06)`,
+          });
+        }
+
+        // Actualizar línea en DB
+        await tx.lineaTraslado.update({
+          where: { id: lineaDb.id },
+          data: {
+            cantidadRecibidaBuena: buena,
+            cantidadRecibidaDanada: danada,
+            excedenteReportado: excedente,
+            unidadesFaltantesPendientes: faltante,
+            excedentePendienteResolver: excedente,
+          },
+        });
+      }
+
+      // Invariante 4 (RNF-003): Orden canónico anti-deadlock por varianteId ASC
+      if (movimientos.length > 0) {
+        await InventoryLedgerService.registrarMovimientosBatch(tx, movimientos);
+      }
+
+      // RN-TRA-08 / CA-57: Si no hay faltantes ni excedentes, pasa a RECIBIDO
+      // RN-TRA-09 / CA-58: Si hay faltantes o excedentes, pasa a RECIBIDO_CON_NOVEDAD
+      const hayNovedad = totalFaltantes > 0 || totalExcedentes > 0;
+      const nuevoEstado: EstadoTraslado = hayNovedad ? 'RECIBIDO_CON_NOVEDAD' : 'RECIBIDO';
+
+      if (hayNovedad || totalDanadas > 0) {
+        if (!data.observacion || data.observacion.trim().length < 3) {
+          throw AppError.badRequest('La observación de recepción es obligatoria cuando existen averías, faltantes o excedentes reportados (RN-TRA-09)');
+        }
+      }
+
+      const trasladoActualizado = await tx.traslado.update({
+        where: { id, version: traslado.version },
+        data: {
+          estado: nuevoEstado,
+          recibidoPorId: user.id,
+          fechaRecepcion: new Date(),
+          fechaCierre: hayNovedad ? null : new Date(),
+          observacionRecepcion: data.observacion?.trim() ?? null,
+          version: { increment: 1 },
+        },
+        include: {
+          lineas: {
+            include: {
+              variante: {
+                include: {
+                  producto: { select: { id: true, nombre: true, categoria: true } },
+                },
+              },
+            },
+          },
+          ubicacionOrigen: true,
+          ubicacionDestino: true,
+        },
+      });
+
+      // Auditoría
+      await tx.registroAuditoria.create({
+        data: {
+          usuarioId: user.id,
+          accion: hayNovedad ? 'RECIBIR_TRASLADO_CON_NOVEDAD' : 'RECIBIR_TRASLADO_CONFORME',
+          entidadTipo: 'Traslado',
+          entidadId: String(id),
+          datosMinimos: {
+            trasladoId: id,
+            estadoFinal: nuevoEstado,
+            totalFaltantes,
+            totalExcedentes,
+            totalDanadas,
+          },
+        },
+      });
+
+      return trasladoActualizado;
+    });
+  }
+
+  /**
+   * RF-TRA-06 / RN-TRA-10 / CA-10:
+   * Resolución administrativa de novedades de traslado (faltantes o excedentes).
+   * Solo el rol ADMIN puede resolver novedades.
+   */
+  static async resolverNovedad(id: number, data: ResolverNovedadInput, user: UserAuthSnapshot) {
+    if (user.rol !== 'ADMIN') {
+      throw AppError.forbidden('Solo el Administrador tiene permiso para resolver novedades de traslados (CA-10)');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const traslado = await tx.traslado.findUnique({
+        where: { id },
+        include: { lineas: true, ubicacionOrigen: true, ubicacionDestino: true },
+      });
+
+      if (!traslado) {
+        throw AppError.notFound(`Traslado con id ${id} no encontrado`);
+      }
+
+      // Control de Concurrencia Optimista (QA-014)
+      if (data.version !== undefined && traslado.version !== data.version) {
+        throw AppError.conflict('Conflicto de concurrencia: el traslado fue modificado por otro proceso (QA-014)');
+      }
+
+      // Validar estado RECIBIDO_CON_NOVEDAD
+      if (traslado.estado !== 'RECIBIDO_CON_NOVEDAD') {
+        throw AppError.conflict(
+          `Solo se pueden resolver novedades de traslados en estado RECIBIDO_CON_NOVEDAD. Estado actual: ${traslado.estado}`
+        );
+      }
+
+      const lineasMap = new Map(traslado.lineas.map((l) => [l.id, l]));
+      const movimientos: RegistrarMovimientoParams[] = [];
+
+      for (const resolucion of data.resoluciones) {
+        const linea = lineasMap.get(resolucion.lineaTrasladoId);
+        if (!linea) {
+          throw AppError.badRequest(`La línea con id ${resolucion.lineaTrasladoId} no pertenece al traslado`);
+        }
+
+        const { tipoResolucion, cantidadResuelta, motivo, responsable } = resolucion;
+
+        // Validar límites según tipo de novedad
+        if (
+          tipoResolucion === 'LLEGO_A_PUNTO' ||
+          tipoResolucion === 'RETORNO_A_CENTRAL' ||
+          tipoResolucion === 'PERDIDA_AJUSTE'
+        ) {
+          if (cantidadResuelta > linea.unidadesFaltantesPendientes) {
+            throw AppError.badRequest(
+              `La cantidad a resolver (${cantidadResuelta}) supera las unidades faltantes pendientes (${linea.unidadesFaltantesPendientes}) en la línea ${linea.id}`
+            );
+          }
+
+          linea.unidadesFaltantesPendientes -= cantidadResuelta;
+
+          if (tipoResolucion === 'LLEGO_A_PUNTO') {
+            movimientos.push({
+              tipo: 'NOVEDAD_LLEGO_DESTINO',
+              ubicacionId: traslado.ubicacionDestinoId,
+              varianteId: linea.varianteId,
+              cantidadConSigno: cantidadResuelta,
+              afectaSaldo: 'FISICO',
+              documentoTipo: 'TRASLADO',
+              documentoId: traslado.id,
+              usuarioId: user.id,
+              motivo: `Novedad resuelta: mercancía faltante llegó a destino #${traslado.id} - ${motivo}`,
+            });
+          } else if (tipoResolucion === 'RETORNO_A_CENTRAL') {
+            movimientos.push({
+              tipo: 'NOVEDAD_RETORNO_ORIGEN',
+              ubicacionId: traslado.ubicacionOrigenId,
+              varianteId: linea.varianteId,
+              cantidadConSigno: cantidadResuelta,
+              afectaSaldo: 'FISICO',
+              documentoTipo: 'TRASLADO',
+              documentoId: traslado.id,
+              usuarioId: user.id,
+              motivo: `Novedad resuelta: mercancía faltante retornó a Central #${traslado.id} - ${motivo}`,
+            });
+          }
+        } else if (
+          tipoResolucion === 'EXCEDENTE_INCORPORADO_DESDE_CENTRAL' ||
+          tipoResolucion === 'EXCEDENTE_DESCARTADO_O_DEVUELTO'
+        ) {
+          if (cantidadResuelta > linea.excedentePendienteResolver) {
+            throw AppError.badRequest(
+              `La cantidad a resolver (${cantidadResuelta}) supera el excedente pendiente (${linea.excedentePendienteResolver}) en la línea ${linea.id}`
+            );
+          }
+
+          linea.excedentePendienteResolver -= cantidadResuelta;
+
+          if (tipoResolucion === 'EXCEDENTE_INCORPORADO_DESDE_CENTRAL') {
+            movimientos.push({
+              tipo: 'NOVEDAD_EXCEDENTE_INCORPORADO',
+              ubicacionId: traslado.ubicacionDestinoId,
+              varianteId: linea.varianteId,
+              cantidadConSigno: cantidadResuelta,
+              afectaSaldo: 'FISICO',
+              documentoTipo: 'TRASLADO',
+              documentoId: traslado.id,
+              usuarioId: user.id,
+              motivo: `Novedad resuelta: excedente incorporado a inventario #${traslado.id} - ${motivo}`,
+            });
+          }
+        }
+
+        // Crear registro de resolución
+        await tx.resolucionNovedadTraslado.create({
+          data: {
+            trasladoId: traslado.id,
+            lineaTrasladoId: linea.id,
+            tipoResolucion,
+            cantidadResuelta,
+            motivo,
+            responsable: responsable?.trim() ?? null,
+            adminUsuarioId: user.id,
+          },
+        });
+
+        // Actualizar línea de traslado
+        await tx.lineaTraslado.update({
+          where: { id: linea.id },
+          data: {
+            unidadesFaltantesPendientes: linea.unidadesFaltantesPendientes,
+            excedentePendienteResolver: linea.excedentePendienteResolver,
+          },
+        });
+      }
+
+      // Invariante 4 (RNF-003): Orden canónico anti-deadlock por varianteId ASC
+      if (movimientos.length > 0) {
+        await InventoryLedgerService.registrarMovimientosBatch(tx, movimientos);
+      }
+
+      // Evaluar si todas las líneas han sido resueltas al 100%
+      const totalPendientesFaltantes = Array.from(lineasMap.values()).reduce(
+        (acc, l) => acc + l.unidadesFaltantesPendientes,
+        0
+      );
+      const totalPendientesExcedentes = Array.from(lineasMap.values()).reduce(
+        (acc, l) => acc + l.excedentePendienteResolver,
+        0
+      );
+
+      const todasResueltas = totalPendientesFaltantes === 0 && totalPendientesExcedentes === 0;
+
+      const trasladoActualizado = await tx.traslado.update({
+        where: { id, version: traslado.version },
+        data: {
+          estado: todasResueltas ? 'CERRADO' : 'RECIBIDO_CON_NOVEDAD',
+          fechaCierre: todasResueltas ? new Date() : null,
+          version: { increment: 1 },
+        },
+        include: {
+          lineas: {
+            include: {
+              variante: {
+                include: {
+                  producto: { select: { id: true, nombre: true, categoria: true } },
+                },
+              },
+            },
+          },
+          resolucionesNovedad: true,
+          ubicacionOrigen: true,
+          ubicacionDestino: true,
+        },
+      });
+
+      // Auditoría
+      await tx.registroAuditoria.create({
+        data: {
+          usuarioId: user.id,
+          accion: todasResueltas ? 'CERRAR_NOVEDAD_TRASLADO' : 'RESOLVER_NOVEDAD_PARCIAL',
+          entidadTipo: 'Traslado',
+          entidadId: String(id),
+          datosMinimos: {
+            trasladoId: id,
+            todasResueltas,
+            estadoFinal: trasladoActualizado.estado,
+          },
+        },
+      });
+
+      return trasladoActualizado;
     });
   }
 

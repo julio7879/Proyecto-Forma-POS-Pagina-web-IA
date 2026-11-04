@@ -31,9 +31,15 @@ Para garantizar que Thomas tenga una participación exitosa sin sobrecarga ni ri
 2. **Issue #T2 (Sprint 1): Datos Semilla del Catálogo de Variantes (`RF-CAT-01 a 03`)**
    - *Alcance:* Construir el archivo de datos semilla con las 4 categorías (Ropa, Accesorios, Cosméticos, Artesanías) y productos de muestra con tallas, colores y SKUs.
    - *Entregable:* Inserción de variantes de prueba en `backend/prisma/seed.ts`.
+2.1. **Issue #T2.1 (Sprint 2): Modal de Recepción de Traslado y Novedades en Tienda (`RF-TRA-05`)**
+   - *Alcance:* Diseñar el modal interactivo de recepción de mercancía para dependientes en tienda, validando que recibidaBuena + recibidaDanada <= enviada (CA-07) y emitiendo el payload de recepción limpia o con novedades.
+   - *Entregable:* Componente `frontend/src/features/pos/components/RecepcionTrasladoModal.tsx` (Issue #58).
 3. **Issue #T3 (Sprint 3): Plantilla HTML Imprimible del Comprobante POS (`RF-POS-02`)**
    - *Alcance:* Diseñar la vista/plantilla CSS para tickets de caja de 80 mm (comprobante no fiscal con consecutivo, desglose de IVA 0%, medios de pago y leyenda legal).
    - *Entregable:* Componente imprimible `frontend/src/features/pos/components/TicketVentaPOS.tsx`.
+3.1. **Issue #T3.1 (Sprint 3): Modal de Cobro Rápido y Teclado Numérico Táctil para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`)**
+   - *Alcance:* Diseñar el modal de cobro para pantalla mostrador, con botones rápidos de billetes colombianos, teclado numérico en pantalla para táctiles y cálculo de cambio en tiempo real.
+   - *Entregable:* Componente `frontend/src/features/pos/components/CobroRapidoModal.tsx` (Issue #59).
 4. **Issue #T4 (Sprint 4): Plantilla de Correo Transaccional de Pedido Web (`RF-WEB-03`)**
    - *Alcance:* Diseñar la plantilla HTML del correo de confirmación de pedido web con número de guía, estado del envío, tiempo estimado y destino DANE para el puerto `NotificacionPort`.
    - *Entregable:* `backend/src/shared/templates/correoConfirmacionPedido.html` (o componente React Email).

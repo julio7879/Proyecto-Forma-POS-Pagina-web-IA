@@ -7,6 +7,8 @@ import type {
   DespacharTrasladoInput,
   EvaluarTrasladoInput,
   ListarTrasladosQuery,
+  RecibirTrasladoInput,
+  ResolverNovedadInput,
   SolicitarTrasladoInput,
 } from './traslado.schema.js';
 import { TrasladoService } from './traslado.service.js';
@@ -94,6 +96,30 @@ export class TrasladoController {
       const id = Number(req.params.id);
       const body = req.body as ConfirmarRetornoInput;
       const datos = await TrasladoService.confirmarRetorno(id, body, user);
+      res.status(200).json({ ok: true, datos });
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async recibir(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const id = Number(req.params.id);
+      const body = req.body as RecibirTrasladoInput;
+      const datos = await TrasladoService.recibir(id, body, user);
+      res.status(200).json({ ok: true, datos });
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async resolverNovedad(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const id = Number(req.params.id);
+      const body = req.body as ResolverNovedadInput;
+      const datos = await TrasladoService.resolverNovedad(id, body, user);
       res.status(200).json({ ok: true, datos });
     } catch (e) {
       next(e);
