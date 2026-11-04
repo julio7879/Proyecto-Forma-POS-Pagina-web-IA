@@ -16,11 +16,13 @@ import {
   OrderAssignmentEngine,
   type EvaluacionSede,
   type ItemCarrito,
+  type StockSedeVariante,
 } from './domain/OrderAssignmentEngine.js';
 import type {
   CheckoutWebInput,
   CotizarFleteInput,
   ListarPedidosWebQuery,
+  NoPuedoDespacharInput,
 } from './pedidoWeb.schema.js';
 
 export class PedidoWebService {
@@ -459,6 +461,333 @@ export class PedidoWebService {
         },
       },
       orderBy: { fechaCreacion: 'desc' },
+    });
+  }
+
+  /**
+   * RF-WEB-06 / RN-WEB-16 / CA-43 / CA-62 / QA-013:
+   * Flujo «No puedo despachar», Cuarentena de SKU en la sede y reasignación automática o custodia en Bodega Central.
+   */
+  static async reportarNoPuedoDespachar(
+    pedidoId: number,
+    data: NoPuedoDespacharInput,
+    user: UserAuthSnapshot
+  ) {
+    // 1. Validar permisos de rol (Aislamiento territorial)
+    if (user.rol === 'CLIENTE') {
+      throw AppError.forbidden('Los clientes no tienen autorización para reportar novedades de despacho en sedes.');
+    }
+
+    const pedido = await prisma.pedidoWeb.findUnique({
+      where: { id: pedidoId },
+      include: {
+        lineas: true,
+        ubicacionAsignada: true,
+        municipioDestino: {
+          include: { departamento: true },
+        },
+      },
+    });
+
+    if (!pedido) {
+      throw AppError.notFound(`Pedido web con id ${pedidoId} no encontrado.`);
+    }
+
+    if (user.rol === 'VENDEDOR') {
+      if (!user.permisos.permPedidosWeb) {
+        throw AppError.forbidden('No cuenta con el permiso permPedidosWeb para gestionar pedidos web.');
+      }
+      if (!user.ubicacionId || user.ubicacionId !== pedido.ubicacionAsignadaId) {
+        throw AppError.forbidden('No tiene permiso para reportar novedades de pedidos asignados a otras sedes.');
+      }
+    }
+
+    // 2. Validar estado del pedido (CA-42: no permitir si está en EN_PREPARACION, ya tiene reserva dura protegida)
+    if (pedido.estadoPedido === 'EN_PREPARACION') {
+      throw AppError.conflict(
+        'El pedido se encuentra en estado EN_PREPARACION con reserva dura protegida frente a reasignaciones (CA-42).'
+      );
+    }
+
+    if (['CANCELADO', 'DESPACHADO', 'ENTREGADO', 'NO_ENTREGADO'].includes(pedido.estadoPedido)) {
+      throw AppError.unprocessable(
+        `No es posible reportar 'No puedo despachar' sobre un pedido en estado ${pedido.estadoPedido}.`
+      );
+    }
+
+    // 3. Validar que las variantes indicadas formen parte del pedido
+    const lineasMap = new Map(pedido.lineas.map((l) => [l.varianteId, l]));
+    for (const varianteId of data.varianteIdsAfectadas) {
+      if (!lineasMap.has(varianteId)) {
+        throw AppError.badRequest(
+          `La variante con id ${varianteId} no forma parte de los artículos del pedido ${pedido.referenciaLegible}.`
+        );
+      }
+    }
+
+    // 4. Ejecutar transacción atómica de cuarentena, liberación y reasignación o custodia (RN-WEB-16, CA-43, CA-62)
+    return prisma.$transaction(async (tx) => {
+      const sedePreviaId = pedido.ubicacionAsignadaId;
+      const sedePreviaNombre = pedido.ubicacionAsignada.nombre;
+
+      // 4.1. Cuarentena de SKU en la sede que reportó la novedad (CA-43)
+      await InventoryLedgerService.marcarCuarentenaDespachoWeb(
+        tx,
+        sedePreviaId,
+        data.varianteIdsAfectadas,
+        data.motivo
+      );
+
+      // 4.2. Liberar la reserva blanda en la sede previa si existía reserva activa (RN-GEN-02)
+      if (pedido.tieneReservaActiva) {
+        const movimientosLiberacion: RegistrarMovimientoParams[] = pedido.lineas.map((linea) => ({
+          tipo: 'LIBERACION_RESERVA_WEB',
+          ubicacionId: sedePreviaId,
+          varianteId: linea.varianteId,
+          cantidadConSigno: -linea.cantidad,
+          afectaSaldo: 'RESERVADO_BLANDO',
+          documentoTipo: 'PEDIDO_WEB',
+          documentoId: pedido.id,
+          usuarioId: user.id,
+          motivo: `Liberación por reporte 'No puedo despachar' en ${sedePreviaNombre}: ${data.motivo}`,
+        }));
+        await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosLiberacion);
+      }
+
+      // 4.3. Buscar sedes candidatas alternativas (activas, despachan web y excluyendo la sede previa)
+      const sedesCandidatasDb = await tx.ubicacion.findMany({
+        where: {
+          activa: true,
+          despachaWeb: true,
+          id: { not: sedePreviaId },
+        },
+        include: {
+          municipio: {
+            include: { departamento: true },
+          },
+        },
+      });
+
+      const varianteIdsPedido = pedido.lineas.map((l) => l.varianteId);
+      const saldosDb = await tx.saldoStock.findMany({
+        where: {
+          ubicacionId: { in: sedesCandidatasDb.map((s) => s.id) },
+          varianteId: { in: varianteIdsPedido },
+        },
+      });
+
+      const saldosPorSedeMap = new Map<number, Map<number, StockSedeVariante>>();
+      for (const saldo of saldosDb) {
+        if (!saldosPorSedeMap.has(saldo.ubicacionId)) {
+          saldosPorSedeMap.set(saldo.ubicacionId, new Map());
+        }
+        const disponible = Math.max(0, saldo.fisico - saldo.reservadoBlando - saldo.reservadoDuro);
+        saldosPorSedeMap.get(saldo.ubicacionId)!.set(saldo.varianteId, {
+          varianteId: saldo.varianteId,
+          disponible,
+          bloqueadoDespachoWeb: saldo.bloqueadoDespachoWeb,
+        });
+      }
+
+      const excepcionesDb = await tx.excepcionTarifaEnvio.findMany({
+        where: {
+          municipioDestinoId: pedido.municipioDestinoId,
+        },
+      });
+
+      const excepciones: ExcepcionTarifa[] = excepcionesDb.map((e) => ({
+        municipioOrigenId: e.municipioOrigenId,
+        municipioDestinoId: e.municipioDestinoId,
+        tarifaCop: e.tarifaCop,
+        diasEstimados: e.diasEstimados,
+      }));
+
+      const sedesEvaluacion: EvaluacionSede[] = sedesCandidatasDb.map((sede) => ({
+        id: sede.id,
+        nombre: sede.nombre,
+        activa: sede.activa,
+        despachaWeb: sede.despachaWeb,
+        prioridadDespacho: sede.prioridadDespacho,
+        municipioDane: {
+          codigoDane: sede.municipio.codigoDane,
+          departamentoId: sede.municipio.departamentoId,
+          regionId: sede.municipio.departamento.regionId,
+          atendidoWeb: sede.municipio.atendidoWeb,
+        },
+        saldos: saldosPorSedeMap.get(sede.id) ?? new Map(),
+      }));
+
+      const itemsCarrito: ItemCarrito[] = pedido.lineas.map((l) => ({
+        varianteId: l.varianteId,
+        cantidad: l.cantidad,
+      }));
+
+      const infoDestino: InfoMunicipioDane = {
+        codigoDane: pedido.municipioDestino.codigoDane,
+        departamentoId: pedido.municipioDestino.departamentoId,
+        regionId: pedido.municipioDestino.departamento.regionId,
+        atendidoWeb: pedido.municipioDestino.atendidoWeb,
+      };
+
+      let nuevaSedeElegida: EvaluacionSede | null = null;
+      if (sedesCandidatasDb.length > 0) {
+        try {
+          const resultado = OrderAssignmentEngine.seleccionarSedeDespacho(
+            itemsCarrito,
+            infoDestino,
+            sedesEvaluacion,
+            excepciones
+          );
+          nuevaSedeElegida = resultado.sede;
+        } catch {
+          // Ninguna sede tiene stock completo suficiente
+          nuevaSedeElegida = null;
+        }
+      }
+
+      // 4.4. Decisión: Reasignación exitosa vs Custodia forzosa en Central (CA-62, QA-013)
+      if (nuevaSedeElegida) {
+        // Caso A: Reasignar a la nueva sede y adquirir nueva reserva blanda
+        const pedidoActualizado = await tx.pedidoWeb.update({
+          where: { id: pedido.id },
+          data: {
+            ubicacionAsignadaId: nuevaSedeElegida.id,
+            tieneIncidenciaStock: false,
+            tieneReservaActiva: true,
+          },
+          include: {
+            lineas: true,
+            ubicacionAsignada: {
+              select: { id: true, nombre: true, tipo: true },
+            },
+            municipioDestino: {
+              select: { codigoDane: true, nombre: true },
+            },
+            cliente: {
+              select: { id: true, nombreCompleto: true, correo: true },
+            },
+          },
+        });
+
+        // Registrar nueva reserva blanda en la nueva sede
+        const movimientosNuevaReserva: RegistrarMovimientoParams[] = pedido.lineas.map((linea) => ({
+          tipo: 'RESERVA_WEB',
+          ubicacionId: nuevaSedeElegida!.id,
+          varianteId: linea.varianteId,
+          cantidadConSigno: linea.cantidad,
+          afectaSaldo: 'RESERVADO_BLANDO',
+          documentoTipo: 'PEDIDO_WEB',
+          documentoId: pedido.id,
+          usuarioId: user.id,
+          motivo: `Reasignación reserva blanda a ${nuevaSedeElegida!.nombre} por 'No puedo despachar' en ${sedePreviaNombre} (CA-43)`,
+        }));
+        await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosNuevaReserva);
+
+        // Historial de estados
+        await tx.historialEstadoPedidoWeb.create({
+          data: {
+            pedidoId: pedido.id,
+            estadoPedido: pedido.estadoPedido,
+            estadoPago: pedido.estadoPago,
+            usuarioId: user.id,
+            observacion: `Reasignado automáticamente a sede ${nuevaSedeElegida.nombre} tras reporte 'No puedo despachar' en ${sedePreviaNombre}. Motivo: ${data.motivo}`,
+          },
+        });
+
+        // Registro de Auditoría inmutable (RN-GEN-03, RN-AUD-02)
+        await tx.registroAuditoria.create({
+          data: {
+            usuarioId: user.id,
+            accion: 'REASIGNACION_PEDIDO_WEB_NO_PUEDO_DESPACHAR',
+            entidadTipo: 'PedidoWeb',
+            entidadId: String(pedido.id),
+            datosMinimos: {
+              pedidoId: pedido.id,
+              referencia: pedido.referenciaLegible,
+              sedePreviaId,
+              nuevaSedeId: nuevaSedeElegida.id,
+              motivo: data.motivo,
+              varianteIdsAfectadas: data.varianteIdsAfectadas,
+            },
+          },
+        });
+
+        return {
+          ok: true,
+          mensaje: `Pedido reasignado exitosamente a la sede ${nuevaSedeElegida.nombre}.`,
+          reasignado: true,
+          enCustodiaCentral: false,
+          pedido: pedidoActualizado,
+        };
+      } else {
+        // Caso B: Ninguna otra tienda tiene stock. Asignar custodia forzosa a Bodega Central (CA-62, QA-013)
+        const bodegaCentral = await tx.ubicacion.findFirst({
+          where: { tipo: 'CENTRAL', activa: true },
+        });
+
+        if (!bodegaCentral) {
+          throw AppError.conflict('No existe una Bodega Central activa en el sistema para recibir la custodia.');
+        }
+
+        const pedidoActualizado = await tx.pedidoWeb.update({
+          where: { id: pedido.id },
+          data: {
+            ubicacionAsignadaId: bodegaCentral.id,
+            tieneIncidenciaStock: true,
+            tieneReservaActiva: false,
+          },
+          include: {
+            lineas: true,
+            ubicacionAsignada: {
+              select: { id: true, nombre: true, tipo: true },
+            },
+            municipioDestino: {
+              select: { codigoDane: true, nombre: true },
+            },
+            cliente: {
+              select: { id: true, nombreCompleto: true, correo: true },
+            },
+          },
+        });
+
+        // Historial de estados
+        await tx.historialEstadoPedidoWeb.create({
+          data: {
+            pedidoId: pedido.id,
+            estadoPedido: pedido.estadoPedido,
+            estadoPago: pedido.estadoPago,
+            usuarioId: user.id,
+            observacion: `Asignado en custodia a Bodega Central con incidencia de stock. Ninguna otra sede dispone de stock completo (CA-62). Motivo: ${data.motivo}`,
+          },
+        });
+
+        // Registro de Auditoría inmutable con alerta para el Administrador (RF-REP-02)
+        await tx.registroAuditoria.create({
+          data: {
+            usuarioId: user.id,
+            accion: 'CUSTODIA_CENTRAL_INCIDENCIA_STOCK',
+            entidadTipo: 'PedidoWeb',
+            entidadId: String(pedido.id),
+            datosMinimos: {
+              pedidoId: pedido.id,
+              referencia: pedido.referenciaLegible,
+              sedePreviaId,
+              centralId: bodegaCentral.id,
+              motivo: data.motivo,
+              varianteIdsAfectadas: data.varianteIdsAfectadas,
+              alertaAdmin: true,
+            },
+          },
+        });
+
+        return {
+          ok: true,
+          mensaje: `El pedido no pudo ser cubierto por ninguna otra sede y fue asignado en custodia a ${bodegaCentral.nombre} con incidencia de stock (CA-62).`,
+          reasignado: false,
+          enCustodiaCentral: true,
+          pedido: pedidoActualizado,
+        };
+      }
     });
   }
 }

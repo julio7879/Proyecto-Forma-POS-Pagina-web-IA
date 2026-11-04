@@ -5,6 +5,7 @@ import type {
   CheckoutWebInput,
   CotizarFleteInput,
   ListarPedidosWebQuery,
+  NoPuedoDespacharInput,
 } from './pedidoWeb.schema.js';
 import { PedidoWebService } from './pedidoWeb.service.js';
 
@@ -55,6 +56,18 @@ export class PedidoWebController {
       const filtros = req.query as unknown as ListarPedidosWebQuery;
       const datos = await PedidoWebService.listar(filtros, user);
       res.status(200).json({ ok: true, datos });
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async reportarNoPuedoDespachar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const id = Number(req.params.id);
+      const body = req.body as NoPuedoDespacharInput;
+      const resultado = await PedidoWebService.reportarNoPuedoDespachar(id, body, user);
+      res.status(200).json(resultado);
     } catch (e) {
       next(e);
     }

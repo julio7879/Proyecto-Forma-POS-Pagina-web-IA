@@ -52,7 +52,18 @@ export const listarPedidosWebQuerySchema = z.object({
   clienteId: z.coerce.number().int().positive().optional(),
 });
 
+export const noPuedoDespacharSchema = z.object({
+  varianteIdsAfectadas: z
+    .array(z.number().int().positive('El id de la variante debe ser un entero positivo'))
+    .min(1, 'Debe especificar al menos una variante con novedad de stock'),
+  motivo: z
+    .string()
+    .trim()
+    .min(5, 'El motivo de la novedad debe contener al menos 5 caracteres'),
+});
+
 export type CotizarFleteInput = z.infer<typeof cotizarFleteSchema>;
 export type LineaCheckoutInput = z.infer<typeof lineaCheckoutSchema>;
 export type CheckoutWebInput = z.infer<typeof checkoutWebSchema>;
 export type ListarPedidosWebQuery = z.infer<typeof listarPedidosWebQuerySchema>;
+export type NoPuedoDespacharInput = z.infer<typeof noPuedoDespacharSchema>;

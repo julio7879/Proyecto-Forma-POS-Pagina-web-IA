@@ -11,6 +11,7 @@ import {
   checkoutWebSchema,
   cotizarFleteSchema,
   listarPedidosWebQuerySchema,
+  noPuedoDespacharSchema,
   pedidoWebIdParamSchema,
 } from './pedidoWeb.schema.js';
 
@@ -51,4 +52,13 @@ router.get(
   authenticateJWT,
   validateParams(pedidoWebIdParamSchema),
   PedidoWebController.obtenerPorId
+);
+
+// RF-WEB-06 / RN-WEB-16 / CA-43 / CA-62: Reportar novedad 'No puedo despachar'
+router.post(
+  '/:id/no-puedo-despachar',
+  authenticateJWT,
+  validateParams(pedidoWebIdParamSchema),
+  validateBody(noPuedoDespacharSchema),
+  PedidoWebController.reportarNoPuedoDespachar
 );
