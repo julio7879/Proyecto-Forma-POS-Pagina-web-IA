@@ -59,4 +59,14 @@ export class PedidoWebController {
       next(e);
     }
   }
+
+  static async ejecutarWorkerExpiracion(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const datos = await PedidoWebService.ejecutarWorkerExpiracion(user.id);
+      res.status(200).json({ ok: true, datos });
+    } catch (e) {
+      next(e);
+    }
+  }
 }

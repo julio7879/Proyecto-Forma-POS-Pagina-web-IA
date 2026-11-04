@@ -1,5 +1,8 @@
 import { Router } from 'express';
-import { authenticateJWT } from '../../shared/middlewares/authPermission.js';
+import {
+  authenticateJWT,
+  requireRole,
+} from '../../shared/middlewares/authPermission.js';
 import { requireIdempotencyKey } from '../../shared/middlewares/idempotency.js';
 import {
   validateBody,
@@ -13,6 +16,8 @@ import {
   listarPedidosWebQuerySchema,
   pedidoWebIdParamSchema,
 } from './pedidoWeb.schema.js';
+
+export { WebOrderTtlWorker } from './domain/WebOrderTtlWorker.js';
 
 export const pedidosWebRouter = Router();
 const router = pedidosWebRouter;
@@ -36,6 +41,14 @@ router.post(
   requireIdempotencyKey,
   validateBody(checkoutWebSchema),
   PedidoWebController.checkout
+);
+
+// RF-WEB-04 / CA-39 / QA-015: Worker periódico de expiración TTL de reservas web (Solo ADMIN)
+router.post(
+  '/worker/expirar-reservas',
+  authenticateJWT,
+  requireRole('ADMIN'),
+  PedidoWebController.ejecutarWorkerExpiracion
 );
 
 // Consulta de pedidos: usuarios autenticados (aislamiento por rol en el servicio)
