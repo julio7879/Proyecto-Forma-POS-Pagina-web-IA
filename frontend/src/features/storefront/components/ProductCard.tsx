@@ -100,8 +100,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
             loading="lazy"
           />
-          <div className="absolute top-2.5 left-2.5">
+          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">
             {renderStockBadge()}
+            {producto.categoria === 'cosmeticos' && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100/90 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200/70 backdrop-blur-md shadow-sm">
+                Uso personal - sin cambio
+              </span>
+            )}
           </div>
         </div>
 
