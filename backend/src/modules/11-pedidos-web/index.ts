@@ -1,5 +1,8 @@
 import { Router } from 'express';
-import { authenticateJWT } from '../../shared/middlewares/authPermission.js';
+import {
+  authenticateJWT,
+  requireRole,
+} from '../../shared/middlewares/authPermission.js';
 import { requireIdempotencyKey } from '../../shared/middlewares/idempotency.js';
 import {
   validateBody,
@@ -10,9 +13,11 @@ import { PedidoWebController } from './pedidoWeb.controller.js';
 import {
   checkoutWebSchema,
   cotizarFleteSchema,
+  devolucionComercialWebSchema,
   listarPedidosWebQuerySchema,
   noPuedoDespacharSchema,
   pedidoWebIdParamSchema,
+  retornoLogisticoSchema,
 } from './pedidoWeb.schema.js';
 
 export const pedidosWebRouter = Router();
@@ -62,4 +67,26 @@ router.post(
   validateParams(pedidoWebIdParamSchema),
   validateBody(noPuedoDespacharSchema),
   PedidoWebController.reportarNoPuedoDespachar
+);
+
+// RF-WEB-07 / RN-WEB-23 / CA-64 / QA-020: Retorno Logístico sin distorsión de Ventas Netas
+router.post(
+  '/:id/retorno-logistico',
+  authenticateJWT,
+  requireRole('ADMIN'),
+  requireIdempotencyKey,
+  validateParams(pedidoWebIdParamSchema),
+  validateBody(retornoLogisticoSchema),
+  PedidoWebController.procesarRetornoLogistico
+);
+
+// RF-DEV-04 / RN-DEV-14 a 16 / RN-REP-03 / CA-65 / QA-021: Devolución Comercial Web con imputación a origen
+router.post(
+  '/:id/devolucion-comercial',
+  authenticateJWT,
+  requireRole('ADMIN'),
+  requireIdempotencyKey,
+  validateParams(pedidoWebIdParamSchema),
+  validateBody(devolucionComercialWebSchema),
+  PedidoWebController.procesarDevolucionComercial
 );
