@@ -18,10 +18,10 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | :--- | :--- | :--- | :--- |
 | **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · Motor Kardex Fusionado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02). **PR #12 fusionado en `develop`** (motor Kardex con orden canónico y bloqueo pesimista). Tarea de QA en Issue #16.<br>**Issue #23 (`SP3-03`):** Asignado para construir el motor canónico de descuentos `DiscountEngine.ts`. |
 | **Thomas** | Junior Backend & Frontend (Tareas Acotadas) | **Aprobado en Fase 3 (QA Gate)** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`).<br>**PR #26 (`SP3-05`):** Aprobado técnicamente (`APPROVED`). Rama corregida de `main` a `develop`. Asignado a Duvan en Issue #28. |
-| **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio.<br>**Issue #24 (`[QA] PR #17`):** Certificación funcional de vistas de login, registro Ley 1581 y Navbar Storefront.<br>**Issue #28 (`[QA] PR #26`):** Certificación del Comprobante POS 80 mm y Telegram de Thomas.<br>**Issue #32 (`[QA] PR #29`):** Certificación de la Guía de Diseño y Bento Grid Storefront de Sofía.<br>**Issue #33 (`[QA] PR #30`):** Certificación de la Terminal POS Mostrador CA-53 de Sofía.<br>**Issue #34 (`[QA] PR #27`):** Certificación del Catálogo Storefront, Filtros y Variantes de Exneider. |
+| **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio.<br>**Issue #24 (`[QA] PR #17`):** Certificación funcional de vistas de login, registro Ley 1581 y Navbar Storefront.<br>**Issue #28 (`[QA] PR #26`):** Certificación del Comprobante POS 80 mm y Telegram de Thomas.<br>**Issue #32 (`[QA] PR #29`):** Certificación de la Guía de Diseño y Bento Grid Storefront de Sofía.<br>**Issue #33 (`[QA] PR #30`):** Certificación de la Terminal POS Mostrador CA-53 de Sofía.<br>**Issue #34 (`[QA] PR #27`):** Certificación del Catálogo Storefront, Filtros y Variantes de Exneider.<br>**Issue #35 (`[QA] PR #31`):** Certificación de Sedes y Desactivación Segura de Yeimer. |
 | **Sofía** | Diseñadora UX/UI & Prototipado | **Aprobada y Fusionada en `develop`** | **PR #29 (`SP1-08`):** Fusionado en `develop` (commit `5b10a62`). Guía de diseño, tokens `docs/design/`, `BentoGridHero` y `CartDrawer` desacoplados. QA Gate en Issue #32.<br>**PR #30 (`SP1-06`):** Fusionado en `develop` (commit `0b2a2a1`). Terminal POS Mostrador (`CA-53`) con cero scroll vertical, atajos F12/F2/Esc y cálculo de vuelto. QA Gate en Issue #33. |
 | **Exneider** | Frontend Lead (React + Tailwind) | **Aprobado y Fusionado en `develop`** | **PR #17 (`SP1-05`):** Fusionado en `develop`.<br>**PR #27 (`SP1-09`):** Fusionado en `develop` (commit `fa1632e`). Catálogo de productos, filtros por categoría, selector de variantes, badge de cosméticos no reintegrables y stock cualitativo web `RN-WEB-02`. QA Gate en Issue #34. |
-| **Yeimer** | Backend Junior (Soporte) | PR #31 en Revisión | **Issue #3 (`SP1-03`):** PR #31 abierto (`feature/SP1-03-gestion-sedes-segura`) con endpoints de gestión de sedes y desactivación segura bajo 5 condiciones de `RN-UBI-05`. |
+| **Yeimer** | Backend Junior (Soporte) | **Aprobado y Fusionado en `develop`** | **PR #31 (`SP1-03`):** Fusionado en `develop` (commit `1c28b00`). Endpoints de gestión de sedes, bodega central única, corrección Zod partial y desactivación segura bajo 5 condiciones de `RN-UBI-05`. Issue #3 cerrado. QA Gate en Issue #35. |
 
 ---
 
@@ -43,6 +43,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | **2026-11-04** | **Hito SP1-08:** PR #29 de Sofía fusionado en `develop` (commit `5b10a62`). Guía de diseño, tokens en `docs/design/`, `BentoGridHero.tsx`, `CartDrawer.tsx`, 4 tests unitarios. Gate de QA creado en Issue #32. | Sofía / Julio | PR #29 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-04** | **Hito SP1-06:** PR #30 de Sofía fusionado en `develop` (commit `0b2a2a1`). Terminal POS Mostrador ergonómica (`CA-53`) con `h-screen overflow-hidden`, atajos F12/F2/Esc, teclado numérico táctil 3x4, cambio/vuelto destacado y 5 tests unitarios. Gate de QA creado en Issue #33. | Sofía / Julio | PR #30 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-04** | **Hito SP1-09:** PR #27 de Exneider fusionado en `develop` (commit `fa1632e`). Catálogo público Storefront, filtros por categoría `RN-CAT-01`, modal de variantes `RN-CAT-03`, semáforo cualitativo `RN-WEB-02`, alerta de cosméticos `RN-CAT-02` y 6 tests unitarios. Gate de QA creado en Issue #34. | Exneider / Julio | PR #27 Fusionado en `develop` | **COMPLETADO [x]** |
+| **2026-11-04** | **Hito SP1-03:** PR #31 de Yeimer fusionado en `develop` (commit `1c28b00`). Endpoints de gestión de sedes físicas, Bodega Central única (`RN-UBI-01`, `03`), blindaje de Zod partial, protección contra degradación de Central y desactivación segura bajo 5 condiciones de `RN-UBI-05` con lock pesimista. 16 tests unitarios. Gate de QA creado en Issue #35. | Yeimer / Julio | PR #31 Fusionado en `develop` | **COMPLETADO [x]** |
 
 ---
 
@@ -53,7 +54,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 
 - [x] **SP1-01 (Julio):** Middleware Auth JWT + Caché en memoria `UserPermissionCache` ($O(1)$) y revocación (`CA-50`). *(PR #9 Merged)*
 - [x] **SP1-02 (Julio):** Endpoints de Autenticación Híbrida y Bloqueo de Intentos (`RF-USU-01`, `02`, `RN-ROL-06`). *(PR #10 y Hotfix PR #18 Merged)*
-- [ ] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(PR #31 en revisión - Issue #3)*
+- [x] **SP1-03 (Yeimer):** Endpoints de Gestión de Puntos de Venta y Desactivación Segura (`RN-UBI-05`). *(PR #31 Merged - Issue #3 Closed / QA Issue #35)*
 - [x] **SP1-04 (Thomas - Issue #T2):** Carga Semilla del Catálogo por SKU (`RN-CAT-01` a `04`). *(PR #13 Merged - Issue #4 Closed / QA Issue #15)*
 - [x] **SP1-05 (Exneider):** Vistas de Autenticación, Registro Ley 1581 y Navbar Storefront. *(PR #17 Merged - Issue #24 en manos de Duvan)*
 - [x] **SP1-06 (Sofía):** Prototipos UX/UI de la Terminal POS en Pantalla Mostrador (`CA-53`). *(PR #30 Merged - Issue #33 en manos de Duvan)*
@@ -61,7 +62,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 - [x] **SP1-08 (Sofía):** Guía de Diseño y Sistema Visual Multi-Portal (Apple Liquid Glass UI). *(PR #29 Merged - Issue #32 en manos de Duvan)*
 - [x] **SP1-09 (Exneider):** Catálogo Público de Productos, Filtros por Categoría y Selector de Variantes (Storefront). *(PR #27 Merged - Issue #34 en manos de Duvan)*
 
-**Progreso del Sprint 1:** `75%` [████████░░] (6/8 tareas de desarrollo completadas en `develop`)
+**Progreso del Sprint 1:** `88%` [█████████░] (7/8 tareas de desarrollo completadas en `develop`)
 
 ---
 
