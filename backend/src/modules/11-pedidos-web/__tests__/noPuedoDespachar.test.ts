@@ -41,6 +41,10 @@ const prismaMock = vi.hoisted(() => {
     registroAuditoria: {
       create: vi.fn(),
     },
+    registroIdempotencia: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
     variante: {
       updateMany: vi.fn(),
     },
@@ -206,16 +210,37 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
       return usuarios[where.id] ?? null;
     });
 
+    prismaMock.registroIdempotencia.findUnique.mockResolvedValue(null);
+    prismaMock.registroIdempotencia.create.mockResolvedValue({});
+    prismaMock.pedidoWeb.findUnique.mockResolvedValue(mockPedidoBase);
+    prismaMock.ubicacion.findMany.mockResolvedValue([]);
+    prismaMock.saldoStock.findMany.mockResolvedValue([]);
+    prismaMock.excepcionTarifaEnvio.findMany.mockResolvedValue([]);
+
     prismaMock.$transaction.mockImplementation(async (callback: any) => {
       return callback(prismaMock);
     });
   });
 
-  describe('1. Control de Acceso y Aislamiento Multisede (RN-ROL-04, RF-WEB-06)', () => {
+  describe('1. Control de Acceso y Aislamiento Multisede (RN-ROL-04, RF-WEB-06, RN-GEN-08)', () => {
+    it('debe rechazar con HTTP 400 si falta el header Idempotency-Key (RN-GEN-08)', async () => {
+      const res = await request(app)
+        .post('/api/pedidos-web/100/no-puedo-despachar')
+        .set('Authorization', `Bearer ${vendedorSede1Token}`)
+        .send({
+          varianteIdsAfectadas: [501],
+          motivo: 'Prenda rota en exhibidor',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain('Idempotency-Key');
+    });
+
     it('debe rechazar con HTTP 403 si un CLIENTE intenta reportar la novedad', async () => {
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${clienteToken}`)
+        .set('Idempotency-Key', 'idem-cliente-403')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Prenda con costura rota en tienda',
@@ -226,11 +251,10 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
     });
 
     it('debe rechazar con HTTP 403 si un VENDEDOR no cuenta con permPedidosWeb', async () => {
-      prismaMock.pedidoWeb.findUnique.mockResolvedValueOnce(mockPedidoBase);
-
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${vendedorSede1SinPermisoToken}`)
+        .set('Idempotency-Key', 'idem-vendedor-sin-perm')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Prenda rota en exhibidor',
@@ -241,11 +265,10 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
     });
 
     it('debe rechazar con HTTP 403 si un VENDEDOR de otra sede intenta reportar novedad en este pedido', async () => {
-      prismaMock.pedidoWeb.findUnique.mockResolvedValueOnce(mockPedidoBase);
-
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${vendedorOtraSedeToken}`)
+        .set('Idempotency-Key', 'idem-vendedor-otra-sede')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Prenda dañada en bodega',
@@ -259,6 +282,7 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${vendedorSede1Token}`)
+        .set('Idempotency-Key', 'idem-motivo-corto')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'roto',
@@ -279,6 +303,7 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${vendedorSede1Token}`)
+        .set('Idempotency-Key', 'idem-en-preparacion-409')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Prenda con mancha de tinta',
@@ -298,6 +323,7 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${adminToken}`)
+        .set('Idempotency-Key', 'idem-despachado-422')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Prenda extraviada en despacho',
@@ -308,11 +334,10 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
     });
 
     it('debe rechazar con HTTP 400 si la variante reportada no pertenece al pedido', async () => {
-      prismaMock.pedidoWeb.findUnique.mockResolvedValueOnce(mockPedidoBase);
-
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${vendedorSede1Token}`)
+        .set('Idempotency-Key', 'idem-variante-ajena-400')
         .send({
           varianteIdsAfectadas: [999], // Variante no existe en pedido
           motivo: 'Articulo inexistente averiado',
@@ -325,9 +350,7 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
 
   describe('3. Reasignación Exitosa a otra sede candidata (CA-43, QA-013)', () => {
     it('debe marcar cuarentena de SKU en sede 1, liberar reserva blanda y reasignar a sede 2 con nueva reserva', async () => {
-      prismaMock.pedidoWeb.findUnique.mockResolvedValue(mockPedidoBase);
-
-      // Mock de bloqueo pesimista en kardex para liberar reserva blanda en sede 10
+      // Mock de bloqueo pesimista en kardex para movimientos batch
       prismaMock.$queryRaw.mockImplementation(async () => {
         return [
           {
@@ -401,6 +424,7 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${vendedorSede1Token}`)
+        .set('Idempotency-Key', 'idem-reasignacion-exitosa')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Costura rota detectada en exhibidor de sede Cúcuta',
@@ -440,8 +464,6 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
 
   describe('4. Custodia Forzosa en Bodega Central si no hay stock (CA-62, QA-013)', () => {
     it('debe asignar en custodia a Bodega Central con tieneIncidenciaStock=true y alerta al Admin', async () => {
-      prismaMock.pedidoWeb.findUnique.mockResolvedValue(mockPedidoBase);
-
       // Bloqueo pesimista para liberar reserva blanda previa
       prismaMock.$queryRaw.mockImplementation(async () => {
         return [
@@ -524,6 +546,7 @@ describe('Módulo 11: Flujo «No puedo despachar», Cuarentena de SKU y Custodia
       const res = await request(app)
         .post('/api/pedidos-web/100/no-puedo-despachar')
         .set('Authorization', `Bearer ${adminToken}`)
+        .set('Idempotency-Key', 'idem-custodia-central')
         .send({
           varianteIdsAfectadas: [501],
           motivo: 'Última prenda mojada por gotera en almacén',

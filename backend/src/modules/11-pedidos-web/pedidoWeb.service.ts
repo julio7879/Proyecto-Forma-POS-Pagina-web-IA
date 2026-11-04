@@ -471,66 +471,70 @@ export class PedidoWebService {
   static async reportarNoPuedoDespachar(
     pedidoId: number,
     data: NoPuedoDespacharInput,
-    user: UserAuthSnapshot
+    user: UserAuthSnapshot,
+    idempotencyKey?: string
   ) {
-    // 1. Validar permisos de rol (Aislamiento territorial)
+    // 1. Validar permisos de rol a nivel de servicio (Aislamiento territorial)
     if (user.rol === 'CLIENTE') {
       throw AppError.forbidden('Los clientes no tienen autorización para reportar novedades de despacho en sedes.');
     }
 
-    const pedido = await prisma.pedidoWeb.findUnique({
-      where: { id: pedidoId },
-      include: {
-        lineas: true,
-        ubicacionAsignada: true,
-        municipioDestino: {
-          include: { departamento: true },
+    if (user.rol === 'VENDEDOR' && !user.permisos.permPedidosWeb) {
+      throw AppError.forbidden('No cuenta con el permiso permPedidosWeb para gestionar pedidos web.');
+    }
+
+    // 2. Transacción interactiva ACID completa (RN-GEN-02, RNF-003, CA-42, CA-43, CA-62)
+    return prisma.$transaction(async (tx) => {
+      // 2.1. Bloqueo y re-consulta dentro de la transacción para prevenir TOCTOU y condiciones de carrera
+      const pedido = await tx.pedidoWeb.findUnique({
+        where: { id: pedidoId },
+        include: {
+          lineas: true,
+          ubicacionAsignada: true,
+          municipioDestino: {
+            include: { departamento: true },
+          },
         },
-      },
-    });
+      });
 
-    if (!pedido) {
-      throw AppError.notFound(`Pedido web con id ${pedidoId} no encontrado.`);
-    }
-
-    if (user.rol === 'VENDEDOR') {
-      if (!user.permisos.permPedidosWeb) {
-        throw AppError.forbidden('No cuenta con el permiso permPedidosWeb para gestionar pedidos web.');
+      if (!pedido) {
+        throw AppError.notFound(`Pedido web con id ${pedidoId} no encontrado.`);
       }
-      if (!user.ubicacionId || user.ubicacionId !== pedido.ubicacionAsignadaId) {
-        throw AppError.forbidden('No tiene permiso para reportar novedades de pedidos asignados a otras sedes.');
+
+      // Validar aislamiento territorial del vendedor contra el estado actual en base de datos
+      if (user.rol === 'VENDEDOR') {
+        if (!user.ubicacionId || user.ubicacionId !== pedido.ubicacionAsignadaId) {
+          throw AppError.forbidden('No tiene permiso para reportar novedades de pedidos asignados a otras sedes.');
+        }
       }
-    }
 
-    // 2. Validar estado del pedido (CA-42: no permitir si está en EN_PREPARACION, ya tiene reserva dura protegida)
-    if (pedido.estadoPedido === 'EN_PREPARACION') {
-      throw AppError.conflict(
-        'El pedido se encuentra en estado EN_PREPARACION con reserva dura protegida frente a reasignaciones (CA-42).'
-      );
-    }
-
-    if (['CANCELADO', 'DESPACHADO', 'ENTREGADO', 'NO_ENTREGADO'].includes(pedido.estadoPedido)) {
-      throw AppError.unprocessable(
-        `No es posible reportar 'No puedo despachar' sobre un pedido en estado ${pedido.estadoPedido}.`
-      );
-    }
-
-    // 3. Validar que las variantes indicadas formen parte del pedido
-    const lineasMap = new Map(pedido.lineas.map((l) => [l.varianteId, l]));
-    for (const varianteId of data.varianteIdsAfectadas) {
-      if (!lineasMap.has(varianteId)) {
-        throw AppError.badRequest(
-          `La variante con id ${varianteId} no forma parte de los artículos del pedido ${pedido.referenciaLegible}.`
+      // 2.2. Validar estado del pedido (CA-42: reserva dura blindada frente a reasignaciones)
+      if (pedido.estadoPedido === 'EN_PREPARACION') {
+        throw AppError.conflict(
+          'El pedido se encuentra en estado EN_PREPARACION con reserva dura protegida frente a reasignaciones (CA-42).'
         );
       }
-    }
 
-    // 4. Ejecutar transacción atómica de cuarentena, liberación y reasignación o custodia (RN-WEB-16, CA-43, CA-62)
-    return prisma.$transaction(async (tx) => {
+      if (['CANCELADO', 'DESPACHADO', 'ENTREGADO', 'NO_ENTREGADO'].includes(pedido.estadoPedido)) {
+        throw AppError.unprocessable(
+          `No es posible reportar 'No puedo despachar' sobre un pedido en estado ${pedido.estadoPedido}.`
+        );
+      }
+
+      // 2.3. Validar que las variantes indicadas pertenezcan al pedido
+      const lineasMap = new Map(pedido.lineas.map((l) => [l.varianteId, l]));
+      for (const varianteId of data.varianteIdsAfectadas) {
+        if (!lineasMap.has(varianteId)) {
+          throw AppError.badRequest(
+            `La variante con id ${varianteId} no forma parte de los artículos del pedido ${pedido.referenciaLegible}.`
+          );
+        }
+      }
+
       const sedePreviaId = pedido.ubicacionAsignadaId;
       const sedePreviaNombre = pedido.ubicacionAsignada.nombre;
 
-      // 4.1. Cuarentena de SKU en la sede que reportó la novedad (CA-43)
+      // 2.4. Cuarentena de SKU en la sede que reportó la novedad (CA-43)
       await InventoryLedgerService.marcarCuarentenaDespachoWeb(
         tx,
         sedePreviaId,
@@ -538,23 +542,22 @@ export class PedidoWebService {
         data.motivo
       );
 
-      // 4.2. Liberar la reserva blanda en la sede previa si existía reserva activa (RN-GEN-02)
-      if (pedido.tieneReservaActiva) {
-        const movimientosLiberacion: RegistrarMovimientoParams[] = pedido.lineas.map((linea) => ({
-          tipo: 'LIBERACION_RESERVA_WEB',
-          ubicacionId: sedePreviaId,
-          varianteId: linea.varianteId,
-          cantidadConSigno: -linea.cantidad,
-          afectaSaldo: 'RESERVADO_BLANDO',
-          documentoTipo: 'PEDIDO_WEB',
-          documentoId: pedido.id,
-          usuarioId: user.id,
-          motivo: `Liberación por reporte 'No puedo despachar' en ${sedePreviaNombre}: ${data.motivo}`,
-        }));
-        await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosLiberacion);
-      }
+      // 2.5. Preparar movimientos de liberación de reserva blanda en la sede previa (si tenía reserva activa)
+      const movimientosLiberacion: RegistrarMovimientoParams[] = pedido.tieneReservaActiva
+        ? pedido.lineas.map((linea) => ({
+            tipo: 'LIBERACION_RESERVA_WEB' as const,
+            ubicacionId: sedePreviaId,
+            varianteId: linea.varianteId,
+            cantidadConSigno: -linea.cantidad,
+            afectaSaldo: 'RESERVADO_BLANDO' as const,
+            documentoTipo: 'PEDIDO_WEB' as const,
+            documentoId: pedido.id,
+            usuarioId: user.id,
+            motivo: `Liberación por reporte 'No puedo despachar' en ${sedePreviaNombre}: ${data.motivo}`,
+          }))
+        : [];
 
-      // 4.3. Buscar sedes candidatas alternativas (activas, despachan web y excluyendo la sede previa)
+      // 2.6. Buscar sedes candidatas alternativas (activas, despachan web y excluyendo la sede previa)
       const sedesCandidatasDb = await tx.ubicacion.findMany({
         where: {
           activa: true,
@@ -617,10 +620,15 @@ export class PedidoWebService {
         saldos: saldosPorSedeMap.get(sede.id) ?? new Map(),
       }));
 
-      const itemsCarrito: ItemCarrito[] = pedido.lineas.map((l) => ({
-        varianteId: l.varianteId,
-        cantidad: l.cantidad,
-      }));
+      // Agrupar ítems por variante para evitar anomalías si un carrito contiene líneas repetidas
+      const cantidadesPorVariante = new Map<number, number>();
+      for (const linea of pedido.lineas) {
+        const cant = cantidadesPorVariante.get(linea.varianteId) ?? 0;
+        cantidadesPorVariante.set(linea.varianteId, cant + linea.cantidad);
+      }
+      const itemsCarrito: ItemCarrito[] = Array.from(cantidadesPorVariante.entries()).map(
+        ([varianteId, cantidad]) => ({ varianteId, cantidad })
+      );
 
       const infoDestino: InfoMunicipioDane = {
         codigoDane: pedido.municipioDestino.codigoDane,
@@ -645,15 +653,16 @@ export class PedidoWebService {
         }
       }
 
-      // 4.4. Decisión: Reasignación exitosa vs Custodia forzosa en Central (CA-62, QA-013)
+      // 2.7. Decisión: Reasignación exitosa vs Custodia forzosa en Central (CA-62, QA-013)
       if (nuevaSedeElegida) {
-        // Caso A: Reasignar a la nueva sede y adquirir nueva reserva blanda
+        // Caso A: Reasignar a la nueva sede
         const pedidoActualizado = await tx.pedidoWeb.update({
           where: { id: pedido.id },
           data: {
             ubicacionAsignadaId: nuevaSedeElegida.id,
             tieneIncidenciaStock: false,
             tieneReservaActiva: true,
+            version: { increment: 1 },
           },
           include: {
             lineas: true,
@@ -671,17 +680,23 @@ export class PedidoWebService {
 
         // Registrar nueva reserva blanda en la nueva sede
         const movimientosNuevaReserva: RegistrarMovimientoParams[] = pedido.lineas.map((linea) => ({
-          tipo: 'RESERVA_WEB',
+          tipo: 'RESERVA_WEB' as const,
           ubicacionId: nuevaSedeElegida!.id,
           varianteId: linea.varianteId,
           cantidadConSigno: linea.cantidad,
-          afectaSaldo: 'RESERVADO_BLANDO',
-          documentoTipo: 'PEDIDO_WEB',
+          afectaSaldo: 'RESERVADO_BLANDO' as const,
+          documentoTipo: 'PEDIDO_WEB' as const,
           documentoId: pedido.id,
           usuarioId: user.id,
           motivo: `Reasignación reserva blanda a ${nuevaSedeElegida!.nombre} por 'No puedo despachar' en ${sedePreviaNombre} (CA-43)`,
         }));
-        await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosNuevaReserva);
+
+        // Anti-Deadlock RNF-003: Liberación y nueva reserva se ejecutan en un único batch
+        // que ordena globalmente por (varianteId ASC, ubicacionId ASC) previniendo deadlocks entre sedes cruzadas
+        await InventoryLedgerService.registrarMovimientosBatch(tx, [
+          ...movimientosLiberacion,
+          ...movimientosNuevaReserva,
+        ]);
 
         // Historial de estados
         await tx.historialEstadoPedidoWeb.create({
@@ -712,15 +727,34 @@ export class PedidoWebService {
           },
         });
 
-        return {
+        const respuesta = {
           ok: true,
           mensaje: `Pedido reasignado exitosamente a la sede ${nuevaSedeElegida.nombre}.`,
           reasignado: true,
           enCustodiaCentral: false,
           pedido: pedidoActualizado,
         };
+
+        // Persistir clave de idempotencia (RN-GEN-08)
+        if (idempotencyKey) {
+          await tx.registroIdempotencia.create({
+            data: {
+              idempotencyKey,
+              usuarioId: user.id,
+              endpoint: `/api/pedidos-web/${pedidoId}/no-puedo-despachar`,
+              statusCode: 200,
+              responseBody: respuesta,
+            },
+          });
+        }
+
+        return respuesta;
       } else {
         // Caso B: Ninguna otra tienda tiene stock. Asignar custodia forzosa a Bodega Central (CA-62, QA-013)
+        if (movimientosLiberacion.length > 0) {
+          await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosLiberacion);
+        }
+
         const bodegaCentral = await tx.ubicacion.findFirst({
           where: { tipo: 'CENTRAL', activa: true },
         });
@@ -735,6 +769,7 @@ export class PedidoWebService {
             ubicacionAsignadaId: bodegaCentral.id,
             tieneIncidenciaStock: true,
             tieneReservaActiva: false,
+            version: { increment: 1 },
           },
           include: {
             lineas: true,
@@ -780,13 +815,28 @@ export class PedidoWebService {
           },
         });
 
-        return {
+        const respuesta = {
           ok: true,
           mensaje: `El pedido no pudo ser cubierto por ninguna otra sede y fue asignado en custodia a ${bodegaCentral.nombre} con incidencia de stock (CA-62).`,
           reasignado: false,
           enCustodiaCentral: true,
           pedido: pedidoActualizado,
         };
+
+        // Persistir clave de idempotencia (RN-GEN-08)
+        if (idempotencyKey) {
+          await tx.registroIdempotencia.create({
+            data: {
+              idempotencyKey,
+              usuarioId: user.id,
+              endpoint: `/api/pedidos-web/${pedidoId}/no-puedo-despachar`,
+              statusCode: 200,
+              responseBody: respuesta,
+            },
+          });
+        }
+
+        return respuesta;
       }
     });
   }

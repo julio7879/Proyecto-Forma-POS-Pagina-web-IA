@@ -490,7 +490,7 @@ export class InventoryLedgerService {
     varianteIds: number[],
     motivo: string
   ): Promise<void> {
-    const idsOrdenados = [...varianteIds].sort((a, b) => a - b);
+    const idsOrdenados = [...new Set(varianteIds)].sort((a, b) => a - b);
     for (const varianteId of idsOrdenados) {
       await tx.saldoStock.updateMany({
         where: { ubicacionId, varianteId },

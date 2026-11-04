@@ -66,7 +66,8 @@ export class PedidoWebController {
       const user = getAuthUser(req);
       const id = Number(req.params.id);
       const body = req.body as NoPuedoDespacharInput;
-      const resultado = await PedidoWebService.reportarNoPuedoDespachar(id, body, user);
+      const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      const resultado = await PedidoWebService.reportarNoPuedoDespachar(id, body, user, idempotencyKey);
       res.status(200).json(resultado);
     } catch (e) {
       next(e);

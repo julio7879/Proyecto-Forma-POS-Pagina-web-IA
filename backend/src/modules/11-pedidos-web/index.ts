@@ -58,6 +58,7 @@ router.get(
 router.post(
   '/:id/no-puedo-despachar',
   authenticateJWT,
+  requireIdempotencyKey,
   validateParams(pedidoWebIdParamSchema),
   validateBody(noPuedoDespacharSchema),
   PedidoWebController.reportarNoPuedoDespachar
