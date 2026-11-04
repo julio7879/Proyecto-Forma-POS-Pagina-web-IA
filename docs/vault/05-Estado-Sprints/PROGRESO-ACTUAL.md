@@ -12,11 +12,11 @@
 | Sprint / Fase | Objetivo Central | Tareas Totales | Completadas | En Progreso / QA | Estado Semáforo |
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **Sprint 1** | Identidad, Seguridad Híbrida, Sedes y Catálogo | 9 | 8 | 1 | 🟢 Estable (QA en curso) |
-| **Sprint 2** | Kardex Centralizado, Compras y Traslados | 8 | 2 | 3 | 🟡 En Desarrollo |
+| **Sprint 2** | Kardex Centralizado, Compras y Traslados | 8 | 3 | 2 | 🟡 En Desarrollo |
 | **Sprint 3** | Caja, Terminal POS, Descuentos y Tickets | 9 | 2 | 2 | 🟡 En Desarrollo |
 | **Sprint 4** | E-Commerce, Despachos DANE, Worker TTL y Devoluciones | 8 | 4 | 0 | 🟢 En Progreso Avanzado |
 | **Sprint 5** | Reportes Financieros, Dashboard y Auditoría Final | 6 | 0 | 0 | ⚪ Planificado |
-| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **22** | **6** | **47.8% GLOBAL** |
+| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **23** | **5** | **50.0% GLOBAL** |
 
 ---
 
@@ -59,13 +59,13 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [x] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 Merged - Issue #11 Closed / QA Issue #16)*
 - [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`). *(Issue #36)*
 - [x] **SP2-03 (Julio):** Traslados entre Ubicaciones y Flujo Retornando a Central (`RF-TRA-01 a 04`). *(PR #44 FUSIONADO en `develop` - Issue #37 Closed / QA Issue #45)*
-- [ ] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`). *(Issue #38)*
-- [ ] **SP2-05 (Exneider):** Panel Administrativo de Inventario, Compras y Traslados en AdminLayout (`RF-INV-02`). *(Issue #39)*
+- [x] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`). *(PR #64 Abierto y Auditado al 100% con 164 tests - Issue #38 / QA Issue #65)*
+- [ ] **SP2-05 (Exneider):** Panel Administrativo de Inventario, Compras y Traslados en AdminLayout (`RF-INV-02`). *(PR #60 Abierto - Cambios Solicitados - Issue #39)*
 - [ ] **SP2-06 (Sofía):** Prototipos UX/UI de Inventarios, Compras y Recepción con Novedades (`ARQ-06`). *(Issue #40)*
 - [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Traslados e Idempotencia (`QA-003`). *(Issue #41)*
 - [ ] **SP2-08 (Thomas):** Interfaz y Modal de Recepción de Traslados en Punto de Venta con Checklist de Novedades y Dañados (`RF-TRA-05`, `CA-07`, `CA-08`). *(Issue #58)*
 
-**Progreso del Sprint 2:** `25.0%` [███░░░░░░░] (2/8 tareas completadas en `develop`: SP2-01 y SP2-03)
+**Progreso del Sprint 2:** `37.5%` [████░░░░░░] (3/8 tareas completadas: SP2-01, SP2-03 y SP2-04)
 
 ---
 
@@ -77,7 +77,7 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [x] **SP3-03 (Julio):** Motor Canónico de Descuentos y Prorrateo Exacto (`DiscountEngine.ts`, `RN-DES-09`, `CA-19` a `25`). *(PR #42 Merged - Issue #23 Closed / QA Issue #43)*
 - [ ] **SP3-04 (Julio):** Anulaciones del Día, Devoluciones con Plazo Raíz y Cambios a $0 (`RF-DEV-01 a 03`).
 - [x] **SP3-05 (Thomas):** Plantilla de Comprobante de Venta POS (80 mm) y Recibo Digital Telegram (`RN-VTA-09`, `10`). *(PR #26 Merged - Issue #22 Closed / QA Issue #28)*
-- [ ] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout (`RF-POS-01`).
+- [ ] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout (`RF-POS-01`). *(Issue #62 Asignado)*
 - [ ] **SP3-07 (Sofía):** Prototipos Catálogo Público Web y Checkout 3 Pasos.
 - [ ] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja.
 - [ ] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(Issue #59)*
@@ -90,7 +90,7 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 **Objetivo:** E-Commerce público, algoritmo determinista de despacho DANE, worker TTL, cuarentena de SKU, custodia en Central y retornos logísticos.
 
 - [x] **SP4-01 (Julio):** Algoritmo Determinista DANE y Checkout Atómico de Pedidos Web (`RF-WEB-02`, `RF-WEB-03`, `CA-35 a 39`). *(PR #47 Merged en `develop` - Issue #46 / QA Issue #48)*
-- [x] **SP4-02 (Julio):** Worker Periódico de Expiración de Reservas TTL por Transferencia Vencida (`RF-WEB-04`, `CA-39`, `QA-015`). *(PR #50 Abierto y Verificado al 100% - Issue #49 / QA Issue #51)*
+- [x] **SP4-02 (Julio):** Worker Periódico de Expiración de Reservas TTL por Transferencia Vencida (`RF-WEB-04`, `CA-39`, `QA-015`). *(PR #50 Abierto y Verificado al 100% - Issue #49 / QA Issue #63)*
 - [x] **SP4-03 (Julio):** Flujo «No puedo despachar» con Flag `bloqueadoDespachoWeb` y Custodia Central (`RF-WEB-06`, `CA-43`, `CA-62`). *(PR #53 FUSIONADO en `develop` - Issue #52 Closed / QA Issue #54)*
 - [ ] **SP4-04 (Thomas):** Plantilla HTML de Correo Transaccional de Confirmación de Pedido y Seguimiento (`NotificacionPort`).
 - [ ] **SP4-05 (Yeimer):** Integración `TelegramNotificationAdapter` y Envío de Alertas Web.
@@ -110,5 +110,5 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 
 ## 4. Consolidado General del Proyecto
 - **Total Entregables Principales:** 46 tareas.
-- **Entregables Concluidos / Auditados:** 22 hitos superados.
-- **Porcentaje de Avance Global del Proyecto:** `47.8%` [█████░░░░░]
+- **Entregables Concluidos / Auditados:** 23 hitos superados.
+- **Porcentaje de Avance Global del Proyecto:** `50.0%` [█████░░░░░]
