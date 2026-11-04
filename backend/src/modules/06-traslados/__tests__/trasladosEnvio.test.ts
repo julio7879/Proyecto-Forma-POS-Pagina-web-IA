@@ -42,6 +42,10 @@ const prismaMock = vi.hoisted(() => {
     registroAuditoria: {
       create: vi.fn(),
     },
+    registroIdempotencia: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
@@ -102,11 +106,21 @@ const usuarios: Record<number, unknown> = {
     topeDescuentoPorc: 0,
     ...permisosBase,
   },
+  4: {
+    id: 4,
+    correo: 'cliente@gmail.com',
+    rol: 'CLIENTE',
+    ubicacionId: null,
+    activo: true,
+    topeDescuentoPorc: 0,
+    ...permisosBase,
+  },
 };
 
 const TOKEN_ADMIN = `Bearer ${generateToken({ userId: 1, correo: 'admin@forma.com', rol: 'ADMIN' })}`;
 const TOKEN_VENDEDOR_NORTE = `Bearer ${generateToken({ userId: 2, correo: 'vendedor_norte@forma.com', rol: 'VENDEDOR' })}`;
 const TOKEN_VENDEDOR_SIN_PERM = `Bearer ${generateToken({ userId: 3, correo: 'vendedor_sin_permiso@forma.com', rol: 'VENDEDOR' })}`;
+const TOKEN_CLIENTE = `Bearer ${generateToken({ userId: 4, correo: 'cliente@gmail.com', rol: 'CLIENTE' })}`;
 
 const ubicacionCentral = {
   id: 1,
@@ -152,6 +166,8 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
     });
     prismaMock.variante.findMany.mockResolvedValue([variante10]);
     prismaMock.registroAuditoria.create.mockResolvedValue({ id: 100n });
+    prismaMock.registroIdempotencia.findUnique.mockResolvedValue(null);
+    prismaMock.registroIdempotencia.create.mockResolvedValue({});
   });
 
   describe('1. Solicitud de Traslado (RF-TRA-01, POST /api/traslados)', () => {
@@ -179,6 +195,7 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
       const res = await request(app)
         .post('/api/traslados')
         .set('Authorization', TOKEN_VENDEDOR_NORTE)
+        .set('Idempotency-Key', 'idem-key-001')
         .send({
           ubicacionDestinoId: 2,
           lineas: [{ varianteId: 10, cantidadSolicitada: 30 }],
@@ -202,6 +219,7 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
       const res = await request(app)
         .post('/api/traslados')
         .set('Authorization', TOKEN_VENDEDOR_SIN_PERM)
+        .set('Idempotency-Key', 'idem-key-002')
         .send({
           ubicacionDestinoId: 2,
           lineas: [{ varianteId: 10, cantidadSolicitada: 10 }],
@@ -215,6 +233,7 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
       const res = await request(app)
         .post('/api/traslados')
         .set('Authorization', TOKEN_VENDEDOR_NORTE) // Usuario asignado a sede 2
+        .set('Idempotency-Key', 'idem-key-003')
         .send({
           ubicacionDestinoId: 99, // Intentando hacia sede 99
           lineas: [{ varianteId: 10, cantidadSolicitada: 10 }],
@@ -248,6 +267,7 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
       const res = await request(app)
         .post('/api/traslados')
         .set('Authorization', TOKEN_ADMIN)
+        .set('Idempotency-Key', 'idem-key-004')
         .send({
           ubicacionDestinoId: 2,
           esEnvioDirecto: true,
@@ -256,6 +276,51 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
 
       expect(res.status).toBe(201);
       expect(res.body.datos.estado).toBe('APROBADO');
+    });
+
+    it('Rechaza solicitud si falta el encabezado Idempotency-Key con HTTP 400 (RN-GEN-08)', async () => {
+      const res = await request(app)
+        .post('/api/traslados')
+        .set('Authorization', TOKEN_VENDEDOR_NORTE)
+        // Sin encabezado Idempotency-Key
+        .send({
+          ubicacionDestinoId: 2,
+          lineas: [{ varianteId: 10, cantidadSolicitada: 10 }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toMatch(/Idempotency-Key es obligatorio/i);
+    });
+
+    it('Retorna respuesta cacheada sin duplicar si Idempotency-Key ya fue procesada (RN-GEN-08)', async () => {
+      prismaMock.registroIdempotencia.findUnique.mockResolvedValueOnce({
+        idempotencyKey: 'idem-repetida-01',
+        usuarioId: 2,
+        statusCode: 201,
+        responseBody: { ok: true, datos: { id: 888, estado: 'SOLICITADO' } },
+      });
+
+      const res = await request(app)
+        .post('/api/traslados')
+        .set('Authorization', TOKEN_VENDEDOR_NORTE)
+        .set('Idempotency-Key', 'idem-repetida-01')
+        .send({
+          ubicacionDestinoId: 2,
+          lineas: [{ varianteId: 10, cantidadSolicitada: 10 }],
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.datos.id).toBe(888);
+      expect(prismaMock.traslado.create).not.toHaveBeenCalled();
+    });
+
+    it('Rechaza con HTTP 403 si un CLIENTE de la tienda web intenta consultar traslados (Seguridad)', async () => {
+      const res = await request(app)
+        .get('/api/traslados')
+        .set('Authorization', TOKEN_CLIENTE);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.message).toMatch(/acceso restringido a los roles/i);
     });
   });
 
@@ -338,6 +403,30 @@ describe('Módulo 06: Traslados entre Sedes y Flujo Retornando a Central (SP2-03
 
       expect(res.status).toBe(200);
       expect(res.body.datos.estado).toBe('RECHAZADO');
+      expect(prismaMock.traslado.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            estado: 'RECHAZADO',
+            fechaCierre: expect.any(Date),
+          }),
+        })
+      );
+    });
+
+    it('Rechaza con HTTP 400 si se envían lineaId duplicadas en la evaluación', async () => {
+      const res = await request(app)
+        .patch('/api/traslados/101/evaluar')
+        .set('Authorization', TOKEN_ADMIN)
+        .send({
+          accion: 'APROBAR',
+          lineas: [
+            { lineaId: 501, cantidadAprobada: 10 },
+            { lineaId: 501, cantidadAprobada: 5 }, // Duplicada
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toMatch(/validación/i);
     });
 
     it('Rechaza con HTTP 409 si ocurre colisión de concurrencia optimista (QA-014)', async () => {

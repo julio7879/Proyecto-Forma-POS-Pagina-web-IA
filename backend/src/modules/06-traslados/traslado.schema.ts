@@ -24,22 +24,49 @@ export const lineaEvaluacionSchema = z.object({
   cantidadAprobada: z.number().int().min(0, 'La cantidad aprobada no puede ser negativa'),
 });
 
-export const evaluarTrasladoSchema = z.object({
-  accion: z.enum(['APROBAR', 'RECHAZAR']),
-  motivoRechazo: z.string().trim().min(3, 'El motivo de rechazo debe contener al menos 3 caracteres').optional(),
-  version: z.number().int().positive().optional(),
-  lineas: z.array(lineaEvaluacionSchema).optional(),
-});
+export const evaluarTrasladoSchema = z
+  .object({
+    accion: z.enum(['APROBAR', 'RECHAZAR']),
+    motivoRechazo: z.string().trim().min(3, 'El motivo de rechazo debe contener al menos 3 caracteres').optional(),
+    version: z.number().int().positive().optional(),
+    lineas: z.array(lineaEvaluacionSchema).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.accion === 'RECHAZAR') {
+        return !!data.motivoRechazo && data.motivoRechazo.trim().length >= 3;
+      }
+      return true;
+    },
+    { message: 'El motivo de rechazo es obligatorio para rechazar un traslado', path: ['motivoRechazo'] }
+  )
+  .refine(
+    (data) => {
+      if (!data.lineas || data.lineas.length === 0) return true;
+      const ids = data.lineas.map((l) => l.lineaId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten lineas duplicadas en la evaluación del traslado', path: ['lineas'] }
+  );
 
 export const lineaDespachoSchema = z.object({
   lineaId: z.number().int().positive('El id de la línea debe ser un entero positivo'),
   cantidadEnviada: z.number().int().positive('La cantidad enviada debe ser mayor a 0'),
 });
 
-export const despacharTrasladoSchema = z.object({
-  version: z.number().int().positive().optional(),
-  lineas: z.array(lineaDespachoSchema).optional(),
-});
+export const despacharTrasladoSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    lineas: z.array(lineaDespachoSchema).optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.lineas || data.lineas.length === 0) return true;
+      const ids = data.lineas.map((l) => l.lineaId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten lineas duplicadas en el despacho del traslado', path: ['lineas'] }
+  );
 
 export const cancelarTrasladoSchema = z.object({
   motivo: z.string().trim().min(5, 'El motivo de cancelación debe tener al menos 5 caracteres'),

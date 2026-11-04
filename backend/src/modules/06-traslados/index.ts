@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticateJWT, requirePermission, requireRole } from '../../shared/middlewares/authPermission.js';
+import { requireIdempotencyKey } from '../../shared/middlewares/idempotency.js';
 import {
   validateBody,
   validateParams,
@@ -24,10 +25,11 @@ router.get('/health', (_req, res) => {
   res.json({ modulo: '06-traslados', status: 'ready' });
 });
 
-// Lectura de traslados: usuarios autenticados con permiso o rol administrativo
+// Lectura de traslados: exclusivo para personal interno (ADMIN y VENDEDOR, RN-ROL-03)
 router.get(
   '/',
   authenticateJWT,
+  requireRole('ADMIN', 'VENDEDOR'),
   validateQuery(listarTrasladosQuerySchema),
   TrasladoController.listar
 );
@@ -35,15 +37,18 @@ router.get(
 router.get(
   '/:id',
   authenticateJWT,
+  requireRole('ADMIN', 'VENDEDOR'),
   validateParams(trasladoIdParamSchema),
   TrasladoController.obtenerPorId
 );
 
-// RF-TRA-01: Crear solicitud de traslado (Vendedor con permiso o Admin)
+// RF-TRA-01: Crear solicitud de traslado (Vendedor con permiso o Admin, RN-GEN-08 Idempotente)
 router.post(
   '/',
   authenticateJWT,
+  requireRole('ADMIN', 'VENDEDOR'),
   requirePermission('permSolicitarTraslado'),
+  requireIdempotencyKey,
   validateBody(solicitarTrasladoSchema),
   TrasladoController.solicitar
 );

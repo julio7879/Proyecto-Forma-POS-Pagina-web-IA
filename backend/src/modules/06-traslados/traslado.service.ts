@@ -173,6 +173,7 @@ export class TrasladoService {
             estado: 'RECHAZADO',
             motivoRechazoCancelacion: data.motivoRechazo.trim(),
             aprobadoPorId: user.id,
+            fechaCierre: new Date(),
             version: { increment: 1 },
           },
           include: { lineas: true, ubicacionOrigen: true, ubicacionDestino: true },
@@ -580,6 +581,9 @@ export class TrasladoService {
 
     // Aislamiento de sede para vendedores sin permiso multisede
     if (user.rol !== 'ADMIN' && !user.permisos.permVerOtrosPuntos) {
+      if (!user.ubicacionId) {
+        throw AppError.forbidden('Usuario sin punto de venta asignado no puede consultar traslados');
+      }
       if (
         user.ubicacionId !== traslado.ubicacionOrigenId &&
         user.ubicacionId !== traslado.ubicacionDestinoId
@@ -615,12 +619,13 @@ export class TrasladoService {
 
     // Aislamiento de sede para vendedores sin permVerOtrosPuntos
     if (user.rol !== 'ADMIN' && !user.permisos.permVerOtrosPuntos) {
-      if (user.ubicacionId) {
-        where.OR = [
-          { ubicacionOrigenId: user.ubicacionId },
-          { ubicacionDestinoId: user.ubicacionId },
-        ];
+      if (!user.ubicacionId) {
+        throw AppError.forbidden('Usuario sin punto de venta asignado no puede consultar traslados');
       }
+      where.OR = [
+        { ubicacionOrigenId: user.ubicacionId },
+        { ubicacionDestinoId: user.ubicacionId },
+      ];
     }
 
     return prisma.traslado.findMany({
