@@ -19,7 +19,7 @@ interface LineaResolucion {
   lineaId: number;
   sku: string;
   nombreProducto: string;
-  cantidadPendiente: number; // Enviada - Recibida
+  cantidadPendiente: number;
   tipo: TipoResolucionNovedad | '';
   cantidad: number;
   notas: string;
@@ -74,7 +74,17 @@ export const ResolucionNovedadModal = ({ traslado, isOpen, onClose, onSuccess }:
   };
 
   const handleSubmit = async () => {
-    // Validar que todas las líneas con pendiente tengan tipo y cantidad válidos
+    // Punto 4: validación estricta de cantidad <= pendiente
+    const lineasConExceso = lineas.filter(
+      (l) => l.cantidadPendiente > 0 && l.cantidad > l.cantidadPendiente
+    );
+    if (lineasConExceso.length > 0) {
+      setApiError(
+        'La cantidad a resolver no puede superar la cantidad pendiente en ninguna línea.'
+      );
+      return;
+    }
+
     const lineasInvalidas = lineas.filter(
       (l) => l.cantidadPendiente > 0 && (!l.tipo || l.cantidad <= 0)
     );
@@ -111,7 +121,7 @@ export const ResolucionNovedadModal = ({ traslado, isOpen, onClose, onSuccess }:
 
   const totalesPendientes = lineas.reduce((acc, l) => acc + l.cantidadPendiente, 0);
   const resueltas = lineas.filter(
-    (l) => l.cantidadPendiente > 0 && l.tipo && l.cantidad > 0
+    (l) => l.cantidadPendiente > 0 && l.tipo && l.cantidad > 0 && l.cantidad <= l.cantidadPendiente
   ).length;
   const totalLineasPendientes = lineas.filter((l) => l.cantidadPendiente > 0).length;
 
@@ -134,7 +144,10 @@ export const ResolucionNovedadModal = ({ traslado, isOpen, onClose, onSuccess }:
               <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h2 id="modal-resolucion-title" className="text-xl font-black text-slate-900 dark:text-white">
+              <h2
+                id="modal-resolucion-title"
+                className="text-xl font-black text-slate-900 dark:text-white font-display"
+              >
                 Resolver Novedad de Traslado
               </h2>
               <p className="text-xs text-slate-500 mt-1">
@@ -173,12 +186,15 @@ export const ResolucionNovedadModal = ({ traslado, isOpen, onClose, onSuccess }:
           <div className="space-y-3">
             {lineas.map((l) => {
               const tienePendiente = l.cantidadPendiente > 0;
+              const excedeCantidad = tienePendiente && l.cantidad > l.cantidadPendiente;
               return (
                 <div
                   key={l.lineaId}
                   className={`p-3 rounded-xl border ${
                     tienePendiente
-                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40'
+                      ? excedeCantidad
+                        ? 'bg-red-50/40 dark:bg-red-950/20 border-red-300/60 dark:border-red-800/40'
+                        : 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40'
                       : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800/40 opacity-60'
                   }`}
                 >
@@ -236,8 +252,17 @@ export const ResolucionNovedadModal = ({ traslado, isOpen, onClose, onSuccess }:
                           }
                           disabled={isPending}
                           aria-label={`Cantidad a resolver de ${l.nombreProducto}`}
-                          className="w-full p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-xs text-right font-mono disabled:opacity-50"
+                          className={`w-full p-2 rounded-lg border text-xs text-right font-mono disabled:opacity-50 ${
+                            excedeCantidad
+                              ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800/60 text-red-800 dark:text-red-300'
+                              : 'bg-white dark:bg-slate-800 border-slate-200/60 dark:border-slate-700/60'
+                          }`}
                         />
+                        {excedeCantidad && (
+                          <p className="text-[10px] text-red-500 mt-1">
+                            Máx: {l.cantidadPendiente}
+                          </p>
+                        )}
                       </div>
                       <div className="md:col-span-5">
                         <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-1">

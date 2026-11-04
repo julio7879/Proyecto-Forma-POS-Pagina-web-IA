@@ -21,6 +21,7 @@ interface LineaRecepcion {
   cantidadEnviada: number;
   recibidaBuena: number;
   recibidaDanada: number;
+  excedenteReportado: number; // NUEVO (RN-TRA-09)
 }
 
 export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }: Props) => {
@@ -29,7 +30,6 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
   const [observaciones, setObservaciones] = useState('');
   const [lineas, setLineas] = useState<LineaRecepcion[]>([]);
 
-  // Sincronizar líneas al abrir el modal
   useEffect(() => {
     if (traslado && isOpen) {
       setLineas(
@@ -38,8 +38,9 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
           sku: l.sku,
           nombreProducto: l.nombreProducto,
           cantidadEnviada: l.cantidadEnviada,
-          recibidaBuena: l.cantidadEnviada, // por defecto: todas buenas
+          recibidaBuena: l.cantidadEnviada,
           recibidaDanada: 0,
+          excedenteReportado: 0,
         }))
       );
       setObservaciones('');
@@ -47,24 +48,27 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
     }
   }, [traslado, isOpen]);
 
-  // Cálculos de detección de novedades
   const totalEnviado = lineas.reduce((acc, l) => acc + l.cantidadEnviada, 0);
   const totalBuenas = lineas.reduce((acc, l) => acc + l.recibidaBuena, 0);
   const totalDanadas = lineas.reduce((acc, l) => acc + l.recibidaDanada, 0);
+  const totalExcedente = lineas.reduce((acc, l) => acc + l.excedenteReportado, 0);
   const totalRecibido = totalBuenas + totalDanadas;
   const hayFaltante = totalRecibido < totalEnviado;
   const hayDanadas = totalDanadas > 0;
-  const hayNovedad = hayFaltante || hayDanadas;
+  const hayExcedente = totalExcedente > 0;
+  const hayNovedad = hayFaltante || hayDanadas || hayExcedente;
   const requiereObservacion = hayNovedad;
 
-  // Validar que ninguna línea supere lo enviado
-  const lineaInvalida = lineas.some((l) => l.recibidaBuena + l.recibidaDanada > l.cantidadEnviada);
+  // Permitir que la suma buena+dañada <= enviada
+  const lineaInvalida = lineas.some(
+    (l) => l.recibidaBuena + l.recibidaDanada > l.cantidadEnviada
+  );
 
   if (!isOpen || !traslado) return null;
 
   const handleCantidadChange = (
     lineaId: number,
-    campo: 'recibidaBuena' | 'recibidaDanada',
+    campo: 'recibidaBuena' | 'recibidaDanada' | 'excedenteReportado',
     value: string
   ) => {
     const num = Math.max(0, Math.min(parseInt(value) || 0, 999999));
@@ -72,8 +76,11 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
       prev.map((l) => {
         if (l.lineaId !== lineaId) return l;
         const nueva = { ...l, [campo]: num };
-        // Ajustar el otro campo si la suma excede la cantidad enviada
-        if (nueva.recibidaBuena + nueva.recibidaDanada > nueva.cantidadEnviada) {
+        // Ajuste automático si la suma buena+dañada excede enviada
+        if (
+          (campo === 'recibidaBuena' || campo === 'recibidaDanada') &&
+          nueva.recibidaBuena + nueva.recibidaDanada > nueva.cantidadEnviada
+        ) {
           if (campo === 'recibidaBuena') {
             nueva.recibidaDanada = Math.max(0, nueva.cantidadEnviada - num);
           } else {
@@ -87,7 +94,7 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
 
   const handleSubmit = async () => {
     if (requiereObservacion && !observaciones.trim()) {
-      setApiError('Debe ingresar observaciones cuando hay faltantes o unidades dañadas.');
+      setApiError('Debe ingresar observaciones cuando hay faltantes, dañadas o excedentes.');
       return;
     }
     if (lineaInvalida) {
@@ -103,10 +110,13 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
           lineaId: l.lineaId,
           recibidaBuena: l.recibidaBuena,
           recibidaDanada: l.recibidaDanada,
+          // Solo enviar excedente si > 0
+          ...(l.excedenteReportado > 0
+            ? { excedenteReportado: l.excedenteReportado }
+            : {}),
         })),
         observaciones: observaciones.trim() || undefined,
       };
-      // FIX: generar y pasar Idempotency-Key (RN-GEN-08)
       const idempotencyKey = crypto.randomUUID();
       await recibirTraslado(payload, idempotencyKey);
       onSuccess?.();
@@ -128,7 +138,7 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-4xl bg-white dark:bg-slate-900 border border-white/20 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-white/20 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
         {/* Encabezado */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -137,7 +147,10 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
               <PackageCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h2 id="modal-recepcion-traslado-title" className="text-xl font-black text-slate-900 dark:text-white">
+              <h2
+                id="modal-recepcion-traslado-title"
+                className="text-xl font-black text-slate-900 dark:text-white font-display"
+              >
                 Recepción de Traslado
               </h2>
               <p className="text-xs text-slate-500 mt-1">
@@ -159,8 +172,9 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
           <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 text-xs text-indigo-800 dark:text-indigo-200 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>
-              Las unidades <strong>buenas</strong> sumarán al stock vendible del punto.
-              Las unidades <strong>dañadas</strong> irán a <strong>no vendible</strong> (RN-TRA-08).
+              Las unidades <strong>buenas</strong> suman al stock vendible del punto.
+              Las <strong>dañadas</strong> van a no vendible. Los <strong>excedentes</strong> abren
+              novedad para resolución (RN-TRA-08 / RN-TRA-09).
             </span>
           </div>
         </div>
@@ -177,41 +191,24 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
             <table className="w-full text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60">
                 <tr className="text-left">
-                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px]">
-                    SKU
-                  </th>
-                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px]">
-                    Producto
-                  </th>
-                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] text-right">
-                    Enviado
-                  </th>
-                  <th className="px-3 py-2 font-bold text-emerald-700 dark:text-emerald-400 uppercase text-[10px] text-right w-24">
-                    Buenas
-                  </th>
-                  <th className="px-3 py-2 font-bold text-red-700 dark:text-red-400 uppercase text-[10px] text-right w-24">
-                    Dañadas
-                  </th>
-                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] text-right w-20">
-                    Total
-                  </th>
+                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px]">SKU</th>
+                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px]">Producto</th>
+                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] text-right">Enviado</th>
+                  <th className="px-3 py-2 font-bold text-emerald-700 dark:text-emerald-400 uppercase text-[10px] text-right w-20">Buenas</th>
+                  <th className="px-3 py-2 font-bold text-red-700 dark:text-red-400 uppercase text-[10px] text-right w-20">Dañadas</th>
+                  <th className="px-3 py-2 font-bold text-amber-700 dark:text-amber-400 uppercase text-[10px] text-right w-20">Excedente</th>
+                  <th className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] text-right w-16">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {lineas.map((l) => {
                   const totalLinea = l.recibidaBuena + l.recibidaDanada;
-                  const lineaOk = totalLinea === l.cantidadEnviada;
+                  const lineaOk = totalLinea === l.cantidadEnviada && l.excedenteReportado === 0;
                   return (
                     <tr key={l.lineaId} className="bg-white dark:bg-slate-900">
-                      <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">
-                        {l.sku}
-                      </td>
-                      <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                        {l.nombreProducto}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {l.cantidadEnviada}
-                      </td>
+                      <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">{l.sku}</td>
+                      <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{l.nombreProducto}</td>
+                      <td className="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300">{l.cantidadEnviada}</td>
                       <td className="px-3 py-2 text-right">
                         <input
                           type="number"
@@ -236,9 +233,20 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
                           className="w-full px-2 py-1 text-right font-mono font-bold rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-800 dark:text-red-300 disabled:opacity-50 focus:ring-2 focus:ring-red-500 outline-none"
                         />
                       </td>
+                      <td className="px-3 py-2 text-right">
+                        <input
+                          type="number"
+                          min="0"
+                          value={l.excedenteReportado}
+                          onChange={(e) => handleCantidadChange(l.lineaId, 'excedenteReportado', e.target.value)}
+                          disabled={isPending}
+                          aria-label={`Excedente reportado de ${l.nombreProducto}`}
+                          className="w-full px-2 py-1 text-right font-mono font-bold rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 disabled:opacity-50 focus:ring-2 focus:ring-amber-500 outline-none"
+                        />
+                      </td>
                       <td className={`px-3 py-2 text-right font-mono font-bold ${lineaOk ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                         {lineaOk && <CheckCircle2 className="w-3.5 h-3.5 inline mr-0.5" />}
-                        {totalLinea}
+                        {totalLinea + l.excedenteReportado}
                       </td>
                     </tr>
                   );
@@ -246,20 +254,13 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
               </tbody>
               <tfoot className="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
-                  <td colSpan={2} className="px-3 py-2 text-right font-bold text-slate-700 dark:text-slate-300">
-                    Totales:
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                    {totalEnviado}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    {totalBuenas}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono font-bold text-red-600 dark:text-red-400">
-                    {totalDanadas}
-                  </td>
-                  <td className={`px-3 py-2 text-right font-mono font-bold ${totalRecibido === totalEnviado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                    {totalRecibido}
+                  <td colSpan={2} className="px-3 py-2 text-right font-bold text-slate-700 dark:text-slate-300">Totales:</td>
+                  <td className="px-3 py-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">{totalEnviado}</td>
+                  <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{totalBuenas}</td>
+                  <td className="px-3 py-2 text-right font-mono font-bold text-red-600 dark:text-red-400">{totalDanadas}</td>
+                  <td className="px-3 py-2 text-right font-mono font-bold text-amber-600 dark:text-amber-400">{totalExcedente}</td>
+                  <td className={`px-3 py-2 text-right font-mono font-bold ${totalRecibido === totalEnviado && totalExcedente === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {totalRecibido + totalExcedente}
                   </td>
                 </tr>
               </tfoot>
@@ -276,13 +277,17 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
             <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
               {hayFaltante && '⚠️ Detectado faltante. '}
               {hayDanadas && '⚠️ Detectadas unidades dañadas. '}
-              Este traslado pasará a <strong>RECIBIDO_CON_NOVEDAD</strong> y requerirá resolución del Administrador.
+              {hayExcedente && '⚠️ Detectado excedente. '}
+              Este traslado pasará a <strong>RECIBIDO_CON_NOVEDAD</strong>.
             </p>
           )}
 
-          {/* Observaciones obligatorias si hay novedad */}
+          {/* Observaciones */}
           <div className="mt-4">
-            <label htmlFor="observaciones" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label
+              htmlFor="observaciones"
+              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+            >
               Observaciones {requiereObservacion && <span className="text-red-500">*</span>}
             </label>
             <textarea
@@ -291,7 +296,11 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
               onChange={(e) => setObservaciones(e.target.value)}
               disabled={isPending}
               rows={2}
-              placeholder={requiereObservacion ? 'Explica la novedad: faltante, daño, excedente...' : 'Observaciones (opcional)'}
+              placeholder={
+                requiereObservacion
+                  ? 'Explica la novedad: faltante, daño, excedente...'
+                  : 'Observaciones (opcional)'
+              }
               className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-xs disabled:opacity-50 resize-none"
             />
           </div>
@@ -310,7 +319,7 @@ export const RecepcionTrasladoModal = ({ traslado, isOpen, onClose, onSuccess }:
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending || lineaInvalida || totalRecibido === 0}
+            disabled={isPending || lineaInvalida || (totalRecibido === 0 && totalExcedente === 0)}
             className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-1.5 shadow-lg shadow-emerald-500/25"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar Recepción'}

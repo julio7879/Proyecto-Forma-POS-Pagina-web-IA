@@ -132,6 +132,7 @@ export interface RecepcionTrasladoDto {
     lineaId: number;
     recibidaBuena: number;
     recibidaDanada: number;
+    excedenteReportado?: number;
   }>;
   observaciones?: string;
 }
@@ -156,8 +157,9 @@ export const fetchInventario = async (filtro: InventarioFiltro = {}): Promise<In
   if (filtro.stockBajo) params.append('stockBajo', 'true');
 
   const query = params.toString();
+  // FIX: ruta sin /admin (apiClient añade /api)
   const response = await apiRequest<{ datos: InventarioDTO[] }>(
-    `/admin/inventario${query ? `?${query}` : ''}`
+    `/inventario${query ? `?${query}` : ''}`
   );
   return response.datos;
 };
@@ -166,7 +168,8 @@ export const fetchInventario = async (filtro: InventarioFiltro = {}): Promise<In
 // Funciones de Compras
 // ============================================
 export const fetchOrdenesCompra = async (): Promise<OrdenCompraDTO[]> => {
-  const response = await apiRequest<{ datos: OrdenCompraDTO[] }>('/admin/compras');
+  // FIX: /compras (sin /admin)
+  const response = await apiRequest<{ datos: OrdenCompraDTO[] }>('/compras');
   return response.datos;
 };
 
@@ -174,7 +177,8 @@ export const createOrdenCompra = async (
   payload: CrearOrdenCompraDto,
   idempotencyKey: string
 ): Promise<OrdenCompraDTO> => {
-  const response = await apiRequest<{ datos: OrdenCompraDTO }>('/admin/compras', {
+  // FIX: /compras (sin /admin)
+  const response = await apiRequest<{ datos: OrdenCompraDTO }>('/compras', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'Idempotency-Key': idempotencyKey },
@@ -187,8 +191,9 @@ export const recibirOrdenCompra = async (
   payload: RecepcionCompraDto,
   idempotencyKey: string
 ): Promise<OrdenCompraDTO> => {
+  // FIX: /compras/:id/recepcionar (sin /admin)
   const response = await apiRequest<{ datos: OrdenCompraDTO }>(
-    `/admin/compras/${compraId}/recepcionar`,
+    `/compras/${compraId}/recepcionar`,
     {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -203,7 +208,8 @@ export const recibirOrdenCompra = async (
 // ============================================
 export const fetchTraslados = async (estado?: EstadoTraslado): Promise<TrasladoDTO[]> => {
   const query = estado ? `?estado=${estado}` : '';
-  const response = await apiRequest<{ datos: TrasladoDTO[] }>(`/admin/traslados${query}`);
+  // FIX: /traslados (sin /admin)
+  const response = await apiRequest<{ datos: TrasladoDTO[] }>(`/traslados${query}`);
   return response.datos;
 };
 
@@ -211,11 +217,15 @@ export const despacharTraslado = async (
   payload: DespachoTrasladoDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  const response = await apiRequest<{ datos: TrasladoDTO }>('/admin/traslados/despachar', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers: { 'Idempotency-Key': idempotencyKey },
-  });
+  // FIX: /traslados/:id/despachar con body { lineas }
+  const response = await apiRequest<{ datos: TrasladoDTO }>(
+    `/traslados/${payload.trasladoId}/despachar`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ lineas: payload.lineas }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
   return response.datos;
 };
 
@@ -223,11 +233,18 @@ export const recibirTraslado = async (
   payload: RecepcionTrasladoDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  const response = await apiRequest<{ datos: TrasladoDTO }>('/admin/traslados/recepcionar', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers: { 'Idempotency-Key': idempotencyKey },
-  });
+  // FIX: /traslados/:id/recepcionar
+  const response = await apiRequest<{ datos: TrasladoDTO }>(
+    `/traslados/${payload.trasladoId}/recepcionar`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        lineas: payload.lineas,
+        observaciones: payload.observaciones,
+      }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
   return response.datos;
 };
 
@@ -235,10 +252,14 @@ export const resolverNovedadTraslado = async (
   payload: ResolucionNovedadDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  const response = await apiRequest<{ datos: TrasladoDTO }>('/admin/traslados/resolver-novedad', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers: { 'Idempotency-Key': idempotencyKey },
-  });
+  // FIX: /traslados/:id/resolver-novedad
+  const response = await apiRequest<{ datos: TrasladoDTO }>(
+    `/traslados/${payload.trasladoId}/resolver-novedad`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ resoluciones: payload.resoluciones }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
   return response.datos;
 };

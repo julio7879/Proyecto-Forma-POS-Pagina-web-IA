@@ -9,7 +9,8 @@ import { createOrdenCompra, CrearOrdenCompraDto } from '../services/adminService
 const compraLineaSchema = z.object({
   varianteId: z.number().int().positive('Debe seleccionar una variante'),
   cantidadPedida: z.number().int().positive('La cantidad debe ser mayor a 0'),
-  costoUnitarioCop: z.number().int().nonnegative().optional(),
+  // FIX: usar z.number().optional() y manejar NaN en el submit
+  costoUnitarioCop: z.number().int('El costo debe ser entero en COP').nonnegative().optional(),
 });
 
 const compraSchema = z.object({
@@ -63,10 +64,13 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
         lineas: data.lineas.map((l) => ({
           varianteId: l.varianteId,
           cantidadPedida: l.cantidadPedida,
-          costoUnitarioCop: l.costoUnitarioCop || undefined,
+          // FIX: manejar NaN o undefined explícitamente
+          costoUnitarioCop:
+            typeof l.costoUnitarioCop === 'number' && !Number.isNaN(l.costoUnitarioCop)
+              ? l.costoUnitarioCop
+              : undefined,
         })),
       };
-      // FIX: generar y pasar Idempotency-Key (RN-GEN-08)
       const idempotencyKey = crypto.randomUUID();
       await createOrdenCompra(payload, idempotencyKey);
       reset();
@@ -96,7 +100,10 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
         {/* Encabezado */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <h2 id="modal-compra-title" className="text-xl font-black text-slate-900 dark:text-white">
+            <h2
+              id="modal-compra-title"
+              className="text-xl font-black text-slate-900 dark:text-white font-display"
+            >
               Nueva Orden de Compra
             </h2>
             <p className="text-xs text-slate-500 mt-1">
@@ -113,7 +120,11 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-4">
+        <form
+          id="form-crear-compra"
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex-1 overflow-y-auto p-6 space-y-4"
+        >
           {apiError && (
             <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-xs text-red-800 dark:text-red-200">
               {apiError}
@@ -122,7 +133,10 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="proveedor" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label
+                htmlFor="proveedor"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+              >
                 Proveedor *
               </label>
               <input
@@ -133,12 +147,17 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                 className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-xs disabled:opacity-50"
               />
               {errors.proveedorNombre && (
-                <span className="text-xs text-red-500 mt-1 block">{errors.proveedorNombre.message}</span>
+                <span className="text-xs text-red-500 mt-1 block">
+                  {errors.proveedorNombre.message}
+                </span>
               )}
             </div>
 
             <div>
-              <label htmlFor="contacto" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label
+                htmlFor="contacto"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+              >
                 Contacto del proveedor
               </label>
               <input
@@ -152,7 +171,10 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
           </div>
 
           <div>
-            <label htmlFor="notas" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label
+              htmlFor="notas"
+              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+            >
               Notas (opcional)
             </label>
             <textarea
@@ -225,6 +247,11 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                       placeholder="Costo unitario (opcional)"
                       className="w-full p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-xs disabled:opacity-50"
                     />
+                    {errors.lineas?.[index]?.costoUnitarioCop && (
+                      <p className="text-[10px] text-rose-500 mt-1">
+                        {errors.lineas[index]?.costoUnitarioCop?.message}
+                      </p>
+                    )}
                   </div>
                   <div className="col-span-1 flex items-center justify-end">
                     <button
@@ -258,6 +285,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
           </button>
           <button
             type="submit"
+            form="form-crear-compra"
             disabled={isPending}
             className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-1.5 shadow-lg shadow-indigo-500/25"
           >
