@@ -39,9 +39,17 @@ export class UbicacionService {
             const municipio = await tx.municipioDane.findUnique({ where: { codigoDane: data.municipioDaneId } });
             if (!municipio) throw AppError.badRequest('El código DANE de municipio no existe');
 
-            // La Bodega Central no despacha web ni opera cajas
+            // RN-UBI-01 y RN-UBI-03: La Bodega Central no opera cajas (baseCajaCop = 0),
+            // pero SÍ despacha a clientes web con prioridad canónica 40.
             const creada = await tx.ubicacion.create({
-                data: data.tipo === 'CENTRAL' ? { ...data, despachaWeb: false } : data,
+                data: data.tipo === 'CENTRAL'
+                    ? {
+                        ...data,
+                        baseCajaCop: 0,
+                        despachaWeb: true,
+                        prioridadDespacho: (data.prioridadDespacho === 100 || !data.prioridadDespacho) ? 40 : data.prioridadDespacho,
+                    }
+                    : data,
             });
 
             await tx.registroAuditoria.create({
@@ -62,6 +70,11 @@ export class UbicacionService {
         return prisma.$transaction(async (tx) => {
             const existente = await tx.ubicacion.findUnique({ where: { id } });
             if (!existente) throw AppError.notFound('Ubicación no encontrada');
+
+            // RN-UBI-01: La Bodega Central es única e indestructible (no puede cambiar a PUNTO_VENTA)
+            if (existente.tipo === 'CENTRAL' && data.tipo !== undefined && data.tipo !== 'CENTRAL') {
+                throw AppError.unprocessable('La Bodega Central no puede cambiar de tipo (RN-UBI-01)');
+            }
 
             if (data.tipo === 'CENTRAL' && existente.tipo !== 'CENTRAL') {
                 const central = await tx.ubicacion.findFirst({ where: { tipo: 'CENTRAL', NOT: { id } } });
@@ -104,6 +117,9 @@ export class UbicacionService {
     /** RN-UBI-05 / MOD-02: desactivación segura (5 condiciones, atómica). */
     static async desactivar(id: number, usuarioId: number, motivo?: string) {
         return prisma.$transaction(async (tx) => {
+            // Bloqueo pesimista de fila anti-race-condition (pos-postgres-concurrency-optimizer)
+            await tx.$executeRaw`SELECT id FROM "Ubicacion" WHERE id = ${id} FOR UPDATE`;
+
             const ubicacion = await tx.ubicacion.findUnique({ where: { id } });
             if (!ubicacion) throw AppError.notFound('Ubicación no encontrada');
 

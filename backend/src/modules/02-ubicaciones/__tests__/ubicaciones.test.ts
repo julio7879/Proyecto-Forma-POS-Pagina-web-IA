@@ -24,6 +24,7 @@ const prismaMock = vi.hoisted(() => {
         sesionCaja: { count: vi.fn() },
         registroAuditoria: { create: vi.fn() },
         $transaction: vi.fn(),
+        $executeRaw: vi.fn(),
     };
     return m;
 });
@@ -81,6 +82,7 @@ describe('Módulo 02: Ubicaciones (/api/ubicaciones) RN-UBI-01..06', () => {
         prismaMock.sesionCaja.count.mockResolvedValue(0);
         prismaMock.ubicacion.update.mockResolvedValue({ ...sedeBase, activa: false, despachaWeb: false });
         prismaMock.registroAuditoria.create.mockResolvedValue({});
+        prismaMock.$executeRaw.mockResolvedValue(1);
     });
 
     it('1. POST crea una sede válida con rol ADMIN (201)', async () => {
@@ -215,5 +217,97 @@ describe('Módulo 02: Ubicaciones (/api/ubicaciones) RN-UBI-01..06', () => {
             expect.objectContaining({ where: { activa: true } }),
         );
         expect(sinToken.status).toBe(401);
+    });
+
+    it('13. POST Bodega Central se crea con baseCajaCop: 0, despachaWeb: true y prioridadDespacho: 40 (RN-UBI-01, RN-UBI-03)', async () => {
+        prismaMock.ubicacion.findFirst.mockResolvedValue(null);
+        prismaMock.municipioDane.findUnique.mockResolvedValue({ codigoDane: '54001' });
+        prismaMock.ubicacion.create.mockResolvedValue({
+            id: 1,
+            nombre: 'Bodega Central Cúcuta',
+            tipo: 'CENTRAL',
+            municipioDaneId: '54001',
+            direccion: 'Zona Industrial Lote 4',
+            despachaWeb: true,
+            prioridadDespacho: 40,
+            baseCajaCop: 0,
+        });
+
+        const res = await request(app)
+            .post('/api/ubicaciones')
+            .set('Authorization', ADMIN)
+            .send({
+                nombre: 'Bodega Central Cúcuta',
+                tipo: 'CENTRAL',
+                municipioDaneId: '54001',
+                direccion: 'Zona Industrial Lote 4',
+            });
+
+        expect(res.status).toBe(201);
+        expect(prismaMock.ubicacion.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                baseCajaCop: 0,
+                despachaWeb: true,
+                prioridadDespacho: 40,
+            }),
+        });
+    });
+
+    it('14. PUT /api/ubicaciones/:id no inyecta defaults no enviados (Zod Partial Fix)', async () => {
+        prismaMock.ubicacion.findUnique.mockResolvedValue({
+            id: 5,
+            nombre: 'Sede Antigua',
+            tipo: 'PUNTO_VENTA',
+            prioridadDespacho: 20,
+            baseCajaCop: 350000,
+            despachaWeb: false,
+        });
+        prismaMock.ubicacion.findFirst.mockResolvedValue(null);
+        prismaMock.ubicacion.update.mockResolvedValue({
+            id: 5,
+            nombre: 'Sede Renombrada',
+            tipo: 'PUNTO_VENTA',
+            prioridadDespacho: 20,
+            baseCajaCop: 350000,
+            despachaWeb: false,
+        });
+
+        const res = await request(app)
+            .put('/api/ubicaciones/5')
+            .set('Authorization', ADMIN)
+            .send({ nombre: 'Sede Renombrada' });
+
+        expect(res.status).toBe(200);
+        // Debe actualizar SOLO el nombre, sin sobreescribir prioridadDespacho ni baseCajaCop
+        expect(prismaMock.ubicacion.update).toHaveBeenCalledWith({
+            where: { id: 5 },
+            data: { nombre: 'Sede Renombrada' },
+        });
+    });
+
+    it('15. PUT /api/ubicaciones/:id rechaza degradar Bodega Central a PUNTO_VENTA (422, RN-UBI-01)', async () => {
+        prismaMock.ubicacion.findUnique.mockResolvedValue({
+            id: 1,
+            nombre: 'Bodega Central',
+            tipo: 'CENTRAL',
+        });
+
+        const res = await request(app)
+            .put('/api/ubicaciones/1')
+            .set('Authorization', ADMIN)
+            .send({ tipo: 'PUNTO_VENTA' });
+
+        expect(res.status).toBe(422);
+        expect(prismaMock.ubicacion.update).not.toHaveBeenCalled();
+    });
+
+    it('16. POST rechaza código DANE no numérico con 400', async () => {
+        const res = await request(app)
+            .post('/api/ubicaciones')
+            .set('Authorization', ADMIN)
+            .send({ ...payloadValido, municipioDaneId: 'ABCDE' });
+
+        expect(res.status).toBe(400);
+        expect(prismaMock.ubicacion.create).not.toHaveBeenCalled();
     });
 });
