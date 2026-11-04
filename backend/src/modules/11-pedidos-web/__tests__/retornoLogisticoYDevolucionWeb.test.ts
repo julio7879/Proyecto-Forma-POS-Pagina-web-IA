@@ -54,6 +54,7 @@ const prismaMock = vi.hoisted(() => {
     registroIdempotencia: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
     },
     variante: {
       findUnique: vi.fn(),
@@ -153,6 +154,7 @@ describe('Módulo 11: Retorno Logístico vs Devolución Comercial Web (RF-WEB-07
 
     prismaMock.registroIdempotencia.findUnique.mockResolvedValue(null);
     prismaMock.registroIdempotencia.create.mockResolvedValue({ id: 1 });
+    prismaMock.registroIdempotencia.upsert.mockResolvedValue({ id: 1 });
     prismaMock.festivoColombia.findMany.mockResolvedValue([]);
     prismaMock.$queryRaw.mockResolvedValue([
       {
@@ -200,6 +202,7 @@ describe('Módulo 11: Retorno Logístico vs Devolución Comercial Web (RF-WEB-07
         },
         registroIdempotencia: {
           create: vi.fn().mockResolvedValue({ id: 1 }),
+          upsert: vi.fn().mockResolvedValue({ id: 1 }),
         },
         saldoStock: {
           findMany: vi.fn().mockResolvedValue([]),
@@ -454,6 +457,7 @@ describe('Módulo 11: Retorno Logístico vs Devolución Comercial Web (RF-WEB-07
           subtotalListaLineaCop: 150000,
           descuentoProrrateadoCop: 0,
           netoPagadoLineaCop: 150000,
+          reembolsadoAcumuladoCop: 0,
           esReintegrableSnapshot: true,
           variante: { id: 501, sku: 'VES-ELEG-S' },
         },
@@ -651,6 +655,72 @@ describe('Módulo 11: Retorno Logístico vs Devolución Comercial Web (RF-WEB-07
 
       expect(res.status).toBe(422);
       expect(res.body.error.message).toMatch(/supera la cantidad disponible/i);
+    });
+
+    it('debe rechazar con 400 si se envían líneas de devolución duplicadas en el payload (H-02)', async () => {
+      const res = await request(app)
+        .post('/api/pedidos-web/200/devolucion-comercial')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Idempotency-Key', 'key-dev-dup')
+        .send({
+          ubicacionReingresoFisicoId: 1,
+          lineasDevolucion: [
+            { lineaId: 10, cantidadDevuelta: 1, condicionFisica: 'VENDIBLE' },
+            { lineaId: 10, cantidadDevuelta: 1, condicionFisica: 'VENDIBLE' },
+          ],
+          referenciaTransferenciaReembolso: 'REF-BANC-DUP',
+          motivo: 'Intento de duplicación',
+        });
+
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body.error)).toMatch(/No se permiten líneas de pedido duplicadas/i);
+    });
+
+    it('debe absorber exactamente el residuo de $1 COP al devolver la última unidad (H-06, RN-DES-09)', async () => {
+      // Línea de 3 unidades comprada por $100.000 netos
+      // 1 unidad ya fue devuelta por $33.333 (quedan 2 unidades con $66.667 de saldo)
+      const pedidoConResiduo = {
+        ...pedidoWebPagadoEntregado,
+        lineas: [
+          {
+            id: 10,
+            varianteId: 501,
+            cantidad: 3,
+            cantidadDevueltaAcum: 1, // Ya se devolvió 1
+            precioListaUnitarioCop: 40000,
+            subtotalListaLineaCop: 120000,
+            descuentoProrrateadoCop: 20000,
+            netoPagadoLineaCop: 100000, // Total neto pagado
+            reembolsadoAcumuladoCop: 33333, // Ya reembolsado
+            esReintegrableSnapshot: true,
+            variante: { id: 501, sku: 'VES-ELEG-S' },
+          },
+        ],
+      };
+
+      prismaMock.pedidoWeb.findUnique.mockResolvedValue(pedidoConResiduo);
+      prismaMock.ubicacion.findUnique.mockResolvedValue({
+        id: 1,
+        nombre: 'Bodega Central',
+        activa: true,
+        tipo: 'CENTRAL',
+      });
+
+      const res = await request(app)
+        .post('/api/pedidos-web/200/devolucion-comercial')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Idempotency-Key', 'key-dev-res')
+        .send({
+          ubicacionReingresoFisicoId: 1,
+          lineasDevolucion: [{ lineaId: 10, cantidadDevuelta: 2, condicionFisica: 'VENDIBLE' }], // Devolver las 2 restantes
+          referenciaTransferenciaReembolso: 'REF-BANC-RES',
+          motivo: 'Devolución de las dos unidades restantes',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      // Reembolso debe ser exactamente $100.000 - $33.333 = $66.667 COP (absorbiendo el residuo)
+      expect(res.body.devolucion.totalReembolsadoProductosCop).toBe(66667);
     });
   });
 });
