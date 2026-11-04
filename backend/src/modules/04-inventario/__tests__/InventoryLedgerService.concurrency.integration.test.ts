@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../../shared/infra/db.js';
 import { InventoryLedgerService } from '../InventoryLedgerService.js';
