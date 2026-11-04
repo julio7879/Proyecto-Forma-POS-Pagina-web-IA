@@ -23,6 +23,8 @@ import type {
   CotizarFleteInput,
   ListarPedidosWebQuery,
   NoPuedoDespacharInput,
+  RetornoLogisticoInput,
+  DevolucionComercialWebInput,
 } from './pedidoWeb.schema.js';
 
 export class PedidoWebService {
@@ -838,6 +840,417 @@ export class PedidoWebService {
 
         return respuesta;
       }
+    });
+  }
+  /**
+   * RF-WEB-07 / RN-WEB-23 / CA-64 / QA-020:
+   * Procesa el Retorno Logístico de un pedido contraentrega no entregado.
+   * Repone stock físico en la sede receptora y anula cobro sin restar de Ventas Netas ni contar como devolución financiera.
+   */
+  static async procesarRetornoLogistico(
+    pedidoId: number,
+    data: RetornoLogisticoInput,
+    user: UserAuthSnapshot,
+    idempotencyKey?: string
+  ) {
+    if (user.rol !== 'ADMIN') {
+      throw AppError.forbidden('Solo el Administrador puede procesar retornos logísticos (RN-ROL-03).');
+    }
+
+    const pedido = await prisma.pedidoWeb.findUnique({
+      where: { id: pedidoId },
+      include: {
+        lineas: { include: { variante: true } },
+        ubicacionAsignada: true,
+        ubicacionDespacho: true,
+      },
+    });
+
+    if (!pedido) {
+      throw AppError.notFound(`Pedido web #${pedidoId} no encontrado.`);
+    }
+
+    if (pedido.metodoPago !== 'CONTRAENTREGA') {
+      throw AppError.unprocessable(
+        `El retorno logístico solo aplica a pedidos contraentrega (RN-WEB-23, CA-64). El método actual es ${pedido.metodoPago}.`
+      );
+    }
+
+    if (pedido.estadoPedido !== 'ENVIADO') {
+      throw AppError.unprocessable(
+        `Solo pedidos en estado 'ENVIADO' pueden pasar a retorno logístico 'NO_ENTREGADO'. El estado actual es '${pedido.estadoPedido}'.`
+      );
+    }
+
+    if (pedido.estadoPago === 'PAGADO' || pedido.ventaReconocida) {
+      throw AppError.unprocessable(
+        'El retorno logístico no aplica a pedidos ya pagados o reconocidos como venta (RN-WEB-23, CA-64). Debe procesarse como Devolución Comercial Web (RF-DEV-04).'
+      );
+    }
+
+    const ubicacionReingreso = await prisma.ubicacion.findUnique({
+      where: { id: data.ubicacionReingresoId },
+    });
+    if (!ubicacionReingreso || !ubicacionReingreso.activa) {
+      throw AppError.badRequest(
+        `La ubicación de reingreso #${data.ubicacionReingresoId} no existe o está inactiva.`
+      );
+    }
+
+    // Determinar las líneas y cantidades que reingresan a stock
+    const movimientosStock: RegistrarMovimientoParams[] = [];
+    if (data.lineas && data.lineas.length > 0) {
+      for (const item of data.lineas) {
+        const linea = pedido.lineas.find((l) => l.varianteId === item.varianteId);
+        if (!linea) {
+          throw AppError.badRequest(
+            `La variante #${item.varianteId} no forma parte de las líneas del pedido web #${pedido.id}.`
+          );
+        }
+        if (item.cantidad > linea.cantidad) {
+          throw AppError.unprocessable(
+            `La cantidad a retornar (${item.cantidad}) supera la cantidad enviada (${linea.cantidad}) para la variante #${item.varianteId}.`
+          );
+        }
+
+        const afectaSaldo = item.condicion === 'VENDIBLE' ? 'FISICO' : 'NO_VENDIBLE';
+        const tipo = item.condicion === 'VENDIBLE'
+          ? 'RETORNO_LOGISTICO_WEB_VENDIBLE'
+          : 'RETORNO_LOGISTICO_WEB_NO_VENDIBLE';
+
+        movimientosStock.push({
+          varianteId: item.varianteId,
+          ubicacionId: ubicacionReingreso.id,
+          tipo,
+          cantidadConSigno: item.cantidad,
+          afectaSaldo,
+          documentoTipo: 'PEDIDO_WEB',
+          documentoId: pedido.id,
+          usuarioId: user.id,
+          motivo: data.motivo,
+        });
+      }
+    } else {
+      // Si no se especifican líneas parciales, retorna la totalidad de las líneas del pedido
+      for (const linea of pedido.lineas) {
+        movimientosStock.push({
+          varianteId: linea.varianteId,
+          ubicacionId: ubicacionReingreso.id,
+          tipo: 'RETORNO_LOGISTICO_WEB_VENDIBLE',
+          cantidadConSigno: linea.cantidad,
+          afectaSaldo: 'FISICO',
+          documentoTipo: 'PEDIDO_WEB',
+          documentoId: pedido.id,
+          usuarioId: user.id,
+          motivo: data.motivo,
+        });
+      }
+    }
+
+    // Orden canónico anti-deadlock (varianteId ASC, ubicacionId ASC) (RNF-003)
+    movimientosStock.sort((a, b) => {
+      if (a.varianteId !== b.varianteId) return a.varianteId - b.varianteId;
+      return a.ubicacionId - b.ubicacionId;
+    });
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Reingreso de stock en Kardex
+      await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosStock);
+
+      // 2. Transición del pedido a NO_ENTREGADO y ANULADO
+      const pedidoActualizado = await tx.pedidoWeb.update({
+        where: { id: pedido.id },
+        data: {
+          estadoPedido: 'NO_ENTREGADO',
+          estadoPago: 'ANULADO',
+          fechaCancelacion: new Date(),
+          motivoCancelacionNoEntrega: data.motivo,
+          tieneReservaActiva: false,
+          version: { increment: 1 },
+        },
+      });
+
+      // 3. Trazabilidad inmutable en HistorialEstadoPedidoWeb
+      await tx.historialEstadoPedidoWeb.create({
+        data: {
+          pedidoId: pedido.id,
+          estadoPedido: 'NO_ENTREGADO',
+          estadoPago: 'ANULADO',
+          usuarioId: user.id,
+          observacion: `Retorno logístico contraentrega no entregado: ${data.motivo}. Mercancía reingresada en ${ubicacionReingreso.nombre}.`,
+        },
+      });
+
+      // 4. Auditoría append-only
+      await tx.registroAuditoria.create({
+        data: {
+          usuarioId: user.id,
+          accion: 'RETORNO_LOGISTICO_WEB',
+          entidadTipo: 'PedidoWeb',
+          entidadId: String(pedido.id),
+          datosMinimos: {
+            pedidoId: pedido.id,
+            referenciaLegible: pedido.referenciaLegible,
+            ubicacionReingresoId: ubicacionReingreso.id,
+            motivo: data.motivo,
+            lineasAfectadas: movimientosStock.length,
+          },
+        },
+      });
+
+      const respuesta = {
+        ok: true,
+        mensaje: 'Retorno logístico procesado exitosamente sin distorsión de Ventas Netas (RN-WEB-23, CA-64).',
+        pedido: pedidoActualizado,
+      };
+
+      // 5. Persistencia idempotente (RN-GEN-08)
+      if (idempotencyKey) {
+        await tx.registroIdempotencia.create({
+          data: {
+            idempotencyKey,
+            usuarioId: user.id,
+            endpoint: `/api/pedidos-web/${pedidoId}/retorno-logistico`,
+            statusCode: 200,
+            responseBody: respuesta,
+          },
+        });
+      }
+
+      return respuesta;
+    });
+  }
+
+  /**
+   * RF-DEV-04 / RN-DEV-14 a 16 / RN-REP-03 / CA-65 / QA-021:
+   * Procesa la Devolución Comercial Web de prendas sobre un pedido web reconocido.
+   * Reingresa stock en la sede receptora física (ej. Bodega Central), pero imputa la deducción
+   * contable de la Venta Neta estrictamente a la sede despachadora original (ubicacionImputacionVentaId).
+   */
+  static async procesarDevolucionComercialWeb(
+    pedidoId: number,
+    data: DevolucionComercialWebInput,
+    user: UserAuthSnapshot,
+    idempotencyKey?: string
+  ) {
+    if (user.rol !== 'ADMIN') {
+      throw AppError.forbidden('Solo el Administrador puede procesar devoluciones comerciales web (RN-ROL-03).');
+    }
+
+    const pedido = await prisma.pedidoWeb.findUnique({
+      where: { id: pedidoId },
+      include: {
+        lineas: { include: { variante: { include: { producto: true } } } },
+        ubicacionAsignada: true,
+        ubicacionDespacho: true,
+      },
+    });
+
+    if (!pedido) {
+      throw AppError.notFound(`Pedido web #${pedidoId} no encontrado.`);
+    }
+
+    if (pedido.estadoPago !== 'PAGADO' && !pedido.ventaReconocida) {
+      throw AppError.unprocessable(
+        'El pedido no cuenta con pago reconocido ni venta asentada. Si fue rechazado en contraentrega, use retorno logístico (CA-64).'
+      );
+    }
+
+    if (pedido.estadoPedido !== 'ENTREGADO' && pedido.estadoPedido !== 'ENVIADO') {
+      throw AppError.unprocessable(
+        `Solo pedidos en estado 'ENTREGADO' o 'ENVIADO' pueden tramitar devolución comercial. El estado actual es '${pedido.estadoPedido}'.`
+      );
+    }
+
+    // 1. Validar plazo de 5 días hábiles desde entrega (RN-DEV-14, CA-65)
+    const fechaReferenciaEntrega = pedido.fechaEntrega ?? pedido.fechaEnvio ?? pedido.fechaCreacion;
+    const festivos = await prisma.festivoColombia.findMany({ select: { fecha: true } });
+    const festivosList = festivos.map((f) => f.fecha);
+
+    const dentroDePlazo = ColombiaTime.estaDentroDePlazoHabilesWeb(
+      fechaReferenciaEntrega,
+      festivosList,
+      5,
+      new Date()
+    );
+
+    if (!dentroDePlazo) {
+      if (!data.autorizadoFueraPlazo || !data.motivoFueraPlazo) {
+        throw AppError.unprocessable(
+          'El plazo legal de 5 días hábiles desde la entrega para devolución comercial web ha vencido (RN-DEV-14, CA-65). Requiere autorización expresa y motivo del Administrador.'
+        );
+      }
+    }
+
+    // 2. Validar sede de reingreso físico
+    const ubicacionReingreso = await prisma.ubicacion.findUnique({
+      where: { id: data.ubicacionReingresoFisicoId },
+    });
+    if (!ubicacionReingreso || !ubicacionReingreso.activa) {
+      throw AppError.badRequest(
+        `La ubicación de reingreso físico #${data.ubicacionReingresoFisicoId} no existe o está inactiva.`
+      );
+    }
+
+    // 3. Determinar sede de imputación contable (RN-REP-03, CA-65, QA-021)
+    const ubicacionImputacionVentaId = pedido.ubicacionDespachoReconocidoId ?? pedido.ubicacionAsignadaId;
+
+    // 4. Validar líneas devueltas y calcular importes en MoneyCOP (RN-GEN-04)
+    let totalReembolsadoProductosCop = 0;
+    const movimientosStock: RegistrarMovimientoParams[] = [];
+    const updatesLineas: { lineaId: number; cantidadDevuelta: number; reembolsoLineaCop: number }[] = [];
+
+    for (const item of data.lineasDevolucion) {
+      const linea = pedido.lineas.find((l) => l.id === item.lineaId);
+      if (!linea) {
+        throw AppError.badRequest(
+          `La línea #${item.lineaId} no pertenece al pedido web #${pedido.id}.`
+        );
+      }
+
+      const disponibleParaDevolver = linea.cantidad - linea.cantidadDevueltaAcum;
+      if (item.cantidadDevuelta > disponibleParaDevolver) {
+        throw AppError.unprocessable(
+          `La cantidad a devolver (${item.cantidadDevuelta}) supera la cantidad disponible (${disponibleParaDevolver}) en la línea #${linea.id}.`
+        );
+      }
+
+      // Cosméticos / No reintegrables van forzosos a NO_VENDIBLE (RN-CAT-02, RN-DEV-09, CA-31)
+      let condicionFinal = item.condicionFisica;
+      if (!linea.esReintegrableSnapshot) {
+        condicionFinal = 'NO_VENDIBLE';
+      }
+
+      // Reembolso proporcional exacto en COP sin centavos (RN-GEN-04, CA-26)
+      const reembolsoLineaCop = Math.floor((linea.netoPagadoLineaCop * item.cantidadDevuelta) / linea.cantidad);
+      totalReembolsadoProductosCop += reembolsoLineaCop;
+
+      updatesLineas.push({
+        lineaId: linea.id,
+        cantidadDevuelta: item.cantidadDevuelta,
+        reembolsoLineaCop,
+      });
+
+      const tipoMov = condicionFinal === 'VENDIBLE'
+        ? 'DEVOLUCION_COMERCIAL_WEB_VENDIBLE'
+        : 'DEVOLUCION_COMERCIAL_WEB_NO_VENDIBLE';
+
+      movimientosStock.push({
+        varianteId: linea.varianteId,
+        ubicacionId: ubicacionReingreso.id,
+        tipo: tipoMov,
+        cantidadConSigno: item.cantidadDevuelta,
+        afectaSaldo: condicionFinal === 'VENDIBLE' ? 'FISICO' : 'NO_VENDIBLE',
+        documentoTipo: 'PEDIDO_WEB',
+        documentoId: pedido.id,
+        usuarioId: user.id,
+        motivo: data.motivo,
+      });
+    }
+
+    // Orden canónico anti-deadlock (varianteId ASC, ubicacionId ASC) (RNF-003)
+    movimientosStock.sort((a, b) => {
+      if (a.varianteId !== b.varianteId) return a.varianteId - b.varianteId;
+      return a.ubicacionId - b.ubicacionId;
+    });
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Reingreso de stock en Kardex de la sede física
+      await InventoryLedgerService.registrarMovimientosBatch(tx, movimientosStock);
+
+      // 2. Actualizar acumulados de devolución por línea
+      for (const act of updatesLineas) {
+        await tx.lineaPedidoWeb.update({
+          where: { id: act.lineaId },
+          data: {
+            cantidadDevueltaAcum: { increment: act.cantidadDevuelta },
+            reembolsadoAcumuladoCop: { increment: act.reembolsoLineaCop },
+          },
+        });
+      }
+
+      // 3. Crear registro de DevolucionComercialWeb con imputación contable
+      const devolucion = await tx.devolucionComercialWeb.create({
+        data: {
+          pedidoId: pedido.id,
+          ubicacionImputacionVentaId,
+          ubicacionReingresoFisicoId: ubicacionReingreso.id,
+          registradoPorAdminId: user.id,
+          autorizadoFueraPlazo: Boolean(data.autorizadoFueraPlazo),
+          motivo: data.motivo,
+          totalReembolsadoProductosCop,
+          referenciaTransferenciaReembolso: data.referenciaTransferenciaReembolso,
+          mesNegocioColombia: ColombiaTime.toMesNegocioColombia(),
+        },
+      });
+
+      // 4. Evaluar si la totalidad del pedido fue devuelta
+      const lineasActualizadas = await tx.lineaPedidoWeb.findMany({
+        where: { pedidoId: pedido.id },
+      });
+      const todoDevuelto = lineasActualizadas.every((l) => l.cantidadDevueltaAcum >= l.cantidad);
+      const nuevoEstadoPago = todoDevuelto ? 'REEMBOLSADO' : pedido.estadoPago;
+
+      const pedidoActualizado = await tx.pedidoWeb.update({
+        where: { id: pedido.id },
+        data: {
+          estadoPago: nuevoEstadoPago,
+          referenciaReembolsoCancelacion: data.referenciaTransferenciaReembolso,
+          version: { increment: 1 },
+        },
+      });
+
+      // 5. Registrar Historial y Auditoría
+      await tx.historialEstadoPedidoWeb.create({
+        data: {
+          pedidoId: pedido.id,
+          estadoPedido: pedido.estadoPedido,
+          estadoPago: nuevoEstadoPago,
+          usuarioId: user.id,
+          observacion: `Devolución comercial procesada (${totalReembolsadoProductosCop} COP). Reingreso físico en ${ubicacionReingreso.nombre}, imputada a sede #${ubicacionImputacionVentaId}. Ref: ${data.referenciaTransferenciaReembolso}.`,
+        },
+      });
+
+      await tx.registroAuditoria.create({
+        data: {
+          usuarioId: user.id,
+          accion: 'DEVOLUCION_COMERCIAL_WEB',
+          entidadTipo: 'PedidoWeb',
+          entidadId: String(pedido.id),
+          datosMinimos: {
+            pedidoId: pedido.id,
+            devolucionId: devolucion.id,
+            ubicacionImputacionVentaId,
+            ubicacionReingresoFisicoId: ubicacionReingreso.id,
+            totalReembolsadoProductosCop,
+            referenciaTransferencia: data.referenciaTransferenciaReembolso,
+            autorizadoFueraPlazo: Boolean(data.autorizadoFueraPlazo),
+          },
+        },
+      });
+
+      const respuesta = {
+        ok: true,
+        mensaje:
+          'Devolución comercial procesada exitosamente con imputación contable a la sede despachadora (RN-DEV-14, CA-65).',
+        devolucion,
+        pedido: pedidoActualizado,
+      };
+
+      // 6. Idempotencia (RN-GEN-08)
+      if (idempotencyKey) {
+        await tx.registroIdempotencia.create({
+          data: {
+            idempotencyKey,
+            usuarioId: user.id,
+            endpoint: `/api/pedidos-web/${pedidoId}/devolucion-comercial`,
+            statusCode: 200,
+            responseBody: respuesta,
+          },
+        });
+      }
+
+      return respuesta;
     });
   }
 }

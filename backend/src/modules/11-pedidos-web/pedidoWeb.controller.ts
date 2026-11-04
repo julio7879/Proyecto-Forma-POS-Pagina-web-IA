@@ -4,8 +4,10 @@ import type { UserAuthSnapshot } from '../../shared/middlewares/authPermission.j
 import type {
   CheckoutWebInput,
   CotizarFleteInput,
+  DevolucionComercialWebInput,
   ListarPedidosWebQuery,
   NoPuedoDespacharInput,
+  RetornoLogisticoInput,
 } from './pedidoWeb.schema.js';
 import { PedidoWebService } from './pedidoWeb.service.js';
 
@@ -68,6 +70,32 @@ export class PedidoWebController {
       const body = req.body as NoPuedoDespacharInput;
       const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
       const resultado = await PedidoWebService.reportarNoPuedoDespachar(id, body, user, idempotencyKey);
+      res.status(200).json(resultado);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async procesarRetornoLogistico(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const id = Number(req.params.id);
+      const body = req.body as RetornoLogisticoInput;
+      const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      const resultado = await PedidoWebService.procesarRetornoLogistico(id, body, user, idempotencyKey);
+      res.status(200).json(resultado);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async procesarDevolucionComercial(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const id = Number(req.params.id);
+      const body = req.body as DevolucionComercialWebInput;
+      const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      const resultado = await PedidoWebService.procesarDevolucionComercialWeb(id, body, user, idempotencyKey);
       res.status(200).json(resultado);
     } catch (e) {
       next(e);
