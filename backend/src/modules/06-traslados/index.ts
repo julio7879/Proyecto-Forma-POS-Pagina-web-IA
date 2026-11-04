@@ -13,6 +13,8 @@ import {
   despacharTrasladoSchema,
   evaluarTrasladoSchema,
   listarTrasladosQuerySchema,
+  recibirTrasladoSchema,
+  resolverNovedadSchema,
   solicitarTrasladoSchema,
   trasladoIdParamSchema,
 } from './traslado.schema.js';
@@ -91,4 +93,26 @@ router.post(
   validateParams(trasladoIdParamSchema),
   validateBody(confirmarRetornoSchema),
   TrasladoController.confirmarRetorno
+);
+
+// RF-TRA-05: Recepción en punto con control de dañados y novedades (Vendedor con permiso o Admin, RN-GEN-08 Idempotente)
+router.post(
+  '/:id/recibir',
+  authenticateJWT,
+  requireRole('ADMIN', 'VENDEDOR'),
+  requirePermission('permRecibirTraslado'),
+  requireIdempotencyKey,
+  validateParams(trasladoIdParamSchema),
+  validateBody(recibirTrasladoSchema),
+  TrasladoController.recibir
+);
+
+// RF-TRA-06 / CA-10: Resolución administrativa de novedades de traslado (solo ADMIN)
+router.post(
+  '/:id/resolver-novedad',
+  authenticateJWT,
+  requireRole('ADMIN'),
+  validateParams(trasladoIdParamSchema),
+  validateBody(resolverNovedadSchema),
+  TrasladoController.resolverNovedad
 );
