@@ -14,8 +14,8 @@ import {
   X,
   ShoppingBag,
 } from 'lucide-react';
-import { PRODUCTOS_CATALOGO } from '../storefront/catalogData.js';
-import { Producto, CategoriaSlug } from '../storefront/types.js';
+import { PRODUCTOS_CATALOGO } from '../storefront/catalogData';
+import { Producto, CategoriaSlug } from '../storefront/types';
 
 interface PosCartLine {
   id: string; // varianteId
@@ -678,7 +678,7 @@ export const PosTerminalPage: React.FC = () => {
             <div className="space-y-3 mb-6">
               <button
                 type="button"
-                onClick={() => alert(`Imprimiendo comprobante térmico 80 mm para venta #${consecutivoVenta}`)}
+                onClick={() => window.print()}
                 className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:opacity-90"
               >
                 <Printer className="w-4 h-4" />
