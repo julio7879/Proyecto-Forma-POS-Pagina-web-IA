@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { AppError } from '../../shared/domain/AppError.js';
+import { ColombiaTime } from '../../shared/domain/ColombiaTime.js';
 import type { UserAuthSnapshot } from '../../shared/middlewares/authPermission.js';
 import {
   InventoryLedgerService,
@@ -97,7 +98,7 @@ export class PedidoWebService {
   /**
    * RF-WEB-03 / CA-35 / CA-36 / CA-38: Checkout Atómico y Reserva Blanda en Tienda Web.
    */
-  static async checkout(data: CheckoutWebInput, cliente: UserAuthSnapshot) {
+  static async checkout(data: CheckoutWebInput, cliente: UserAuthSnapshot, idempotencyKey?: string) {
     return prisma.$transaction(async (tx) => {
       // 1. Validar municipio destino y cobertura web (CA-37)
       const destino = await tx.municipioDane.findUnique({
@@ -224,9 +225,10 @@ export class PedidoWebService {
         excepciones
       );
 
-      // 7. Generar consecutivo legible único por año (RN-GEN-08)
+      // 7. Generar consecutivo legible único por año en Hora Colombia (RN-GEN-08, RN-GEN-05)
+      const ahora = new Date();
+      const anioActual = ColombiaTime.toFechaNegocioColombia(ahora).slice(0, 4);
       const count = await tx.pedidoWeb.count();
-      const anioActual = new Date().getFullYear();
       const consecutivoFormateado = String(count + 1).padStart(6, '0');
       const referenciaLegible = `PED-${anioActual}-${consecutivoFormateado}`;
 
@@ -261,7 +263,6 @@ export class PedidoWebService {
       const totalAPagarCop = totalNetoProductosCop + costoEnvioCop;
 
       // 9. Configurar TTL de 24 horas si el pago es por TRANSFERENCIA (RN-WEB-09, CA-39)
-      const ahora = new Date();
       const reservaExpiraEn =
         data.metodoPago === 'TRANSFERENCIA'
           ? new Date(ahora.getTime() + 24 * 60 * 60 * 1000)
@@ -350,6 +351,19 @@ export class PedidoWebService {
         },
       });
 
+      // 14. Persistir registro de idempotencia si se envió clave (RN-GEN-08)
+      if (idempotencyKey) {
+        await tx.registroIdempotencia.create({
+          data: {
+            idempotencyKey,
+            usuarioId: cliente.id,
+            endpoint: '/api/pedidos-web/checkout',
+            statusCode: 201,
+            responseBody: { ok: true, datos: pedidoCreado },
+          },
+        });
+      }
+
       return pedidoCreado;
     });
   }
@@ -384,9 +398,12 @@ export class PedidoWebService {
       throw AppError.forbidden('No tiene permiso para consultar pedidos de otros clientes.');
     }
 
-    // Aislamiento: Vendedor solo puede consultar pedidos asignados a su sede a menos que tenga permPedidosWeb
-    if (user.rol === 'VENDEDOR' && !user.permisos.permPedidosWeb) {
-      if (user.ubicacionId !== pedido.ubicacionAsignadaId) {
+    // Aislamiento territorial: Vendedor requiere permPedidosWeb y solo consulta pedidos de su sede (RN-ROL-04)
+    if (user.rol === 'VENDEDOR') {
+      if (!user.permisos.permPedidosWeb) {
+        throw AppError.forbidden('No cuenta con el permiso permPedidosWeb para operar pedidos web.');
+      }
+      if (!user.ubicacionId || user.ubicacionId !== pedido.ubicacionAsignadaId) {
         throw AppError.forbidden('No tiene permiso para consultar pedidos asignados a otras sedes.');
       }
     }
@@ -415,7 +432,10 @@ export class PedidoWebService {
     // Aislamiento por rol
     if (user.rol === 'CLIENTE') {
       where.clienteId = user.id;
-    } else if (user.rol === 'VENDEDOR' && !user.permisos.permPedidosWeb) {
+    } else if (user.rol === 'VENDEDOR') {
+      if (!user.permisos.permPedidosWeb) {
+        throw AppError.forbidden('No cuenta con el permiso permPedidosWeb para consultar pedidos web.');
+      }
       if (!user.ubicacionId) {
         throw AppError.forbidden('Vendedor sin sede asignada no puede consultar pedidos web.');
       }

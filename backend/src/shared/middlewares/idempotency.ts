@@ -29,5 +29,26 @@ export async function requireIdempotencyKey(req: Request, res: Response, next: N
     return;
   }
 
+  // Interceptar res.json para persistir la respuesta exitosa en RegistroIdempotencia (RN-GEN-08)
+  const originalJson = res.json.bind(res);
+  res.json = ((body: any) => {
+    if (res.statusCode < 400) {
+      prisma.registroIdempotencia
+        .create({
+          data: {
+            idempotencyKey,
+            usuarioId: userId,
+            endpoint: req.originalUrl || req.path,
+            statusCode: res.statusCode,
+            responseBody: body,
+          },
+        })
+        .catch((err) => {
+          console.error('Error guardando registro de idempotencia:', err);
+        });
+    }
+    return originalJson(body);
+  }) as any;
+
   next();
 }

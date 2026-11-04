@@ -15,7 +15,10 @@ export const checkoutWebSchema = z
     municipioDestinoId: z.string().trim().min(4, 'El código DANE de municipio destino debe tener al menos 4 caracteres'),
     direccionEntrega: z.string().trim().min(5, 'La dirección de entrega debe contener al menos 5 caracteres'),
     destinatarioNombre: z.string().trim().min(3, 'El nombre del destinatario debe contener al menos 3 caracteres'),
-    destinatarioTelefono: z.string().trim().min(7, 'El teléfono de contacto debe contener al menos 7 dígitos'),
+    destinatarioTelefono: z
+      .string()
+      .trim()
+      .regex(/^[0-9+ ]{7,15}$/, 'El teléfono de contacto debe contener entre 7 y 15 dígitos numéricos'),
     metodoPago: z.enum(['TRANSFERENCIA', 'CONTRAENTREGA']),
     cuponCodigo: z.string().trim().optional(),
     lineas: z.array(lineaCheckoutSchema).min(1, 'El pedido web debe contener al menos una línea'),

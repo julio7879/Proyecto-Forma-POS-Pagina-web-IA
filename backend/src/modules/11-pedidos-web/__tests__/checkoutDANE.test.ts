@@ -109,10 +109,43 @@ const usuarios: Record<number, unknown> = {
     topeDescuentoPorc: 0,
     ...permisosBase,
   },
+  20: {
+    id: 20,
+    correo: 'vendedor_sin_permiso@gmail.com',
+    rol: 'VENDEDOR',
+    ubicacionId: 1,
+    activo: true,
+    topeDescuentoPorc: 0,
+    ...permisosBase,
+    permPedidosWeb: false,
+  },
+  21: {
+    id: 21,
+    correo: 'vendedor_tienda1@gmail.com',
+    rol: 'VENDEDOR',
+    ubicacionId: 1,
+    activo: true,
+    topeDescuentoPorc: 0,
+    ...permisosBase,
+    permPedidosWeb: true,
+  },
+  22: {
+    id: 22,
+    correo: 'vendedor_tienda2@gmail.com',
+    rol: 'VENDEDOR',
+    ubicacionId: 2,
+    activo: true,
+    topeDescuentoPorc: 0,
+    ...permisosBase,
+    permPedidosWeb: true,
+  },
 };
 
 const TOKEN_CLIENTE = `Bearer ${generateToken({ userId: 10, correo: 'cliente_web@gmail.com', rol: 'CLIENTE' })}`;
 const TOKEN_OTRO_CLIENTE = `Bearer ${generateToken({ userId: 11, correo: 'otro_cliente@gmail.com', rol: 'CLIENTE' })}`;
+const TOKEN_VENDEDOR_SIN_PERMISO = `Bearer ${generateToken({ userId: 20, correo: 'vendedor_sin_permiso@gmail.com', rol: 'VENDEDOR' })}`;
+const TOKEN_VENDEDOR_TIENDA1 = `Bearer ${generateToken({ userId: 21, correo: 'vendedor_tienda1@gmail.com', rol: 'VENDEDOR' })}`;
+const TOKEN_VENDEDOR_TIENDA2 = `Bearer ${generateToken({ userId: 22, correo: 'vendedor_tienda2@gmail.com', rol: 'VENDEDOR' })}`;
 
 // Municipios DANE de prueba
 const munCucuta = {
@@ -576,6 +609,15 @@ describe('Módulo 11: Algoritmo DANE y Checkout Web (SP4-01 / RF-WEB-02, RF-WEB-
           }),
           select: expect.any(Object),
         });
+
+        // Validar registro en tabla de Idempotencia (RN-GEN-08)
+        expect(prismaMock.registroIdempotencia.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            idempotencyKey: 'idem-checkout-001',
+            usuarioId: 10,
+            statusCode: 201,
+          }),
+        });
       });
 
       it('Retorna respuesta cacheada si se envía la misma Idempotency-Key (RN-GEN-08)', async () => {
@@ -612,6 +654,80 @@ describe('Módulo 11: Algoritmo DANE y Checkout Web (SP4-01 / RF-WEB-02, RF-WEB-
 
         expect(res.status).toBe(403);
         expect(res.body.error.message).toMatch(/no tiene permiso para consultar pedidos de otros clientes/i);
+      });
+
+      it('Vendedor sin permPedidosWeb es rechazado con HTTP 403 (RN-ROL-04)', async () => {
+        const res = await request(app)
+          .get('/api/pedidos-web/500')
+          .set('Authorization', TOKEN_VENDEDOR_SIN_PERMISO);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error.message).toMatch(/permPedidosWeb/i);
+      });
+
+      it('Vendedor con permPedidosWeb no puede consultar pedidos de otra sede (HTTP 403 Aislamiento Multisede)', async () => {
+        prismaMock.pedidoWeb.findUnique.mockResolvedValue({
+          id: 501,
+          clienteId: 10,
+          ubicacionAsignadaId: 2, // Asignado a tienda 2
+        });
+
+        const res = await request(app)
+          .get('/api/pedidos-web/501')
+          .set('Authorization', TOKEN_VENDEDOR_TIENDA1); // Vendedor de tienda 1
+
+        expect(res.status).toBe(403);
+        expect(res.body.error.message).toMatch(/otras sedes/i);
+      });
+
+      it('Vendedor con permPedidosWeb puede consultar pedidos asignados a su sede', async () => {
+        prismaMock.pedidoWeb.findUnique.mockResolvedValue({
+          id: 502,
+          referenciaLegible: 'PED-2026-000502',
+          clienteId: 10,
+          ubicacionAsignadaId: 1, // Sede 1
+          estadoPedido: 'RECIBIDO',
+        });
+
+        const res = await request(app)
+          .get('/api/pedidos-web/502')
+          .set('Authorization', TOKEN_VENDEDOR_TIENDA1); // Vendedor sede 1
+
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+        expect(res.body.datos.id).toBe(502);
+      });
+    });
+
+    describe('GET /api/pedidos-web (Listado)', () => {
+      it('Vendedor sin permPedidosWeb es rechazado con HTTP 403', async () => {
+        const res = await request(app)
+          .get('/api/pedidos-web')
+          .set('Authorization', TOKEN_VENDEDOR_SIN_PERMISO);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error.message).toMatch(/permPedidosWeb/i);
+      });
+
+      it('Vendedor con permPedidosWeb filtra estrictamente por su ubicacionId', async () => {
+        prismaMock.pedidoWeb.count.mockResolvedValue(1);
+        prismaMock.pedidoWeb.findMany.mockResolvedValue([
+          { id: 601, referenciaLegible: 'PED-2026-000601', ubicacionAsignadaId: 1 },
+        ]);
+
+        const res = await request(app)
+          .get('/api/pedidos-web')
+          .set('Authorization', TOKEN_VENDEDOR_TIENDA1);
+
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+        expect(prismaMock.pedidoWeb.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              ubicacionAsignadaId: 1,
+            }),
+          })
+        );
       });
     });
   });

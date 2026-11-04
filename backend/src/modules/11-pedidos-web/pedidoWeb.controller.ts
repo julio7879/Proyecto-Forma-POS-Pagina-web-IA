@@ -30,7 +30,8 @@ export class PedidoWebController {
     try {
       const user = getAuthUser(req);
       const body = req.body as CheckoutWebInput;
-      const datos = await PedidoWebService.checkout(body, user);
+      const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      const datos = await PedidoWebService.checkout(body, user, idempotencyKey);
       res.status(201).json({ ok: true, datos });
     } catch (e) {
       next(e);
