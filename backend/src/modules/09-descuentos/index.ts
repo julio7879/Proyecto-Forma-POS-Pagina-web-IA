@@ -1,5 +1,7 @@
 import { Router } from 'express';
 
+export * from './domain/DiscountEngine.js';
+
 export const descuentosRouter = Router();
 
 // Módulo 09: Promociones por Código y Motor de Prorrateo (RF-DES)
