@@ -479,4 +479,46 @@ export class InventoryLedgerService {
       faltantes,
     };
   }
+
+  /**
+   * Marca cuarentena de despacho web para variantes en una sede específica (RN-WEB-16, CA-43).
+   * Solo afecta a la sede indicada. Aplica orden canónico anti-deadlock (RNF-003).
+   */
+  static async marcarCuarentenaDespachoWeb(
+    tx: Prisma.TransactionClient,
+    ubicacionId: number,
+    varianteIds: number[],
+    motivo: string
+  ): Promise<void> {
+    const idsOrdenados = [...new Set(varianteIds)].sort((a, b) => a - b);
+    for (const varianteId of idsOrdenados) {
+      await tx.saldoStock.updateMany({
+        where: { ubicacionId, varianteId },
+        data: {
+          bloqueadoDespachoWeb: true,
+          motivoBloqueoWeb: motivo,
+        },
+      });
+    }
+  }
+
+  /**
+   * Levanta la cuarentena de despacho web para variantes en una sede específica.
+   */
+  static async levantarCuarentenaDespachoWeb(
+    tx: Prisma.TransactionClient,
+    ubicacionId: number,
+    varianteIds: number[]
+  ): Promise<void> {
+    const idsOrdenados = [...varianteIds].sort((a, b) => a - b);
+    for (const varianteId of idsOrdenados) {
+      await tx.saldoStock.updateMany({
+        where: { ubicacionId, varianteId },
+        data: {
+          bloqueadoDespachoWeb: false,
+          motivoBloqueoWeb: null,
+        },
+      });
+    }
+  }
 }
