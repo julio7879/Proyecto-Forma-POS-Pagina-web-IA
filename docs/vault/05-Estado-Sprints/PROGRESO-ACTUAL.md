@@ -1,8 +1,8 @@
 # Tablero Vivo de Progreso y Estado de Sprints: Sistema POS + Tienda Web Forma
 
-> **Estado Actual del Proyecto:** `EN DESARROLLO ACTIVO (SPRINT 4: E-COMMERCE, CHECKOUT DANE Y LOGÍSTICA WEB)`  
-> **Última Actualización Oficial:** `4 de Noviembre de 2026 - 15:48 COT`  
-> **Hito Reciente:** Implementación y Blindaje de Retorno Logístico y Devolución Comercial Web (`SP4-06`, `RF-WEB-07`, `RF-DEV-04`, `CA-64`, `CA-65`, `QA-020`, `QA-021`) con 148 tests en verde.  
+> **Estado Actual del Proyecto:** `EN DESARROLLO ACTIVO (FASE 2 Y FASE 4 CONSOLIDADAS EN DEVELOP, ARRANQUE FASE 3 CAJA/POS)`  
+> **Última Actualización Oficial:** `4 de Noviembre de 2026 - 18:05 COT`  
+> **Hito Reciente:** Fusión exitosa en `develop` de PR #64 (`SP2-04` Recepción Traslados y Novedades), PR #61 (`SP2-07` Matriz Concurrencia Kardex) y PR #50 (`SP4-02` Worker Expiración TTL Web) con 174 tests en verde.  
 > **Documentos de Referencia:** [[PLAN-MAESTRO-SPRINTS]] | [[MATRIZ-ROLES-Y-TAREAS]] | [[Matriz-CA-01-a-CA-65]]
 
 ---
@@ -11,12 +11,12 @@
 
 | Sprint / Fase | Objetivo Central | Tareas Totales | Completadas | En Progreso / QA | Estado Semáforo |
 | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Sprint 1** | Identidad, Seguridad Híbrida, Sedes y Catálogo | 9 | 8 | 1 | 🟢 Estable (QA en curso) |
-| **Sprint 2** | Kardex Centralizado, Compras y Traslados | 8 | 3 | 2 | 🟡 En Desarrollo |
-| **Sprint 3** | Caja, Terminal POS, Descuentos y Tickets | 9 | 2 | 2 | 🟡 En Desarrollo |
-| **Sprint 4** | E-Commerce, Despachos DANE, Worker TTL y Devoluciones | 8 | 4 | 0 | 🟢 En Progreso Avanzado |
-| **Sprint 5** | Reportes Financieros, Dashboard y Auditoría Final | 6 | 0 | 0 | ⚪ Planificado |
-| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **23** | **5** | **50.0% GLOBAL** |
+| **Fase 1 (Sprint 1)** | Identidad, Seguridad Híbrida, Sedes y Catálogo | 9 | 8 | 1 | 🟢 Estable (Desarrollo completado en develop) |
+| **Fase 2 (Sprint 2)** | Kardex Centralizado, Compras y Traslados | 8 | 5 | 2 | 🟡 En Desarrollo (62.5%) |
+| **Fase 3 (Sprint 3)** | Caja, Terminal POS, Descuentos y Tickets | 9 | 2 | 2 | 🟡 En Desarrollo (22.2%) |
+| **Fase 4 (Sprint 4)** | E-Commerce, Despachos DANE, Worker TTL y Devoluciones | 8 | 5 | 1 | 🟢 Avanzado (62.5%) |
+| **Fase 5 (Sprint 5)** | Reportes Financieros, Dashboard y Auditoría Final | 6 | 0 | 0 | ⚪ Planificado (0.0%) |
+| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **25** | **6** | **54.3% GLOBAL** |
 
 ---
 
@@ -57,15 +57,15 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 **Objetivo:** Motor de consistencia de stock con Kardex append-only, órdenes canónicas anti-deadlock, compras simplificadas a proveedores y traslados seguros entre sedes.
 
 - [x] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 Merged - Issue #11 Closed / QA Issue #16)*
-- [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`). *(Issue #36)*
+- [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`). *(Issue #36 PENDIENTE DE DESARROLLO)*
 - [x] **SP2-03 (Julio):** Traslados entre Ubicaciones y Flujo Retornando a Central (`RF-TRA-01 a 04`). *(PR #44 FUSIONADO en `develop` - Issue #37 Closed / QA Issue #45)*
-- [x] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`). *(PR #64 Abierto y Auditado al 100% con 164 tests - Issue #38 / QA Issue #65)*
+- [x] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`). *(PR #64 FUSIONADO en `develop` - Issue #38 Closed / QA Issue #65)*
 - [ ] **SP2-05 (Exneider):** Panel Administrativo de Inventario, Compras y Traslados en AdminLayout (`RF-INV-02`). *(PR #60 Abierto - Cambios Solicitados - Issue #39)*
 - [ ] **SP2-06 (Sofía):** Prototipos UX/UI de Inventarios, Compras y Recepción con Novedades (`ARQ-06`). *(Issue #40)*
-- [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Traslados e Idempotencia (`QA-003`). *(Issue #41)*
+- [x] **SP2-07 (Duvan):** QA Gate Sprint 2: Matriz de Concurrencia, Traslados e Idempotencia (`QA-003`). *(PR #61 FUSIONADO en `develop` - Issue #41)*
 - [ ] **SP2-08 (Thomas):** Interfaz y Modal de Recepción de Traslados en Punto de Venta con Checklist de Novedades y Dañados (`RF-TRA-05`, `CA-07`, `CA-08`). *(Issue #58)*
 
-**Progreso del Sprint 2:** `37.5%` [████░░░░░░] (3/8 tareas completadas: SP2-01, SP2-03 y SP2-04)
+**Progreso del Sprint 2:** `62.5%` [██████░░░░] (5/8 tareas completadas en `develop`: SP2-01, SP2-03, SP2-04, SP2-07)
 
 ---
 
@@ -90,15 +90,15 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 **Objetivo:** E-Commerce público, algoritmo determinista de despacho DANE, worker TTL, cuarentena de SKU, custodia en Central y retornos logísticos.
 
 - [x] **SP4-01 (Julio):** Algoritmo Determinista DANE y Checkout Atómico de Pedidos Web (`RF-WEB-02`, `RF-WEB-03`, `CA-35 a 39`). *(PR #47 Merged en `develop` - Issue #46 / QA Issue #48)*
-- [x] **SP4-02 (Julio):** Worker Periódico de Expiración de Reservas TTL por Transferencia Vencida (`RF-WEB-04`, `CA-39`, `QA-015`). *(PR #50 Abierto y Verificado al 100% - Issue #49 / QA Issue #63)*
+- [x] **SP4-02 (Julio):** Worker Periódico de Expiración de Reservas TTL por Transferencia Vencida (`RF-WEB-04`, `CA-39`, `QA-015`). *(PR #50 FUSIONADO en `develop` - Issue #49 Closed / QA Issue #63)*
 - [x] **SP4-03 (Julio):** Flujo «No puedo despachar» con Flag `bloqueadoDespachoWeb` y Custodia Central (`RF-WEB-06`, `CA-43`, `CA-62`). *(PR #53 FUSIONADO en `develop` - Issue #52 Closed / QA Issue #54)*
 - [ ] **SP4-04 (Thomas):** Plantilla HTML de Correo Transaccional de Confirmación de Pedido y Seguimiento (`NotificacionPort`).
 - [ ] **SP4-05 (Yeimer):** Integración `TelegramNotificationAdapter` y Envío de Alertas Web.
-- [x] **SP4-06 (Julio):** Retorno Logístico vs Devolución Comercial Web (`RF-WEB-07`, `RF-DEV-04`, `CA-64`, `CA-65`, `QA-020`, `QA-021`). *(PR #56 Abierto y Auditado al 100% con 148 tests - Issue #55 / QA Issue #57)*
+- [x] **SP4-06 (Julio):** Retorno Logístico vs Devolución Comercial Web (`RF-WEB-07`, `RF-DEV-04`, `CA-64`, `CA-65`, `QA-020`, `QA-021`). *(PR #56 FUSIONADO en `develop` - Issue #55 Closed / QA Issue #57)*
 - [ ] **SP4-07 (Exneider):** Construcción de Tienda Web en `StorefrontLayout` (Checkout DANE y Mis Pedidos).
 - [ ] **SP4-08 (Duvan):** QA Gate Sprint 4: Certificación de Reservas Web, Retornos Logísticos y Custodia Central.
 
-**Progreso del Sprint 4:** `50.0%` [█████░░░░░] (4/8 tareas concluidas y probadas: SP4-01, SP4-02, SP4-03 y SP4-06)
+**Progreso del Sprint 4:** `62.5%` [██████░░░░] (5/8 tareas concluidas y probadas: SP4-01, SP4-02, SP4-03 y SP4-06)
 
 ---
 
@@ -110,5 +110,5 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 
 ## 4. Consolidado General del Proyecto
 - **Total Entregables Principales:** 46 tareas.
-- **Entregables Concluidos / Auditados:** 23 hitos superados.
-- **Porcentaje de Avance Global del Proyecto:** `50.0%` [█████░░░░░]
+- **Entregables Concluidos / Auditados:** 25 hitos superados.
+- **Porcentaje de Avance Global del Proyecto:** `54.3%` [██████░░░░]
