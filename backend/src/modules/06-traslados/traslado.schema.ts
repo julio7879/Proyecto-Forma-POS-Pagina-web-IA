@@ -78,6 +78,47 @@ export const confirmarRetornoSchema = z.object({
   version: z.number().int().positive().optional(),
 });
 
+export const lineaRecepcionSchema = z.object({
+  lineaId: z.number().int().positive('El id de la línea debe ser un entero positivo'),
+  cantidadRecibidaBuena: z.number().int().min(0, 'La cantidad recibida en buen estado no puede ser negativa'),
+  cantidadRecibidaDanada: z.number().int().min(0, 'La cantidad recibida dañada no puede ser negativa'),
+  excedenteReportado: z.number().int().min(0, 'El excedente reportado no puede ser negativo').optional().default(0),
+});
+
+export const recibirTrasladoSchema = z
+  .object({
+    observacion: z.string().trim().optional(),
+    version: z.number().int().positive().optional(),
+    lineas: z.array(lineaRecepcionSchema).min(1, 'Debe incluir al menos una línea para recibir el traslado'),
+  })
+  .refine(
+    (data) => {
+      const ids = data.lineas.map((l) => l.lineaId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten líneas duplicadas en la recepción del traslado', path: ['lineas'] }
+  );
+
+export const lineaResolucionNovedadSchema = z.object({
+  lineaTrasladoId: z.number().int().positive('El id de la línea de traslado debe ser un entero positivo'),
+  tipoResolucion: z.enum([
+    'LLEGO_A_PUNTO',
+    'RETORNO_A_CENTRAL',
+    'PERDIDA_AJUSTE',
+    'EXCEDENTE_INCORPORADO_DESDE_CENTRAL',
+    'EXCEDENTE_DESCARTADO_O_DEVUELTO',
+  ]),
+  cantidadResuelta: z.number().int().positive('La cantidad resuelta debe ser un entero positivo mayor a 0'),
+  motivo: z.string().trim().min(5, 'El motivo de resolución debe tener al menos 5 caracteres'),
+  responsable: z.string().trim().optional(),
+});
+
+export const resolverNovedadSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    resoluciones: z.array(lineaResolucionNovedadSchema).min(1, 'Debe incluir al menos una resolución de novedad'),
+  });
+
 export const trasladoIdParamSchema = z.object({
   id: z.coerce.number().int().positive('El parámetro id debe ser un entero positivo'),
 });
@@ -112,4 +153,8 @@ export type EvaluarTrasladoInput = z.infer<typeof evaluarTrasladoSchema>;
 export type DespacharTrasladoInput = z.infer<typeof despacharTrasladoSchema>;
 export type CancelarTrasladoInput = z.infer<typeof cancelarTrasladoSchema>;
 export type ConfirmarRetornoInput = z.infer<typeof confirmarRetornoSchema>;
+export type LineaRecepcionInput = z.infer<typeof lineaRecepcionSchema>;
+export type RecibirTrasladoInput = z.infer<typeof recibirTrasladoSchema>;
+export type LineaResolucionNovedadInput = z.infer<typeof lineaResolucionNovedadSchema>;
+export type ResolverNovedadInput = z.infer<typeof resolverNovedadSchema>;
 export type ListarTrasladosQuery = z.infer<typeof listarTrasladosQuerySchema>;
