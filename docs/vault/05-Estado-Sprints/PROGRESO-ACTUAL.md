@@ -70,12 +70,12 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 **Objetivo:** Motor de consistencia de stock con Kardex append-only, órdenes canónicas anti-deadlock, compras simplificadas a proveedores y traslados seguros entre sedes.
 
 - [x] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 Merged - Issue #11 Closed / QA Issue #16)*
-- [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`).
-- [ ] **SP2-03 (Julio):** Traslados entre Ubicaciones (Solicitud, Aprobación, Despacho y Novedades de Recepción).
-- [ ] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`).
-- [ ] **SP2-05 (Exneider):** Módulo de Administración de Inventarios y Alertas de Stock Bajo.
-- [ ] **SP2-06 (Sofía):** Prototipo UX/UI del Módulo de Inventarios y Recepción de Mercancía.
-- [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Simulación de Deadlocks e Idempotencia (`QA-003`).
+- [ ] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`). *(Issue #36)*
+- [ ] **SP2-03 (Julio):** Traslados entre Ubicaciones y Flujo Retornando a Central (`RF-TRA-01 a 04`). *(Issue #37)*
+- [ ] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`). *(Issue #38)*
+- [ ] **SP2-05 (Exneider):** Panel Administrativo de Inventario, Compras y Traslados en AdminLayout (`RF-INV-02`). *(Issue #39)*
+- [ ] **SP2-06 (Sofía):** Prototipos UX/UI de Inventarios, Compras y Recepción con Novedades (`ARQ-06`). *(Issue #40)*
+- [ ] **SP2-07 (Duvan):** QA Gate Sprint 2: Pruebas de Concurrencia, Traslados e Idempotencia (`QA-003`). *(Issue #41)*
 
 **Progreso del Sprint 2:** `14%` [█░░░░░░░░░] (1/7 tareas completadas - Motor Kardex y Orden Canónico)
 
