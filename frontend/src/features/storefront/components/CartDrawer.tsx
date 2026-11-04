@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, ShoppingBag, Trash2, ArrowRight, ShieldCheck, Plus, Minus } from 'lucide-react';
-import { CartItem } from '../types.js';
+import { CartItem } from '../types';
 
 interface CartDrawerProps {
   isOpen: boolean;

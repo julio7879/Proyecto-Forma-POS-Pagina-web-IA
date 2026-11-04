@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles, ShieldCheck, Truck, ArrowRight, Layers, MapPin } from 'lucide-react';
-import { CategoriaSlug, SedeInfo } from '../types.js';
+import { CategoriaSlug, SedeInfo } from '../types';
 
 interface BentoGridHeroProps {
   sedeActiva: SedeInfo;
