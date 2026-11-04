@@ -17,10 +17,10 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | Integrante | Rol en el Proyecto | Estado Actual | Tareas Activas / Asignadas |
 | :--- | :--- | :--- | :--- |
 | **Julio** | Líder de Proyecto & Backend Senior | **Sprint 1 Blindado · Motor Kardex Fusionado** | **PR #18 fusionado en `develop`** (blindaje hotfix SP1-02). **PR #12 fusionado en `develop`** (motor Kardex con orden canónico y bloqueo pesimista). Tarea de QA en Issue #16.<br>**Issue #23 (`SP3-03`):** Asignado para construir el motor canónico de descuentos `DiscountEngine.ts`. |
-| **Thomas** | Junior Backend & Frontend (Tareas Acotadas) | **Activo en Fase 3** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`).<br>**Issue #22 (`SP3-05`):** Asignado para diseñar la plantilla de Comprobante POS 80 mm y recibo digital Telegram. |
-| **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio.<br>**Issue #24 (`[QA] PR #17`):** Certificación funcional de vistas de login, registro Ley 1581 y Navbar Storefront. |
-| **Sofía** | Diseñadora UX/UI & Prototipado (0% Código) | En Progreso | **Issue #6 (`SP1-06`):** Prototipos POS Mostrador (`CA-53`).<br>**Issue #8 (`SP1-08`):** Guía de diseño y sistema visual multi-portal en Figma. |
-| **Exneider** | Frontend Lead (React + Tailwind) | Activo en Catálogo Storefront | **PR #17:** Aprobado técnicamente (`APPROVED`, commit `fc1ca63`) y en QA Gate con Duvan (Issue #24).<br>**Issue #25 (`SP1-09`):** Asignado para construir el Catálogo de Productos, filtros por categoría y selector de variantes en `CatalogPage.tsx`. |
+| **Thomas** | Junior Backend & Frontend (Tareas Acotadas) | **Aprobado en Fase 3 (QA Gate)** | **PR #13 fusionado en `develop`** e Issue #4 cerrado (`Done`).<br>**PR #26 (`SP3-05`):** Aprobado técnicamente (`APPROVED`). Rama corregida de `main` a `develop`. Asignado a Duvan en Issue #28. |
+| **Duvan** | QA Lead & Auditor de Criterios CA | En Progreso | **Issue #7 (`SP1-07`):** Fase 1 de diseño de matriz de pruebas.<br>**Issue #15 (`[QA] PR #13`):** Certificación del catálogo semilla de Thomas.<br>**Issue #16 (`[QA] PR #12`):** Certificación del motor Kardex de Julio.<br>**Issue #24 (`[QA] PR #17`):** Certificación funcional de vistas de login, registro Ley 1581 y Navbar Storefront.<br>**Issue #28 (`[QA] PR #26`):** Certificación del Comprobante POS 80 mm y Telegram de Thomas.<br>**Issue #32 (`[QA] PR #29`):** Certificación de la Guía de Diseño y Bento Grid Storefront de Sofía.<br>**Issue #33 (`[QA] PR #30`):** Certificación de la Terminal POS Mostrador CA-53 de Sofía. |
+| **Sofía** | Diseñadora UX/UI & Prototipado | **Aprobada en SP1-08 y SP1-06 (QA Gate)** | **PR #29 (`SP1-08`):** Aprobado técnicamente (`APPROVED`). Guía de diseño, tokens `docs/design/`, `BentoGridHero` y `CartDrawer` desacoplados. QA Gate en Issue #32.<br>**PR #30 (`SP1-06`):** Aprobado técnicamente (`APPROVED`). Terminal POS Mostrador (`CA-53`) con cero scroll vertical, atajos F12/F2/Esc y cálculo de vuelto. QA Gate en Issue #33. |
+| **Exneider** | Frontend Lead (React + Tailwind) | En Ajustes de Catálogo | **PR #17:** Fusionado en `develop`.<br>**PR #27 (`SP1-09`):** En revisión técnica (`Changes Requested`) con 2 ajustes bloqueantes guiados paso a paso (React hooks y privacidad de stock web `RN-WEB-02`). |
 | **Yeimer** | Backend Junior (Soporte) | Listo para Construcción | **Issue #3 (`SP1-03`):** Enriquecido con contrato DoR completo de `MOD-02`, DTOs de validación Zod y las 5 condiciones de `RN-UBI-05`. |
 
 ---
@@ -38,6 +38,10 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 | **2026-11-03** | **Blindaje Hotfix SP1-02:** Incremento atómico en `intentosFallidosLogin` (anti race conditions), protección anti-takeover en Google OAuth para staff (`403 Forbidden`) y JWT HS256 con secret >= 32 chars. 19 tests en verde. | Julio | PR #18 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-03** | **Hito SP2-01 (Adelanto Sprint 2):** Motor Kardex Centralizado (`InventoryLedgerService.ts`), Bloqueo pesimista `SELECT ... FOR UPDATE`, Orden canónico anti-deadlock `varianteId ASC` (`RNF-003`), worker de reservas blindado contra pedidos en custodia (`tieneReservaActiva`) y serialización BigInt JSON. 59 tests en verde. | Julio | PR #12 Fusionado en `develop` | **COMPLETADO [x]** |
 | **2026-11-03** | **Aprobación Técnica SP1-05:** PR #17 de Exneider aprobado (`APPROVED`, commit `fc1ca63`), 27/27 casos resueltos, suite Vitest 8/8 y compilación con Tailwind impecable. Sincronización con `develop` completada sin conflictos. | Exneider / Julio | Aprobado (QA Gate en Issue #24) | **LISTO PARA QA [x]** |
+| **2026-11-03** | **Aprobación Técnica SP3-05:** PR #26 de Thomas aprobado (`APPROVED`), rama corregida de `main` a `develop`, 7/7 tests en verde y leyenda legal `RN-VTA-10` verificada. Gate de QA creado en Issue #28. | Thomas / Julio | Aprobado | **LISTO PARA QA [x]** |
+| **2026-11-03** | **Auditoría Técnica SP1-09:** PR #27 de Exneider auditado con 2 bloqueantes guiados con código drop-in (Rules of Hooks en modal y ocultamiento de stock numérico `RN-WEB-02`). | Exneider / Julio | Changes Requested | **EN AJUSTES** |
+| **2026-11-04** | **Aprobación Técnica SP1-08:** PR #29 de Sofía aprobado (`APPROVED`), tokens en `docs/design/`, `BentoGridHero.tsx`, `CartDrawer.tsx`, 16/16 tests Vitest en verde, cero conflictos con `develop` ni con Exneider. Gate de QA creado en Issue #32. | Sofía / Julio | Aprobado | **LISTO PARA QA [x]** |
+| **2026-11-04** | **Aprobación Técnica SP1-06:** PR #30 de Sofía aprobado (`APPROVED`), Terminal POS Mostrador ergonómica (`CA-53`) con `h-screen overflow-hidden`, atajos F12/F2/Esc, teclado numérico táctil 3x4, cambio/vuelto destacado y 13/13 tests Vitest en verde. Gate de QA creado en Issue #33. | Sofía / Julio | Aprobado | **LISTO PARA QA [x]** |
 
 ---
 
@@ -79,7 +83,7 @@ tags: [progreso, sprints, checkpoint, hitos, equipo, gitflow]
 **Objetivo:** Operación de caja física, comprobantes térmicos, motor canónico de descuentos y terminal de cobro.
 
 - [ ] **SP3-03 (Julio):** Motor Canónico de Descuentos y Prorrateo Exacto (`DiscountEngine.ts`, `RN-DES-09`, `CA-19` a `25`). *(Issue #23)*
-- [ ] **SP3-05 (Thomas):** Plantilla de Comprobante de Venta POS (80 mm) y Recibo Digital Telegram (`RN-VTA-09`, `10`). *(Issue #22)*
+- [ ] **SP3-05 (Thomas):** Plantilla de Comprobante de Venta POS (80 mm) y Recibo Digital Telegram (`RN-VTA-09`, `10`). *(PR #26 Aprobado técnicamente - Issue #28 en manos de Duvan)*
 
 ---
 
