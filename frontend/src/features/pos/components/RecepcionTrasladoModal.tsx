@@ -6,11 +6,11 @@ import {
   AlertTriangle,
   Loader2,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import {
   RecepcionTrasladoModalProps,
   RecepcionTrasladoPayloadDTO,
-  LineaRecepcionDTO,
 } from '../types/traslados.types';
 
 export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
@@ -20,10 +20,10 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
   onSubmit,
   isSubmitting,
 }) => {
-  // Estado local del conteo físico indexado por SKU
+  // Estado local del conteo físico indexado por lineaId (number)
   const [conteoLineas, setConteoLineas] = useState<
     Record<
-      string,
+      number,
       { recibidaBuena: number; recibidaDanada: number; excedenteReportado: number }
     >
   >({});
@@ -33,12 +33,12 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
   useEffect(() => {
     if (isOpen && traslado) {
       const inicial: Record<
-        string,
+        number,
         { recibidaBuena: number; recibidaDanada: number; excedenteReportado: number }
       > = {};
 
       traslado.lineas.forEach((linea) => {
-        inicial[linea.sku] = {
+        inicial[linea.id] = {
           recibidaBuena: linea.cantidadEnviada,
           recibidaDanada: 0,
           excedenteReportado: 0,
@@ -52,33 +52,27 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
 
   if (!isOpen || !traslado) return null;
 
-  // Actualizador seguro de valores numéricos enteros >= 0
+  // Actualizador seguro de valores numéricos enteros >= 0 y con tope anti-desbordamiento (máx 99.999)
   const handleInputChange = (
-    sku: string,
+    lineaId: number,
     campo: 'recibidaBuena' | 'recibidaDanada' | 'excedenteReportado',
     rawValor: string
   ) => {
     const valorNum = parseInt(rawValor, 10);
-    const valorLimpio = isNaN(valorNum) || valorNum < 0 ? 0 : valorNum;
+    const valorLimpio = isNaN(valorNum) || valorNum < 0 ? 0 : Math.min(valorNum, 99999);
 
     setConteoLineas((prev) => ({
       ...prev,
-      [sku]: {
-        ...prev[sku],
+      [lineaId]: {
+        ...(prev[lineaId] || { recibidaBuena: 0, recibidaDanada: 0, excedenteReportado: 0 }),
         [campo]: valorLimpio,
       },
     }));
   };
 
   // Cálculos por línea y validación CA-07
-  const lineasProcesadas: (LineaRecepcionDTO & {
-    productoNombre: string;
-    talla: string;
-    color: string;
-    cantidadEnviada: number;
-    esInvalida: boolean;
-  })[] = traslado.lineas.map((linea) => {
-    const conteo = conteoLineas[linea.sku] || {
+  const lineasProcesadas = traslado.lineas.map((linea) => {
+    const conteo = conteoLineas[linea.id] || {
       recibidaBuena: linea.cantidadEnviada,
       recibidaDanada: 0,
       excedenteReportado: 0,
@@ -90,6 +84,7 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
     const esInvalida = sumaEntrantes > linea.cantidadEnviada;
 
     return {
+      lineaId: linea.id,
       sku: linea.sku,
       productoNombre: linea.productoNombre,
       talla: linea.talla,
@@ -108,24 +103,25 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
     (l) => l.faltante > 0 || l.recibidaDanada > 0 || l.excedenteReportado > 0
   );
 
-  const estadoFinal = hayNovedades ? 'RECIBIDO_CON_NOVEDAD' : 'RECIBIDO';
-  const puedeEnviar = !hayLineasInvalidas && !isSubmitting;
+  // Cumplimiento estricto de RN-TRA-09: Observación mandatoria de mín 3 caracteres si hay novedades
+  const observacionInvalida = hayNovedades && observaciones.trim().length < 3;
+  const puedeEnviar = !hayLineasInvalidas && !observacionInvalida && !isSubmitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!puedeEnviar) return;
 
+    // DTO limpio y estricto hacia el backend (recibirTrasladoSchema)
     const payload: RecepcionTrasladoPayloadDTO = {
-      numeroGuia: traslado.numeroGuia,
-      estadoFinal,
+      trasladoId: traslado.id,
+      version: traslado.version,
       lineas: lineasProcesadas.map((l) => ({
-        sku: l.sku,
-        recibidaBuena: l.recibidaBuena,
-        recibidaDanada: l.recibidaDanada,
-        excedenteReportado: l.excedenteReportado,
-        faltante: l.faltante,
+        lineaId: l.lineaId,
+        cantidadRecibidaBuena: l.recibidaBuena,
+        cantidadRecibidaDanada: l.recibidaDanada,
+        excedenteReportado: l.excedenteReportado > 0 ? l.excedenteReportado : 0,
       })),
-      observaciones: observaciones.trim() || undefined,
+      observacion: observaciones.trim() || undefined,
     };
 
     await onSubmit(payload);
@@ -199,7 +195,7 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
             <div className="space-y-3">
               {lineasProcesadas.map((linea) => (
                 <div
-                  key={linea.sku}
+                  key={linea.lineaId}
                   className={`p-4 rounded-2xl border transition-all ${
                     linea.esInvalida
                       ? 'border-rose-400 bg-rose-50/50 dark:bg-rose-950/30'
@@ -222,65 +218,68 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Inputs de Conteo y Resultados */}
+                  {/* Inputs de Conteo con altura táctil min-h-[48px] (CA-53) */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                     <div>
                       <label
-                        htmlFor={`buena-${linea.sku}`}
+                        htmlFor={`buena-${linea.lineaId}`}
                         className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1"
                       >
                         Recibida Buena:
                       </label>
                       <input
-                        id={`buena-${linea.sku}`}
+                        id={`buena-${linea.lineaId}`}
                         type="number"
                         min="0"
+                        max="99999"
                         value={linea.recibidaBuena}
                         onChange={(e) =>
-                          handleInputChange(linea.sku, 'recibidaBuena', e.target.value)
+                          handleInputChange(linea.lineaId, 'recibidaBuena', e.target.value)
                         }
                         disabled={isSubmitting}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 font-mono text-sm font-bold text-slate-900 dark:text-white text-center focus:border-blue-500 focus:outline-none"
+                        className="w-full min-h-[48px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 font-mono tabular-nums text-sm font-bold text-slate-900 dark:text-white text-center focus:border-blue-500 focus:outline-none"
                       />
                     </div>
 
                     <div>
                       <label
-                        htmlFor={`danada-${linea.sku}`}
+                        htmlFor={`danada-${linea.lineaId}`}
                         className="block text-[11px] font-semibold text-rose-700 dark:text-rose-400 mb-1"
                       >
                         Recibida Dañada:
                       </label>
                       <input
-                        id={`danada-${linea.sku}`}
+                        id={`danada-${linea.lineaId}`}
                         type="number"
                         min="0"
+                        max="99999"
                         value={linea.recibidaDanada}
                         onChange={(e) =>
-                          handleInputChange(linea.sku, 'recibidaDanada', e.target.value)
+                          handleInputChange(linea.lineaId, 'recibidaDanada', e.target.value)
                         }
                         disabled={isSubmitting}
-                        className="w-full px-3 py-2 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/30 dark:bg-rose-950/40 font-mono text-sm font-bold text-rose-700 dark:text-rose-300 text-center focus:border-rose-500 focus:outline-none"
+                        className="w-full min-h-[48px] px-3 py-2 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/30 dark:bg-rose-950/40 font-mono tabular-nums text-sm font-bold text-rose-700 dark:text-rose-300 text-center focus:border-rose-500 focus:outline-none"
                       />
                     </div>
 
                     <div>
                       <label
-                        htmlFor={`excedente-${linea.sku}`}
+                        htmlFor={`excedente-${linea.lineaId}`}
                         className="block text-[11px] font-semibold text-blue-700 dark:text-blue-400 mb-1"
                       >
                         Sobrante / Excedente:
                       </label>
                       <input
-                        id={`excedente-${linea.sku}`}
+                        id={`excedente-${linea.lineaId}`}
                         type="number"
                         min="0"
+                        max="99999"
                         value={linea.excedenteReportado}
                         onChange={(e) =>
-                          handleInputChange(linea.sku, 'excedenteReportado', e.target.value)
+                          handleInputChange(linea.lineaId, 'excedenteReportado', e.target.value)
                         }
                         disabled={isSubmitting}
-                        className="w-full px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/30 dark:bg-blue-950/40 font-mono text-sm font-bold text-blue-700 dark:text-blue-300 text-center focus:border-blue-500 focus:outline-none"
+                        className="w-full min-h-[48px] px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/30 dark:bg-blue-950/40 font-mono tabular-nums text-sm font-bold text-blue-700 dark:text-blue-300 text-center focus:border-blue-500 focus:outline-none"
                       />
                     </div>
 
@@ -289,7 +288,7 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
                         Faltante Calculado:
                       </label>
                       <div
-                        className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-center ${
+                        className={`w-full min-h-[48px] px-3 py-2 rounded-xl border font-mono tabular-nums text-sm font-bold flex items-center justify-center ${
                           linea.faltante > 0
                             ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200'
                             : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400'
@@ -312,13 +311,20 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
             </div>
           </div>
 
-          {/* Observaciones */}
+          {/* Observaciones (RN-TRA-09: Mandatoria ante novedades) */}
           <div className="space-y-1.5">
             <label
               htmlFor="observaciones-traslado"
               className="block text-xs font-semibold text-slate-700 dark:text-slate-300"
             >
-              Observaciones de Entrega {hayNovedades && <span className="text-amber-600 font-bold">(Recomendado por novedades)</span>}:
+              Observación de Recepción:{' '}
+              {hayNovedades ? (
+                <span className="text-amber-700 dark:text-amber-400 font-bold">
+                  (Obligatoria ante novedades, mín. 3 caracteres — RN-TRA-09) *
+                </span>
+              ) : (
+                <span className="text-slate-500 font-normal">(Opcional)</span>
+              )}
             </label>
             <textarea
               id="observaciones-traslado"
@@ -326,9 +332,23 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               disabled={isSubmitting}
-              placeholder="Ej: Se reciben prendas sin bolsa de empaque individual, transportadora entregó caja averiada..."
-              className="w-full p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+              placeholder={
+                hayNovedades
+                  ? 'Describe detalladamente el motivo de la avería, faltante o excedente (mín. 3 caracteres)...'
+                  : 'Opcional: detalles adicionales de la entrega o transportadora...'
+              }
+              className={`w-full p-3 rounded-2xl border bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none transition-colors ${
+                observacionInvalida
+                  ? 'border-amber-500 focus:border-amber-600 ring-1 ring-amber-500/30'
+                  : 'border-slate-300 dark:border-slate-700 focus:border-blue-500'
+              }`}
             />
+            {observacionInvalida && (
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5" />
+                <span>La observación es obligatoria ante novedades para generar el acta (mín. 3 caracteres).</span>
+              </p>
+            )}
           </div>
 
           {/* Pie de Acciones */}
@@ -337,7 +357,7 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-semibold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="min-h-[48px] px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-semibold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               Cancelar
             </button>
@@ -345,7 +365,7 @@ export const RecepcionTrasladoModal: React.FC<RecepcionTrasladoModalProps> = ({
             <button
               type="submit"
               disabled={!puedeEnviar}
-              className="min-h-[46px] px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-500 active:scale-98 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              className="min-h-[48px] px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-500 active:scale-98 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
             >
               {isSubmitting ? (
                 <>

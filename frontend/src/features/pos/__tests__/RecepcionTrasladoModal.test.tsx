@@ -4,11 +4,15 @@ import { RecepcionTrasladoModal } from '../components/RecepcionTrasladoModal';
 import { TrasladoEnTransitoDTO } from '../types/traslados.types';
 
 const mockTraslado: TrasladoEnTransitoDTO = {
+  id: 12,
   numeroGuia: 'TRS-2026-000012',
+  version: 1,
   sedeOrigen: 'Bodega Central',
   sedeDestino: 'Sede Medellín - Centro',
   lineas: [
     {
+      id: 101,
+      varianteId: 501,
       sku: 'CAM-OVR-NEG-M',
       productoNombre: 'Camiseta Oversize',
       talla: 'M',
@@ -116,7 +120,7 @@ describe('SP2-08 - RecepcionTrasladoModal', () => {
     ).toBeInTheDocument();
   });
 
-  it('5. Dispara onSubmit con el payload correcto y las observaciones ingresadas', async () => {
+  it('5. Dispara onSubmit con el payload DTO compatible con Zod y backend (MOD-06)', async () => {
     render(
       <RecepcionTrasladoModal
         isOpen={true}
@@ -128,25 +132,74 @@ describe('SP2-08 - RecepcionTrasladoModal', () => {
     );
 
     // Conforme: 10 buenas, 0 dañadas, 0 sobrantes
-    const inputObservaciones = screen.getByPlaceholderText(/Se reciben prendas sin bolsa/i);
-    fireEvent.change(inputObservaciones, { target: { value: 'Caja recibida sellada.' } });
+    const inputObservacion = screen.getByPlaceholderText(/detalles adicionales/i);
+    fireEvent.change(inputObservacion, { target: { value: 'Caja recibida sellada.' } });
 
     const btnSubmit = screen.getByRole('button', { name: /Confirmar Recepción/i });
     fireEvent.click(btnSubmit);
 
     expect(mockOnSubmit).toHaveBeenCalledWith({
-      numeroGuia: 'TRS-2026-000012',
-      estadoFinal: 'RECIBIDO',
+      trasladoId: 12,
+      version: 1,
       lineas: [
         {
-          sku: 'CAM-OVR-NEG-M',
-          recibidaBuena: 10,
-          recibidaDanada: 0,
+          lineaId: 101,
+          cantidadRecibidaBuena: 10,
+          cantidadRecibidaDanada: 0,
           excedenteReportado: 0,
-          faltante: 0,
         },
       ],
-      observaciones: 'Caja recibida sellada.',
+      observacion: 'Caja recibida sellada.',
+    });
+  });
+
+  it('6. Bloquea la confirmación si hay novedades y la observación tiene menos de 3 caracteres (RN-TRA-09)', async () => {
+    render(
+      <RecepcionTrasladoModal
+        isOpen={true}
+        onClose={mockOnClose}
+        traslado={mockTraslado}
+        onSubmit={mockOnSubmit}
+        isSubmitting={false}
+      />
+    );
+
+    // Generamos novedad reportando 1 prenda dañada (buenas = 9, dañadas = 1)
+    const inputBuena = screen.getByLabelText(/Recibida Buena:/i);
+    fireEvent.change(inputBuena, { target: { value: '9' } });
+    const inputDanada = screen.getByLabelText(/Recibida Dañada:/i);
+    fireEvent.change(inputDanada, { target: { value: '1' } });
+
+    // Botón debe estar deshabilitado porque la observación está vacía (RN-TRA-09)
+    const btnSubmit = screen.getByRole('button', { name: /Confirmar Recepción/i });
+    expect(btnSubmit).toBeDisabled();
+    expect(
+      screen.getByText(/La observación es obligatoria ante novedades para generar el acta/i)
+    ).toBeInTheDocument();
+
+    // Ingresamos solo 2 caracteres -> sigue deshabilitado
+    const inputObservacion = screen.getByPlaceholderText(/Describe detalladamente el motivo/i);
+    fireEvent.change(inputObservacion, { target: { value: 'ok' } });
+    expect(btnSubmit).toBeDisabled();
+
+    // Ingresamos observación válida (>= 3 caracteres) -> se habilita
+    fireEvent.change(inputObservacion, { target: { value: 'Prenda con costura rota' } });
+    expect(btnSubmit).toBeEnabled();
+
+    fireEvent.click(btnSubmit);
+
+    expect(mockOnSubmit).toHaveBeenCalledWith({
+      trasladoId: 12,
+      version: 1,
+      lineas: [
+        {
+          lineaId: 101,
+          cantidadRecibidaBuena: 9,
+          cantidadRecibidaDanada: 1,
+          excedenteReportado: 0,
+        },
+      ],
+      observacion: 'Prenda con costura rota',
     });
   });
 });
