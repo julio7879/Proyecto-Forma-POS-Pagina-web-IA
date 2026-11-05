@@ -6,6 +6,7 @@ import {
   Boxes,
   ShoppingCart,
   Truck,
+  PackageCheck,
 } from 'lucide-react';
 
 interface NavItem {
@@ -21,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/inventario', label: 'Kardex e Inventario', icon: Boxes },
   { to: '/admin/compras', label: 'Compras Proveedor', icon: ShoppingCart },
   { to: '/admin/traslados', label: 'Traslados y Novedades', icon: Truck },
+  { to: '/admin/despachos-web', label: 'Despachos Web', icon: PackageCheck },
 ];
 
 /**

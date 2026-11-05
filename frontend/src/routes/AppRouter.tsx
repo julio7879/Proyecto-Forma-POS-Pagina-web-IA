@@ -1,3 +1,4 @@
+// frontend/src/routes/AppRouter.tsx
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { StorefrontLayout } from '../layouts/StorefrontLayout';
@@ -13,6 +14,9 @@ const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashb
 const AdminInventarioPage = lazy(() => import('../features/admin/pages/AdminInventarioPage'));
 const AdminComprasPage = lazy(() => import('../features/admin/pages/AdminComprasPage'));
 const AdminTrasladosPage = lazy(() => import('../features/admin/pages/AdminTrasladosPage'));
+
+// Nueva vista de Admin: Despachos Web (SP4-08)
+const AdminDespachosWebPage = lazy(() => import('../features/admin/pages/AdminDespachosWebPage'));
 
 // Lazy load de los formularios de auth (que son componentes con export nombrado)
 const LoginForm = lazy(() =>
@@ -55,6 +59,7 @@ export const AppRouter: React.FC = () => {
             <Route path="inventario" element={<AdminInventarioPage />} />
             <Route path="compras" element={<AdminComprasPage />} />
             <Route path="traslados" element={<AdminTrasladosPage />} />
+            <Route path="despachos-web" element={<AdminDespachosWebPage />} />
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
 
