@@ -21,6 +21,7 @@ import { descuentosRouter } from './modules/09-descuentos/index.js';
 import { devolucionesCambiosRouter } from './modules/10-devoluciones-cambios/index.js';
 import { pedidosWebRouter } from './modules/11-pedidos-web/index.js';
 import { reportesAuditoriaRouter } from './modules/12-reportes-auditoria/index.js';
+import { alertasRouter } from './modules/13-alertas/index.js';
 
 export const app = express();
 
@@ -38,7 +39,7 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// 12 Módulos de Dominio (Vertical Slices)
+// Módulos de Dominio (Vertical Slices)
 app.use('/api/auth', authRouter);
 app.use('/api/identidad', identidadRouter);
 app.use('/api/ubicaciones', ubicacionesRouter);
@@ -52,6 +53,7 @@ app.use('/api/descuentos', descuentosRouter);
 app.use('/api/devoluciones', devolucionesCambiosRouter);
 app.use('/api/pedidos-web', pedidosWebRouter);
 app.use('/api/reportes', reportesAuditoriaRouter);
+app.use('/api/alertas', alertasRouter);
 
 // Manejador centralizado de errores
 app.use(errorHandler);
