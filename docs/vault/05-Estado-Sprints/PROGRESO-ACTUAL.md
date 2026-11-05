@@ -80,7 +80,7 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [ ] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout con Integración de Cobro y Comprobante (`RF-POS-01`). *(Issue #62 Asignado)*
 - [ ] **SP3-07 (Sofía):** Prototipos Catálogo Público Web y Checkout 3 Pasos.
 - [ ] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja.
-- [ ] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(Issue #59 Asignado)*
+- [ ] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(PR #75 AUDITADO - Calificación 9.3/10 Aprobado para QA y Merge - QA Gate Issue #83 en manos de Duvan)*
 
 **Progreso del Sprint 3:** `55.6%` [█████░░░░░] (5/9 tareas completadas y fusionadas en `develop`)
 
