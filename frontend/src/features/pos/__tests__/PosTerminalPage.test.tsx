@@ -1,104 +1,296 @@
+// frontend/src/features/pos/__tests__/PosTerminalPage.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { PosTerminalPage } from '../PosTerminalPage';
+import * as posService from '../services/posService';
 
-describe('PosTerminalPage Component - Ergonomía Táctil CA-53 y Cobro Rápido (SP1-06)', () => {
+// Mock del servicio POS
+vi.mock('../services/posService', () => ({
+  searchProduct: vi.fn(),
+  submitSale: vi.fn(),
+}));
+
+// Datos mock para búsqueda
+const MOCK_PRODUCTOS: posService.ProductoBusquedaDTO[] = [
+  {
+    productoId: 1,
+    nombre: 'Chaqueta Denim Artesanal',
+    categoriaNombre: 'Ropa',
+    categoriaSlug: 'ropa',
+    esCosmeticoUsoPersonal: false,
+    variantes: [
+      {
+        varianteId: 101,
+        sku: 'ROP-DNM-001-M',
+        talla: 'M',
+        color: 'Azul Índigo',
+        precioUnitarioCop: 189000,
+        stockDisponible: 5,
+      },
+    ],
+  },
+  {
+    productoId: 4,
+    nombre: 'Crema Hidratante Botánica 100ml',
+    categoriaNombre: 'Cosméticos',
+    categoriaSlug: 'cosmeticos',
+    esCosmeticoUsoPersonal: true,
+    variantes: [
+      {
+        varianteId: 401,
+        sku: 'COS-CRM-004-100ML',
+        talla: '100ml',
+        color: 'Neutro',
+        precioUnitarioCop: 45000,
+        stockDisponible: 10,
+      },
+    ],
+  },
+];
+
+// Ticket mock de respuesta
+const MOCK_VENTA_RESPONSE = {
+  ticket: {
+    nombreTienda: 'Forma Store',
+    nombreSede: 'Sede Medellín',
+    consecutivo: 'MED-000042',
+    fechaHora: '04/11/2026, 10:00 a.m.',
+    cajeroNombre: 'Exneider',
+    clienteNombre: 'Consumidor Final',
+    items: [],
+    subtotalCop: 189000,
+    descuentoTotalCop: 0,
+    ivaDiscriminadoCop: 30176,
+    totalNetoCop: 189000,
+    metodoPago: 'EFECTIVO' as const,
+    montoRecibidoCop: 200000,
+    cambioCop: 11000,
+  },
+  consecutivo: 'MED-000042',
+};
+
+describe('PosTerminalPage - SP3-06 (Terminal POS Refactorizado)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.print = vi.fn();
   });
 
-  it('renderiza la estructura ergonómica a dos columnas (60% catálogo táctil y 40% carrito de cobro)', () => {
+  it('renderiza la estructura ergonómica a dos columnas (CA-53)', () => {
     render(<PosTerminalPage />);
 
-    // Buscador predictivo táctil (Atajo F2)
     expect(
       screen.getByPlaceholderText(/Escanear código de barras/i)
     ).toBeInTheDocument();
-
-    // Filtros de categoría en píldoras táctiles (role tab)
-    expect(screen.getByRole('tab', { name: 'Todas' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Ropa' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Cosméticos' })).toBeInTheDocument();
-
-    // Encabezado del carrito con cliente asignado
     expect(screen.getByText(/Consumidor Final/i)).toBeInTheDocument();
-
-    // Botón principal de cobro con atajo F12
     expect(
       screen.getByRole('button', { name: /COBRAR \(F12\)/i })
     ).toBeInTheDocument();
+    expect(screen.getByText(/Carrito de venta vacío/i)).toBeInTheDocument();
   });
 
-  it('muestra el total a pagar y desglose en JetBrains Mono conforme a RN-GEN-04', () => {
+  it('realiza búsqueda server-side al escribir (debounce 300ms)', async () => {
+    vi.mocked(posService.searchProduct).mockResolvedValueOnce(MOCK_PRODUCTOS);
+
     render(<PosTerminalPage />);
 
-    expect(screen.getByText(/TOTAL A PAGAR/i)).toBeInTheDocument();
-    // Verifica que el desglose de subtotal e IVA esté presente
-    expect(screen.getByText(/Subtotal:/i)).toBeInTheDocument();
-    expect(screen.getByText(/IVA \(19% discriminado\):/i)).toBeInTheDocument();
+    const searchInput = screen.getByPlaceholderText(/Escanear código de barras/i);
+    fireEvent.change(searchInput, { target: { value: 'chaqueta' } });
+
+    await waitFor(
+      () => {
+        expect(posService.searchProduct).toHaveBeenCalledWith('chaqueta');
+      },
+      { timeout: 1000 }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
+    });
   });
 
-  it('permite filtrar el catálogo táctil por categoría', () => {
+  it('agrega productos al carrito al hacer clic en el resultado de búsqueda', async () => {
+    vi.mocked(posService.searchProduct).mockResolvedValueOnce(MOCK_PRODUCTOS);
+
     render(<PosTerminalPage />);
 
-    const tabCosmeticos = screen.getByRole('tab', { name: 'Cosméticos' });
-    fireEvent.click(tabCosmeticos);
+    const searchInput = screen.getByPlaceholderText(/Escanear código de barras/i);
+    fireEvent.change(searchInput, { target: { value: 'chaqueta' } });
 
-    // Debe mostrar la Crema Hidratante Botánica con su badge de no reintegrable
-    const itemsCrema = screen.getAllByText(/Crema Hidratante Botánica 100ml/i);
-    expect(itemsCrema.length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Uso personal/i).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
+    });
+
+    const productButton = screen
+      .getByText('Chaqueta Denim Artesanal')
+      .closest('button');
+    fireEvent.click(productButton!);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Carrito de venta vacío/i)).not.toBeInTheDocument();
+    });
   });
 
-  it('abre el Modal de Cobro Rápido al pulsar el botón COBRAR o presionar F12', () => {
+  it('abre el modal de cobro y muestra los botones rápidos de billetes', async () => {
+    vi.mocked(posService.searchProduct).mockResolvedValueOnce(MOCK_PRODUCTOS);
+
     render(<PosTerminalPage />);
 
-    const botonCobrar = screen.getByRole('button', { name: /COBRAR \(F12\)/i });
-    fireEvent.click(botonCobrar);
+    const searchInput = screen.getByPlaceholderText(/Escanear código de barras/i);
+    fireEvent.change(searchInput, { target: { value: 'chaqueta' } });
+    await waitFor(() => {
+      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
+    });
 
-    // Verificación de apertura del Frame 3 (Modal de Cobro Rápido)
-    expect(screen.getByText(/Cobro de Venta/i)).toBeInTheDocument();
+    const productButton = screen
+      .getByText('Chaqueta Denim Artesanal')
+      .closest('button');
+    fireEvent.click(productButton!);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Carrito de venta vacío/i)).not.toBeInTheDocument();
+    });
+
+    const cobrarBtn = screen.getByRole('button', { name: /COBRAR \(F12\)/i });
+    fireEvent.click(cobrarBtn);
+
+    expect(screen.getByText(/Cobro de Venta Mostrador/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /EFECTIVO/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /TRANSFERENCIA/i })).toBeInTheDocument();
-
-    // Verificación de botones rápidos de billetes colombianos
     expect(screen.getByRole('button', { name: '+$100k' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '+$50k' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Exacto' })).toBeInTheDocument();
   });
 
-  it('calcula automáticamente el cambio / vuelto al ingresar efectivo recibido', () => {
+  it('confirma la venta con Idempotency-Key y abre el modal de éxito', async () => {
+    vi.mocked(posService.searchProduct).mockResolvedValueOnce(MOCK_PRODUCTOS);
+    vi.mocked(posService.submitSale).mockResolvedValueOnce(MOCK_VENTA_RESPONSE);
+
     render(<PosTerminalPage />);
 
-    // Abrir modal de cobro
-    const botonCobrar = screen.getByRole('button', { name: /COBRAR \(F12\)/i });
-    fireEvent.click(botonCobrar);
-
-    // Pulsar botón de billete de +$100k tres veces
-    const billete100k = screen.getByRole('button', { name: '+$100k' });
-    fireEvent.click(billete100k);
-    fireEvent.click(billete100k);
-    fireEvent.click(billete100k);
-
-    // Debe mostrar la sección de CAMBIO / VUELTO A ENTREGAR
-    expect(screen.getByText(/CAMBIO \/ VUELTO A ENTREGAR/i)).toBeInTheDocument();
-
-    // Confirmar venta
-    const botonConfirmar = screen.getByRole('button', {
-      name: /CONFIRMAR VENTA E IMPRIMIR \(Enter\)/i,
+    // 1. Agregar producto
+    const searchInput = screen.getByPlaceholderText(/Escanear código de barras/i);
+    fireEvent.change(searchInput, { target: { value: 'chaqueta' } });
+    await waitFor(() => {
+      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
     });
-    expect(botonConfirmar).not.toBeDisabled();
-    fireEvent.click(botonConfirmar);
+    const productButton = screen
+      .getByText('Chaqueta Denim Artesanal')
+      .closest('button');
+    fireEvent.click(productButton!);
 
-    // Verificación de apertura del Frame 4 (Modal de Venta Exitosa) con consecutivo dinámico
-    expect(
-      screen.getByText(/¡Venta #MED-00\d+ Completada con Éxito!/i)
-    ).toBeInTheDocument();
+    // 2. Abrir modal de cobro
+    await waitFor(() => {
+      expect(screen.queryByText(/Carrito de venta vacío/i)).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /COBRAR \(F12\)/i }));
 
-    // Pulsar imprimir ticket 80 mm debe invocar window.print()
-    const botonImprimir = screen.getByRole('button', { name: /Imprimir Ticket 80mm/i });
-    fireEvent.click(botonImprimir);
-    expect(window.print).toHaveBeenCalledTimes(1);
+    // 3. Confirmar venta
+    await waitFor(() => {
+      expect(screen.getByText(/Cobro de Venta Mostrador/i)).toBeInTheDocument();
+    });
+    const confirmBtn = screen.getByRole('button', {
+      name: /CONFIRMAR VENTA E IMPRIMIR/i,
+    });
+    fireEvent.click(confirmBtn);
+
+    // 4. Verificar llamada a submitSale con Idempotency-Key
+    await waitFor(() => {
+      expect(posService.submitSale).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lineas: expect.arrayContaining([
+            expect.objectContaining({ varianteId: 101, cantidad: 1 }),
+          ]),
+        }),
+        expect.any(String) // Idempotency-Key
+      );
+    });
+
+    // 5. Verificar que el modal de éxito muestra el consecutivo real
+    // (usamos getAllByText porque el ticket oculto también contiene el consecutivo)
+    await waitFor(() => {
+      expect(screen.getAllByText(/MED-000042/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('deshabilita el botón de confirmar durante isSubmitting (RN-GEN-08)', async () => {
+    vi.mocked(posService.searchProduct).mockResolvedValueOnce(MOCK_PRODUCTOS);
+
+    let resolveSubmit: (value: any) => void;
+    const pendingPromise = new Promise((resolve) => {
+      resolveSubmit = resolve;
+    });
+    vi.mocked(posService.submitSale).mockReturnValueOnce(pendingPromise as any);
+
+    render(<PosTerminalPage />);
+
+    // 1. Agregar producto
+    const searchInput = screen.getByPlaceholderText(/Escanear código de barras/i);
+    fireEvent.change(searchInput, { target: { value: 'chaqueta' } });
+    await waitFor(() => {
+      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByText('Chaqueta Denim Artesanal').closest('button')!
+    );
+
+    // 2. Abrir modal y confirmar
+    await waitFor(() => {
+      expect(screen.queryByText(/Carrito de venta vacío/i)).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /COBRAR \(F12\)/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Cobro de Venta Mostrador/i)).toBeInTheDocument();
+    });
+
+    const confirmBtn = screen.getByRole('button', {
+      name: /CONFIRMAR VENTA E IMPRIMIR/i,
+    });
+    fireEvent.click(confirmBtn);
+
+    // 3. El botón debe estar deshabilitado y mostrar "Procesando..."
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Procesando/i })).toBeDisabled();
+    });
+
+    // 4. Resolver la promesa dentro de act() para evitar warnings
+    await act(async () => {
+      resolveSubmit!(MOCK_VENTA_RESPONSE);
+    });
+  });
+
+  it('muestra error del backend si submitSale falla', async () => {
+    vi.mocked(posService.searchProduct).mockResolvedValueOnce(MOCK_PRODUCTOS);
+    vi.mocked(posService.submitSale).mockRejectedValueOnce(
+      new Error('Stock insuficiente en la variante')
+    );
+
+    render(<PosTerminalPage />);
+
+    // Agregar producto
+    const searchInput = screen.getByPlaceholderText(/Escanear código de barras/i);
+    fireEvent.change(searchInput, { target: { value: 'chaqueta' } });
+    await waitFor(() => {
+      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByText('Chaqueta Denim Artesanal').closest('button')!
+    );
+
+    // Abrir modal y confirmar
+    await waitFor(() => {
+      expect(screen.queryByText(/Carrito de venta vacío/i)).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /COBRAR \(F12\)/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Cobro de Venta Mostrador/i)).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: /CONFIRMAR VENTA E IMPRIMIR/i })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Stock insuficiente/i)).toBeInTheDocument();
+    });
   });
 });

@@ -1,127 +1,127 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+// frontend/src/features/pos/PosTerminalPage.tsx
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ScanBarcode,
   Search,
   Trash2,
   Plus,
   Minus,
-  CreditCard,
-  Banknote,
   Printer,
   Send,
   CheckCircle2,
   User,
   X,
   ShoppingBag,
+  Loader2,
 } from 'lucide-react';
-import { PRODUCTOS_CATALOGO } from '../storefront/catalogData';
-import { Producto, CategoriaSlug } from '../storefront/types';
+import {
+  searchProduct,
+  submitSale,
+  ProductoBusquedaDTO,
+  CrearVentaPOSDto,
+  MetodoPagoPOS,
+  VarianteBusquedaDTO,
+} from './services/posService';
+import { TicketVentaPOS } from './components/TicketVentaPOS';
+import { CobroRapidoModal } from './components/CobroRapidoModal';
+import { VentaTicketDTO } from './types/ticket.types';
 
 interface PosCartLine {
-  id: string; // varianteId
-  productoId: string;
+  varianteId: number;
+  productoId: number;
   nombre: string;
   sku: string;
-  talla?: string;
-  color?: string;
+  talla: string;
+  color: string;
   precioUnitarioCOP: number;
   cantidad: number;
-  categoria: CategoriaSlug;
+  categoriaNombre: string;
+  esCosmetico: boolean;
+  stockDisponible: number;
 }
 
-type MetodoPago = 'EFECTIVO' | 'TRANSFERENCIA';
-
 export const PosTerminalPage: React.FC = () => {
-  // Filtros de Catálogo
+  // Búsqueda
   const [busqueda, setBusqueda] = useState('');
-  const [categoriaActiva, setCategoriaActiva] = useState<CategoriaSlug | 'todas'>('todas');
+  const [productos, setProductos] = useState<ProductoBusquedaDTO[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [busquedaError, setBusquedaError] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Carrito de Venta POS
-  const [cartLines, setCartLines] = useState<PosCartLine[]>([
-    {
-      id: 'var-dnm-m',
-      productoId: 'prod-001',
-      nombre: 'Chaqueta Denim Artesanal',
-      sku: 'ROP-DNM-001-M',
-      talla: 'M',
-      color: 'Azul Índigo',
-      precioUnitarioCOP: 189000,
-      cantidad: 1,
-      categoria: 'ropa',
-    },
-    {
-      id: 'var-crm-100',
-      productoId: 'prod-004',
-      nombre: 'Crema Hidratante Botánica 100ml',
-      sku: 'COS-CRM-004-100ML',
-      talla: '100ml',
-      precioUnitarioCOP: 45000,
-      cantidad: 1,
-      categoria: 'cosmeticos',
-    },
-  ]);
+  // Carrito
+  const [cartLines, setCartLines] = useState<PosCartLine[]>([]);
 
-  // Cliente actual
+  // Cliente
   const [clienteNombre, setClienteNombre] = useState('Consumidor Final');
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
   const [inputCedula, setInputCedula] = useState('');
 
-  // Estados de Modales (Frames 3 y 4 de Julio)
+  // Modales
   const [mostrarModalCobro, setMostrarModalCobro] = useState(false);
   const [mostrarModalExito, setMostrarModalExito] = useState(false);
-  const [consecutivoVenta, setConsecutivoVenta] = useState('MED-000042');
+  const [ticketGenerado, setTicketGenerado] = useState<VentaTicketDTO | null>(null);
 
-  // Estado del Modal de Cobro
-  const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
+  // Selector de variante
+  const [productoSeleccionando, setProductoSeleccionando] =
+    useState<ProductoBusquedaDTO | null>(null);
+
+  // Cobro
+  const [metodoPago, setMetodoPago] = useState<MetodoPagoPOS>('EFECTIVO');
   const [efectivoRecibido, setEfectivoRecibido] = useState<number>(0);
   const [comprobanteBancario, setComprobanteBancario] = useState('');
 
-  // Atajos de Teclado Globales POS (F12 Cobrar, F2 Buscar, Esc Cerrar)
+  // Anti-doble venta
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorVenta, setErrorVenta] = useState<string | null>(null);
+
+  // Atajos
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F12') {
         e.preventDefault();
-        if (cartLines.length > 0) {
-          abrirModalCobro();
-        }
+        if (cartLines.length > 0 && !isSubmitting) abrirModalCobro();
       } else if (e.key === 'F2') {
         e.preventDefault();
         searchInputRef.current?.focus();
       } else if (e.key === 'Escape') {
         setMostrarModalCobro(false);
         setMostrarModalCliente(false);
-        setMostrarModalExito(false);
+        setProductoSeleccionando(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cartLines]);
+  }, [cartLines, isSubmitting]);
 
-  // Filtrado de productos en catálogo POS
-  const productosFiltrados = useMemo(() => {
-    return PRODUCTOS_CATALOGO.filter((prod) => {
-      if (categoriaActiva !== 'todas' && prod.categoria !== categoriaActiva) {
-        return false;
+  // Búsqueda con debounce
+  useEffect(() => {
+    if (busqueda.trim().length < 2) {
+      setProductos([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setBuscando(true);
+      setBusquedaError(null);
+      try {
+        const results = await searchProduct(busqueda.trim());
+        setProductos(results);
+      } catch (error: any) {
+        setBusquedaError(error.message || 'Error al buscar productos');
+        setProductos([]);
+      } finally {
+        setBuscando(false);
       }
-      if (busqueda.trim() !== '') {
-        const q = busqueda.toLowerCase().trim();
-        const matchNombre = prod.nombre.toLowerCase().includes(q);
-        const matchSku = prod.variantes.some((v) => v.sku.toLowerCase().includes(q));
-        if (!matchNombre && !matchSku) return false;
-      }
-      return true;
-    });
-  }, [categoriaActiva, busqueda]);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [busqueda]);
 
-  // Totales Financieros en COP Enteros (Invariante RN-GEN-04: Cero centavos)
+  // Totales en COP entero (RN-GEN-04)
   const totalPagarCOP = cartLines.reduce(
     (acc, line) => acc + line.precioUnitarioCOP * line.cantidad,
     0
   );
   const baseGravableCOP = Math.round(totalPagarCOP / 1.19);
   const ivaEstimadoCOP = totalPagarCOP - baseGravableCOP;
-
   const cambioVueltoCOP = Math.max(0, efectivoRecibido - totalPagarCOP);
 
   const formatCOP = (val: number) =>
@@ -131,40 +131,66 @@ export const PosTerminalPage: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(val);
 
-  // Acciones de Carrito
-  const handleAddProducto = (producto: Producto) => {
-    const variante = producto.variantes[0];
+  // ============================================
+  // Carrito
+  // ============================================
+  const agregarVarianteAlCarrito = (
+    producto: ProductoBusquedaDTO,
+    variante: VarianteBusquedaDTO
+  ) => {
     setCartLines((prev) => {
-      const idx = prev.findIndex((l) => l.id === variante.id);
+      const idx = prev.findIndex((l) => l.varianteId === variante.varianteId);
       if (idx >= 0) {
         const copy = [...prev];
+        if (copy[idx].cantidad + 1 > variante.stockDisponible) return copy;
         copy[idx].cantidad += 1;
         return copy;
       }
       return [
         ...prev,
         {
-          id: variante.id,
-          productoId: producto.id,
+          varianteId: variante.varianteId,
+          productoId: producto.productoId,
           nombre: producto.nombre,
           sku: variante.sku,
           talla: variante.talla,
           color: variante.color,
-          precioUnitarioCOP: producto.precioCOP,
+          precioUnitarioCOP: variante.precioUnitarioCop,
           cantidad: 1,
-          categoria: producto.categoria,
+          categoriaNombre: producto.categoriaNombre,
+          esCosmetico: producto.esCosmeticoUsoPersonal,
+          stockDisponible: variante.stockDisponible,
         },
       ];
     });
   };
 
-  const handleUpdateCantidad = (id: string, delta: number) => {
+  const handleAddProducto = (producto: ProductoBusquedaDTO) => {
+    const variantesConStock = producto.variantes.filter((v) => v.stockDisponible > 0);
+    if (variantesConStock.length === 0) return;
+
+    if (variantesConStock.length === 1) {
+      agregarVarianteAlCarrito(producto, variantesConStock[0]);
+      return;
+    }
+    setProductoSeleccionando(producto);
+  };
+
+  const handleSeleccionarVariante = (variante: VarianteBusquedaDTO) => {
+    if (!productoSeleccionando) return;
+    agregarVarianteAlCarrito(productoSeleccionando, variante);
+    setProductoSeleccionando(null);
+  };
+
+  const handleUpdateCantidad = (varianteId: number, delta: number) => {
     setCartLines((prev) =>
       prev
         .map((l) => {
-          if (l.id === id) {
+          if (l.varianteId === varianteId) {
             const nueva = l.cantidad + delta;
-            return nueva > 0 ? { ...l, cantidad: nueva } : null;
+            if (nueva <= 0) return null;
+            if (nueva > l.stockDisponible) return l;
+            return { ...l, cantidad: nueva };
           }
           return l;
         })
@@ -172,35 +198,55 @@ export const PosTerminalPage: React.FC = () => {
     );
   };
 
-  const handleRemoveLine = (id: string) => {
-    setCartLines((prev) => prev.filter((l) => l.id !== id));
+  const handleRemoveLine = (varianteId: number) => {
+    setCartLines((prev) => prev.filter((l) => l.varianteId !== varianteId));
   };
 
+  // ============================================
+  // Cobro
+  // ============================================
   const abrirModalCobro = () => {
-    setEfectivoRecibido(totalPagarCOP); // Sugerir pago exacto
+    setEfectivoRecibido(totalPagarCOP);
+    setErrorVenta(null);
     setMostrarModalCobro(true);
   };
 
-  const handleBilletesRapidos = (monto: number) => {
-    setEfectivoRecibido((prev) => prev + monto);
-  };
+  const handleConfirmarVenta = async () => {
+    if (isSubmitting) return;
 
-  const handleTecladoNumerico = (char: string) => {
-    if (char === 'CLEAR') {
-      setEfectivoRecibido(0);
-      return;
+    setIsSubmitting(true);
+    setErrorVenta(null);
+
+    try {
+      const payload: CrearVentaPOSDto = {
+        ubicacionId: 1,
+        clienteNombre: clienteNombre !== 'Consumidor Final' ? clienteNombre : undefined,
+        lineas: cartLines.map((l) => ({
+          varianteId: l.varianteId,
+          sku: l.sku,
+          cantidad: l.cantidad,
+        })),
+        pagos: [
+          {
+            metodoPago,
+            montoRecibidoCop: metodoPago === 'EFECTIVO' ? efectivoRecibido : undefined,
+            referenciaTransferencia:
+              metodoPago === 'TRANSFERENCIA' ? comprobanteBancario : undefined,
+          },
+        ],
+      };
+
+      const idempotencyKey = crypto.randomUUID();
+      const response = await submitSale(payload, idempotencyKey);
+
+      setTicketGenerado(response.ticket);
+      setMostrarModalCobro(false);
+      setMostrarModalExito(true);
+    } catch (error: any) {
+      setErrorVenta(error.message || 'Error al procesar la venta');
+    } finally {
+      setIsSubmitting(false);
     }
-    const actualStr = efectivoRecibido === 0 ? '' : efectivoRecibido.toString();
-    const nuevoStr = actualStr + char;
-    setEfectivoRecibido(parseInt(nuevoStr, 10) || 0);
-  };
-
-  const handleConfirmarVenta = () => {
-    // Generar consecutivo de venta simulado
-    const nextNum = Math.floor(1000 + Math.random() * 9000);
-    setConsecutivoVenta(`MED-00${nextNum}`);
-    setMostrarModalCobro(false);
-    setMostrarModalExito(true);
   };
 
   const handleNuevaVenta = () => {
@@ -209,18 +255,18 @@ export const PosTerminalPage: React.FC = () => {
     setEfectivoRecibido(0);
     setComprobanteBancario('');
     setMostrarModalExito(false);
+    setTicketGenerado(null);
+    setBusqueda('');
+    setProductos([]);
   };
 
   return (
     <div className="h-full w-full flex flex-col md:flex-row overflow-hidden bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-800 shadow-sm select-none">
-      {/* =========================================================================
-          COLUMNA IZQUIERDA (60% ANCHO): CATÁLOGO TÁCTIL Y BÚSQUEDA RÁPIDA
-      ========================================================================= */}
+      {/* COLUMNA IZQUIERDA (60%) */}
       <section
         className="w-full md:w-[60%] h-full flex flex-col border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-3 overflow-hidden bg-slate-50/50 dark:bg-slate-900/50"
         aria-label="Catálogo táctil de productos para venta"
       >
-        {/* Barra Superior: Buscador Táctil con Icono de Escáner y Atajo F2 */}
         <div className="relative mb-3 flex gap-2">
           <div className="relative flex-1">
             <Search
@@ -239,13 +285,9 @@ export const PosTerminalPage: React.FC = () => {
               Atajo: F2
             </span>
           </div>
-
           <button
             type="button"
-            onClick={() => {
-              searchInputRef.current?.focus();
-              alert("Simulador: Escáner de código de barras USB listo para lectura.");
-            }}
+            onClick={() => searchInputRef.current?.focus()}
             className="px-3.5 py-3 rounded-xl bg-slate-800 text-white hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center shrink-0 shadow-sm"
             aria-label="Activar lector de código de barras"
             title="Activar Escáner"
@@ -254,77 +296,75 @@ export const PosTerminalPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Píldoras de Categorías (Botones Táctiles >= 48px de contacto ergonómico) */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 scrollbar-none" role="tablist">
-          {[
-            { slug: 'todas', label: 'Todas' },
-            { slug: 'ropa', label: 'Ropa' },
-            { slug: 'accesorios', label: 'Accesorios' },
-            { slug: 'cosmeticos', label: 'Cosméticos' },
-            { slug: 'artesanias', label: 'Artesanías' },
-          ].map((cat) => (
-            <button
-              key={cat.slug}
-              type="button"
-              role="tab"
-              aria-selected={categoriaActiva === cat.slug}
-              onClick={() => setCategoriaActiva(cat.slug as CategoriaSlug | 'todas')}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                categoriaActiva === cat.slug
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        {buscando && (
+          <div className="flex items-center justify-center py-4 text-xs text-slate-500">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            Buscando productos...
+          </div>
+        )}
+        {busquedaError && (
+          <div className="mb-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/40 text-xs text-red-700 dark:text-red-300">
+            {busquedaError}
+          </div>
+        )}
 
-        {/* Cuadrícula de Productos Frecuentes (Botones táctiles grandes) */}
         <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-0.5">
-          {productosFiltrados.map((prod) => (
-            <button
-              key={prod.id}
-              type="button"
-              onClick={() => handleAddProducto(prod)}
-              className="min-h-[105px] p-2.5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400 active:scale-[0.98] transition-all text-left flex flex-col justify-between shadow-sm group hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-1 w-full">
-                <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                  {prod.categoriaLabel}
-                </span>
-                {prod.categoria === 'cosmeticos' && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 shrink-0">
-                    Uso personal
+          {productos.length === 0 && !buscando && busqueda.trim().length >= 2 && (
+            <div className="col-span-full text-center py-12 text-xs text-slate-500">
+              No se encontraron productos para «{busqueda}»
+            </div>
+          )}
+          {productos.map((prod) => {
+            const stockTotal = prod.variantes.reduce((acc, v) => acc + v.stockDisponible, 0);
+            const agotado = stockTotal === 0;
+            const primeraVariante = prod.variantes[0];
+            const variantesConStock = prod.variantes.filter((v) => v.stockDisponible > 0);
+            return (
+              <button
+                key={prod.productoId}
+                type="button"
+                onClick={() => handleAddProducto(prod)}
+                disabled={agotado}
+                className="min-h-[105px] p-2.5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400 active:scale-[0.98] transition-all text-left flex flex-col justify-between shadow-sm group hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-start justify-between gap-1 w-full">
+                  <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    {prod.categoriaNombre}
                   </span>
-                )}
-              </div>
+                  {prod.esCosmeticoUsoPersonal && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 shrink-0">
+                      Uso personal
+                    </span>
+                  )}
+                </div>
 
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight">
-                {prod.nombre}
-              </h4>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                  {prod.nombre}
+                </h4>
 
-              <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-slate-100 dark:border-slate-700/60 w-full">
-                <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400">
-                  {formatCOP(prod.precioCOP)}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {prod.variantes[0]?.sku.slice(0, 11)}
-                </span>
-              </div>
-            </button>
-          ))}
+                <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-slate-100 dark:border-slate-700/60 w-full">
+                  <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400">
+                    {formatCOP(primeraVariante?.precioUnitarioCop || 0)}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {agotado
+                      ? 'Agotado'
+                      : variantesConStock.length > 1
+                        ? `${variantesConStock.length} var.`
+                        : `Stock: ${stockTotal}`}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      {/* =========================================================================
-          COLUMNA DERECHA (40% ANCHO): CARRITO DE COBRO Y TOTALES (CA-53)
-      ========================================================================= */}
+      {/* COLUMNA DERECHA (40%) */}
       <section
         className="w-full md:w-[40%] h-full flex flex-col justify-between p-3.5 bg-white dark:bg-slate-950 overflow-hidden"
         aria-label="Carrito de compra y cobro de mostrador"
       >
-        {/* Encabezado: Selector de Cliente y Estado */}
         <div className="pb-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
@@ -339,7 +379,6 @@ export const PosTerminalPage: React.FC = () => {
               </span>
             </div>
           </div>
-
           <button
             type="button"
             onClick={() => setMostrarModalCliente(true)}
@@ -349,10 +388,8 @@ export const PosTerminalPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Lista de Ítems (Frames 1 vs 2) */}
         <div className="flex-1 overflow-y-auto py-2 space-y-2">
           {cartLines.length === 0 ? (
-            /* FRAME 1: Carrito Vacío */
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-3">
                 <ShoppingBag className="w-8 h-8 opacity-40" />
@@ -361,14 +398,14 @@ export const PosTerminalPage: React.FC = () => {
                 Carrito de venta vacío
               </h4>
               <p className="text-xs text-slate-500 max-w-xs">
-                Escanee un código de barras o pulse un producto del catálogo táctil para iniciar la venta.
+                Escanee un código de barras o pulse un producto del catálogo táctil para iniciar la
+                venta.
               </p>
             </div>
           ) : (
-            /* FRAME 2: Venta en Curso */
             cartLines.map((line) => (
               <div
-                key={line.id}
+                key={line.varianteId}
                 className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2"
               >
                 <div className="flex-1 min-w-0">
@@ -379,8 +416,10 @@ export const PosTerminalPage: React.FC = () => {
                     <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
                       {formatCOP(line.precioUnitarioCOP)}
                     </span>
-                    {line.talla && <span>· Talla: {line.talla}</span>}
-                    {line.categoria === 'cosmeticos' && (
+                    <span>
+                      · {line.talla} / {line.color}
+                    </span>
+                    {line.esCosmetico && (
                       <span className="text-[9px] text-purple-600 font-semibold">
                         [Sin cambio]
                       </span>
@@ -388,12 +427,11 @@ export const PosTerminalPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Controles Táctiles de Cantidad (Mínimo 48px) */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <div className="flex items-center border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
                     <button
                       type="button"
-                      onClick={() => handleUpdateCantidad(line.id, -1)}
+                      onClick={() => handleUpdateCantidad(line.varianteId, -1)}
                       className="min-w-[32px] min-h-[32px] flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                       aria-label="Restar una unidad"
                     >
@@ -404,8 +442,9 @@ export const PosTerminalPage: React.FC = () => {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleUpdateCantidad(line.id, 1)}
-                      className="min-w-[32px] min-h-[32px] flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                      onClick={() => handleUpdateCantidad(line.varianteId, 1)}
+                      disabled={line.cantidad >= line.stockDisponible}
+                      className="min-w-[32px] min-h-[32px] flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-30"
                       aria-label="Sumar una unidad"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -418,7 +457,7 @@ export const PosTerminalPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => handleRemoveLine(line.id)}
+                    onClick={() => handleRemoveLine(line.varianteId)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                     aria-label={`Eliminar ${line.nombre}`}
                   >
@@ -430,7 +469,6 @@ export const PosTerminalPage: React.FC = () => {
           )}
         </div>
 
-        {/* Panel de Totales y Botón de Cobro F12 */}
         <div className="pt-3 border-t-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
           <div className="space-y-1 text-xs mb-3">
             <div className="flex justify-between text-slate-500 dark:text-slate-400">
@@ -447,7 +485,6 @@ export const PosTerminalPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Caja Destacada: TOTAL A PAGAR (32px font negrita) */}
           <div className="p-3 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-between mb-3 shadow-md">
             <div>
               <span className="block text-[11px] font-bold uppercase tracking-widest text-slate-400">
@@ -462,13 +499,12 @@ export const PosTerminalPage: React.FC = () => {
             </span>
           </div>
 
-          {/* Botón Principal de Cobro de Alta Visibilidad (Ergonomía Mostrador) */}
           <button
             type="button"
-            disabled={cartLines.length === 0}
+            disabled={cartLines.length === 0 || isSubmitting}
             onClick={abrirModalCobro}
             className={`w-full min-h-[52px] py-3 px-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.99] ${
-              cartLines.length === 0
+              cartLines.length === 0 || isSubmitting
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
                 : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-emerald-600/30 ring-2 ring-emerald-500/20'
             }`}
@@ -478,230 +514,177 @@ export const PosTerminalPage: React.FC = () => {
         </div>
       </section>
 
-      {/* =========================================================================
-          FRAME 3: MODAL DE COBRO RÁPIDO POS
-      ========================================================================= */}
-      {mostrarModalCobro && (
+      {/* ============================================
+          SELECTOR DE VARIANTE (Talla / Color)
+      ============================================ */}
+      {productoSeleccionando && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="cobro-modal-title"
+          aria-labelledby="variante-selector-title"
         >
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            {/* Header del Modal */}
-            <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center mb-4">
               <div>
-                <h3 id="cobro-modal-title" className="text-lg font-black text-slate-900 dark:text-white">
-                  Cobro de Venta Mostrador
+                <h3
+                  id="variante-selector-title"
+                  className="text-lg font-black text-slate-900 dark:text-white"
+                >
+                  {productoSeleccionando.nombre}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Total a liquidar: <strong className="font-mono text-emerald-600 text-sm">{formatCOP(totalPagarCOP)}</strong>
+                  Selecciona talla y color disponibles
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setMostrarModalCobro(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label="Cerrar modal de cobro"
+                onClick={() => setProductoSeleccionando(null)}
+                aria-label="Cerrar selector de variante"
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Pestañas de Medio de Pago */}
-            <div className="grid grid-cols-2 gap-3 my-4">
-              <button
-                type="button"
-                onClick={() => setMetodoPago('EFECTIVO')}
-                className={`min-h-[48px] py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border-2 transition-all ${
-                  metodoPago === 'EFECTIVO'
-                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 shadow-sm'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Banknote className="w-5 h-5" />
-                <span>💵 EFECTIVO</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMetodoPago('TRANSFERENCIA')}
-                className={`min-h-[48px] py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border-2 transition-all ${
-                  metodoPago === 'TRANSFERENCIA'
-                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                <CreditCard className="w-5 h-5" />
-                <span>💳 TRANSFERENCIA</span>
-              </button>
-            </div>
-
-            {/* Contenido según método de pago */}
-            {metodoPago === 'EFECTIVO' ? (
-              <div className="space-y-4">
-                {/* Billetes Rápidos Colombianos */}
-                <div>
-                  <span className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                    Billetes Rápidos Sugeridos:
-                  </span>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[100000, 50000, 20000, 10000].map((monto) => (
-                      <button
-                        key={monto}
-                        type="button"
-                        onClick={() => handleBilletesRapidos(monto)}
-                        className="min-h-[44px] py-2 px-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                      >
-                        +${monto / 1000}k
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setEfectivoRecibido(totalPagarCOP)}
-                      className="min-h-[44px] py-2 px-1 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 font-bold text-xs text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200"
-                    >
-                      Exacto
-                    </button>
-                  </div>
-                </div>
-
-                {/* Input de Efectivo Recibido y Teclado Táctil 3x4 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Monto Recibido en Mano:
-                    </label>
-                    <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 text-right">
-                      <span className="font-mono text-2xl font-black text-slate-900 dark:text-white">
-                        {formatCOP(efectivoRecibido)}
+            <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+              {productoSeleccionando.variantes
+                .filter((v) => v.stockDisponible > 0)
+                .map((variante) => (
+                  <button
+                    key={variante.varianteId}
+                    type="button"
+                    onClick={() => handleSeleccionarVariante(variante)}
+                    className="min-h-[60px] p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 active:scale-[0.98] transition-all text-left"
+                  >
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      {variante.talla} · {variante.color}
+                    </div>
+                    <div className="flex items-baseline justify-between mt-1">
+                      <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400">
+                        {formatCOP(variante.precioUnitarioCop)}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        Stock: {variante.stockDisponible}
                       </span>
                     </div>
-
-                    {/* Caja Destacada de Cambio / Vuelto a Entregar */}
-                    <div className="mt-3 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500/40 text-center">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-                        CAMBIO / VUELTO A ENTREGAR
-                      </span>
-                      <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                        {formatCOP(cambioVueltoCOP)}
-                      </span>
+                    <div className="text-[9px] font-mono text-slate-400 mt-0.5">
+                      {variante.sku}
                     </div>
-                  </div>
-
-                  {/* Teclado Numérico en Pantalla */}
-                  <div className="grid grid-cols-3 gap-1.5 p-2 bg-slate-100 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
-                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLEAR', '0', '00'].map(
-                      (k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => handleTecladoNumerico(k)}
-                          className={`min-h-[44px] rounded-xl font-bold font-mono text-sm transition-all flex items-center justify-center ${
-                            k === 'CLEAR'
-                              ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-xs'
-                              : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm hover:bg-slate-50'
-                          }`}
-                        >
-                          {k}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* Método Transferencia */
-              <div className="space-y-4 py-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                    Número de Aprobación / Comprobante Bancario (Nequi, Daviplata o Bancolombia):
-                  </label>
-                  <input
-                    type="text"
-                    value={comprobanteBancario}
-                    onChange={(e) => setComprobanteBancario(e.target.value)}
-                    placeholder="Ej. NQ-84920492 o TRX-4920"
-                    className="w-full p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 font-mono text-sm focus:outline-none focus:border-indigo-600"
-                  />
-                </div>
-                <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs">
-                  Verifique en la app bancaria la acreditación en la cuenta oficial antes de confirmar.
-                </div>
-              </div>
-            )}
-
-            {/* Botón de Confirmación */}
-            <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setMostrarModalCobro(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-semibold text-xs text-slate-600 dark:text-slate-300"
-              >
-                Cancelar (Esc)
-              </button>
-              <button
-                type="button"
-                disabled={metodoPago === 'EFECTIVO' && efectivoRecibido < totalPagarCOP}
-                onClick={handleConfirmarVenta}
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50"
-              >
-                CONFIRMAR VENTA E IMPRIMIR (Enter)
-              </button>
+                  </button>
+                ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* =========================================================================
-          FRAME 4: MODAL DE VENTA EXITOSA
-      ========================================================================= */}
-      {mostrarModalExito && (
+      {/* ============================================
+          MODAL DE COBRO RÁPIDO (componente separado)
+      ============================================ */}
+      <CobroRapidoModal
+        isOpen={mostrarModalCobro}
+        onClose={() => setMostrarModalCobro(false)}
+        totalPagarCOP={totalPagarCOP}
+        metodoPago={metodoPago}
+        setMetodoPago={setMetodoPago}
+        efectivoRecibido={efectivoRecibido}
+        setEfectivoRecibido={setEfectivoRecibido}
+        comprobanteBancario={comprobanteBancario}
+        setComprobanteBancario={setComprobanteBancario}
+        cambioVueltoCOP={cambioVueltoCOP}
+        isSubmitting={isSubmitting}
+        errorVenta={errorVenta}
+        onConfirmar={handleConfirmarVenta}
+        formatCOP={formatCOP}
+      />
+
+      {/* ============================================
+          MODAL DE ÉXITO CON TICKET VISIBLE
+      ============================================ */}
+      {mostrarModalExito && ticketGenerado && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-10 h-10" />
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 max-h-[90vh]">
+            {/* Columna izquierda: Confirmación */}
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="text-center md:text-left">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto md:mx-0 mb-4">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">
+                  ¡Venta {ticketGenerado.consecutivo} Completada!
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  Inventario descargado del Kardex en tiempo real. Consecutivo fiscal emitido.
+                </p>
+
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 mb-4 space-y-1 text-xs">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>Total:</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      {formatCOP(ticketGenerado.totalNetoCop)}
+                    </span>
+                  </div>
+                  {ticketGenerado.descuentoTotalCop > 0 && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Descuento:</span>
+                      <span className="font-mono font-bold">
+                        -{formatCOP(ticketGenerado.descuentoTotalCop)}
+                      </span>
+                    </div>
+                  )}
+                  {ticketGenerado.metodoPago === 'EFECTIVO' &&
+                    ticketGenerado.cambioCop !== undefined && (
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>Cambio:</span>
+                        <span className="font-mono font-bold">
+                          {formatCOP(ticketGenerado.cambioCop)}
+                        </span>
+                      </div>
+                    )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:opacity-90"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>🖨️ Imprimir Ticket 80mm</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    alert(
+                      `Enviando recibo digital a bot de Telegram para venta ${ticketGenerado.consecutivo}`
+                    )
+                  }
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>📲 Enviar por Telegram</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleNuevaVenta}
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-md hover:bg-emerald-500"
+                >
+                  ➕ Nueva Venta
+                </button>
+              </div>
             </div>
 
-            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">
-              ¡Venta #{consecutivoVenta} Completada con Éxito!
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-              Inventario descargado del Kardex en tiempo real. Consecutivo fiscal emitido para Sede Medellín.
-            </p>
-
-            <div className="space-y-3 mb-6">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:opacity-90"
-              >
-                <Printer className="w-4 h-4" />
-                <span>🖨️ Imprimir Ticket 80mm</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => alert(`Enviando recibo digital a bot de Telegram para venta #${consecutivoVenta}`)}
-                className="w-full min-h-[48px] py-3 px-4 rounded-xl border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-              >
-                <Send className="w-4 h-4" />
-                <span>📲 Enviar Recibo por Telegram</span>
-              </button>
+            {/* Columna derecha: Ticket visible (RN-VTA-10, 80mm) */}
+            <div className="md:w-[320px] flex-shrink-0 overflow-y-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-4 md:pt-0 md:pl-4 max-h-[70vh] print:hidden">
+              <TicketVentaPOS ticket={ticketGenerado} />
             </div>
-
-            <button
-              type="button"
-              onClick={handleNuevaVenta}
-              className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-md hover:bg-emerald-500"
-            >
-              ➕ Nueva Venta
-            </button>
           </div>
         </div>
       )}
