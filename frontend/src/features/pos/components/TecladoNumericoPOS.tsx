@@ -82,7 +82,7 @@ export const TecladoNumericoPOS: React.FC<TecladoNumericoPOSProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => handleKeyClick('⌫')}
-        className="w-full min-h-[46px] rounded-xl font-bold text-sm bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 shadow-sm active:scale-98 transition-all flex items-center justify-center gap-2 hover:bg-amber-200 dark:hover:bg-amber-900/80 disabled:opacity-50 disabled:pointer-events-none"
+        className="w-full min-h-[48px] rounded-xl font-bold text-sm bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 shadow-sm active:scale-98 transition-all flex items-center justify-center gap-2 hover:bg-amber-200 dark:hover:bg-amber-900/80 disabled:opacity-50 disabled:pointer-events-none"
         aria-label="Retroceso"
       >
         <Delete className="w-4 h-4" />
