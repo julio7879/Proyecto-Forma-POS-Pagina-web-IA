@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, User, LogOut } from 'lucide-react';
+import { ShoppingBag, User, LogOut, Package } from 'lucide-react';
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -60,6 +60,17 @@ export const Navbar = () => {
           >
             Catálogo
           </Link>
+
+          {/* Mis Pedidos: solo visible con sesión activa (SP4-07) */}
+          {session.token && (
+            <Link
+              to="/mis-pedidos"
+              className="text-sm font-medium hover:text-indigo-600 transition-colors flex items-center gap-1.5"
+            >
+              <Package className="w-4 h-4" />
+              Mis Pedidos
+            </Link>
+          )}
 
           <Link
             to="/carrito"

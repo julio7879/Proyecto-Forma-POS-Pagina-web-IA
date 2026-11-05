@@ -14,6 +14,18 @@ const AdminInventarioPage = lazy(() => import('../features/admin/pages/AdminInve
 const AdminComprasPage = lazy(() => import('../features/admin/pages/AdminComprasPage'));
 const AdminTrasladosPage = lazy(() => import('../features/admin/pages/AdminTrasladosPage'));
 
+// Nuevas vistas del Storefront (SP4-07)
+const CheckoutWizard = lazy(() =>
+  import('../features/storefront/components/checkout/CheckoutWizard').then((m) => ({
+    default: m.CheckoutWizard,
+  }))
+);
+const OrdersView = lazy(() =>
+  import('../features/storefront/components/orders/OrdersView').then((m) => ({
+    default: m.OrdersView,
+  }))
+);
+
 // Lazy load de los formularios de auth (que son componentes con export nombrado)
 const LoginForm = lazy(() =>
   import('../features/auth/components/LoginForm').then((m) => ({ default: m.LoginForm }))
@@ -32,6 +44,8 @@ export const AppRouter: React.FC = () => {
             <Route index element={<CatalogPage />} />
             <Route path="login" element={<LoginForm />} />
             <Route path="register" element={<RegisterForm />} />
+            <Route path="checkout" element={<CheckoutWizard />} />
+            <Route path="mis-pedidos" element={<OrdersView />} />
             <Route
               path="politica-privacidad"
               element={
