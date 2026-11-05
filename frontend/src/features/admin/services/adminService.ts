@@ -148,6 +148,93 @@ export interface ResolucionNovedadDto {
 }
 
 // ============================================
+// DTOs de Pedidos Web (SP4-08)
+// ============================================
+export type EstadoPedidoWeb =
+  | 'RECIBIDO'
+  | 'CONFIRMADO'
+  | 'EN_PREPARACION'
+  | 'ENVIADO'
+  | 'ENTREGADO'
+  | 'NO_ENTREGADO'
+  | 'CANCELADO';
+
+export type MetodoPagoWeb = 'TRANSFERENCIA' | 'CONTRAENTREGA';
+
+export type EstadoPagoWeb = 'PENDIENTE' | 'PAGADO' | 'REEMBOLSADO' | 'ANULADO';
+
+export interface LineaPedidoWebDTO {
+  id: number;
+  varianteId: number;
+  sku: string;
+  nombreProducto: string;
+  talla: string;
+  color: string;
+  cantidad: number;
+  precioListaUnitarioCop: number;
+  subtotalListaLineaCop: number;
+  descuentoProrrateadoCop: number;
+  netoPagadoLineaCop: number;
+  cantidadDevueltaAcum: number;
+}
+
+export interface PedidoWebDTO {
+  id: number;
+  referenciaLegible: string;
+  clienteId: number;
+  clienteNombre?: string;
+  clienteCorreo?: string;
+  ubicacionAsignadaId: number;
+  ubicacionAsignadaNombre?: string;
+  tieneIncidenciaStock: boolean;
+  tieneReservaActiva: boolean;
+  estadoPedido: EstadoPedidoWeb;
+  estadoPago: EstadoPagoWeb;
+  metodoPago: MetodoPagoWeb;
+  reservaExpiraEn?: string;
+  municipioDestinoId: string;
+  municipioDestinoNombre?: string;
+  direccionEntrega: string;
+  destinatarioNombre: string;
+  destinatarioTelefono: string;
+  zonaEnvioCalculada: number;
+  costoEnvioCop: number;
+  diasEstimadosSnapshot: number;
+  subtotalListaCop: number;
+  descuentoTotalCop: number;
+  totalNetoProductosCop: number;
+  totalAPagarCop: number;
+  fechaCreacion: string;
+  fechaEnvio?: string;
+  fechaEntrega?: string;
+  lineas: LineaPedidoWebDTO[];
+}
+
+export interface ListarPedidosWebFiltro {
+  estadoPedido?: EstadoPedidoWeb;
+  metodoPago?: MetodoPagoWeb;
+  ubicacionAsignadaId?: number;
+}
+
+export interface DespachoWebDto {
+  transportadora: string;
+  numeroGuia: string;
+}
+
+export interface NoPuedoDespacharWebDto {
+  varianteIdsAfectadas: number[];
+  motivo: string;
+}
+
+export interface ResultadoNoPuedoDespachar {
+  ok: boolean;
+  mensaje: string;
+  reasignado: boolean;
+  enCustodiaCentral: boolean;
+  pedido: PedidoWebDTO;
+}
+
+// ============================================
 // Funciones de Inventario
 // ============================================
 export const fetchInventario = async (filtro: InventarioFiltro = {}): Promise<InventarioDTO[]> => {
@@ -262,4 +349,97 @@ export const resolverNovedadTraslado = async (
     }
   );
   return response.datos;
+};
+
+// ============================================
+// Funciones de Pedidos Web (SP4-08)
+// ============================================
+
+/**
+ * Lista los pedidos web según filtros.
+ * GET /api/pedidos-web?estadoPedido=...&metodoPago=...&ubicacionAsignadaId=...
+ * Aislamiento por rol lo aplica el backend (CLIENTE, VENDEDOR, ADMIN).
+ */
+export const fetchPedidosWeb = async (
+  filtro: ListarPedidosWebFiltro = {}
+): Promise<PedidoWebDTO[]> => {
+  const params = new URLSearchParams();
+  if (filtro.estadoPedido) params.append('estadoPedido', filtro.estadoPedido);
+  if (filtro.metodoPago) params.append('metodoPago', filtro.metodoPago);
+  if (filtro.ubicacionAsignadaId)
+    params.append('ubicacionAsignadaId', String(filtro.ubicacionAsignadaId));
+
+  const query = params.toString();
+  const response = await apiRequest<{ datos: PedidoWebDTO[] }>(
+    `/pedidos-web${query ? `?${query}` : ''}`
+  );
+  return response.datos;
+};
+
+/**
+ * Obtiene el detalle de un pedido web por ID.
+ * GET /api/pedidos-web/:id
+ */
+export const fetchPedidoWebPorId = async (id: number): Promise<PedidoWebDTO> => {
+  const response = await apiRequest<{ datos: PedidoWebDTO }>(`/pedidos-web/${id}`);
+  return response.datos;
+};
+
+/**
+ * RF-WEB-04 / CA-40: Inicia la preparación del pedido (reserva blanda → reserva dura).
+ * ⚠️ PENDIENTE EN BACKEND: POST /api/pedidos-web/:id/preparar
+ * Mientras el backend no lo implemente, la UI debe tener el botón deshabilitado con tooltip.
+ */
+export const iniciarPreparacionPedido = async (
+  pedidoId: number,
+  idempotencyKey: string
+): Promise<PedidoWebDTO> => {
+  const response = await apiRequest<{ datos: PedidoWebDTO }>(
+    `/pedidos-web/${pedidoId}/preparar`,
+    {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
+  return response.datos;
+};
+
+/**
+ * RF-WEB-05 / CA-41: Despacha el pedido a la transportadora con número de guía.
+ * ⚠️ PENDIENTE EN BACKEND: POST /api/pedidos-web/:id/despachar
+ * Mientras el backend no lo implemente, la UI debe tener el botón deshabilitado con tooltip.
+ */
+export const despacharPedidoWeb = async (
+  pedidoId: number,
+  payload: DespachoWebDto,
+  idempotencyKey: string
+): Promise<PedidoWebDTO> => {
+  const response = await apiRequest<{ datos: PedidoWebDTO }>(
+    `/pedidos-web/${pedidoId}/despachar`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
+  return response.datos;
+};
+
+/**
+ * RF-WEB-06 / CA-43: Reporta "No puedo despachar" y activa cuarentena de SKU.
+ * POST /api/pedidos-web/:id/no-puedo-despachar (YA EXISTE en backend)
+ */
+export const reportarNoPuedoDespachar = async (
+  pedidoId: number,
+  payload: NoPuedoDespacharWebDto,
+  idempotencyKey: string
+): Promise<ResultadoNoPuedoDespachar> => {
+  return apiRequest<ResultadoNoPuedoDespachar>(
+    `/pedidos-web/${pedidoId}/no-puedo-despachar`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
 };
