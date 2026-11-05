@@ -209,5 +209,53 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
       fireEvent.change(montoInput, { target: { value: '-50000' } });
       expect(Number((montoInput as HTMLInputElement).value)).toBe(50000);
     });
+
+    it('permite anular un retiro de caja hecho por error y restaura inmediatamente los fondos a la gaveta', () => {
+      render(<PosArqueoPage />);
+
+      // Saldo inicial: $1.180.000 COP
+      expect(screen.getByText(/\$ 1\.180\.000 COP|\$1\.180\.000 COP/)).toBeInTheDocument();
+
+      // Buscar los botones de Anular en la bitácora
+      const anularBtns = screen.getAllByRole('button', { name: /Anular/i });
+      expect(anularBtns.length).toBeGreaterThan(0);
+
+      // Anular el primer retiro (BOV-0081 de $300.000)
+      fireEvent.click(anularBtns[0]);
+
+      // Mensaje de éxito informando que los fondos han vuelto a la gaveta
+      expect(screen.getByText(/fue ANULADO y los fondos han vuelto a la gaveta/i)).toBeInTheDocument();
+
+      // El saldo disponible en gaveta sube en $300.000 ($1.180.000 + $300.000 = $1.480.000)
+      expect(screen.getByText(/\$ 1\.480\.000 COP|\$1\.480\.000 COP/)).toBeInTheDocument();
+      expect(screen.getByText(/Anulado · Fondos Devueltos/i)).toBeInTheDocument();
+    });
+
+    it('permite registrar un reintegro de efectivo que suma al saldo disponible en gaveta', () => {
+      render(<PosArqueoPage />);
+
+      // Saldo inicial: $1.180.000 COP
+      expect(screen.getByText(/\$ 1\.180\.000 COP|\$1\.180\.000 COP/)).toBeInTheDocument();
+
+      // Cambiar a la pestaña "Reintegro"
+      const reintegroTab = screen.getByRole('button', { name: /Reintegro/i });
+      fireEvent.click(reintegroTab);
+
+      // Llenar monto y motivo de reintegro
+      const montoInput = screen.getByLabelText(/Monto a Reingresar a Gaveta/i);
+      fireEvent.change(montoInput, { target: { value: '250000' } });
+
+      const motivoInput = screen.getByPlaceholderText(/Reintegro por error en retiro previo/i);
+      fireEvent.change(motivoInput, { target: { value: 'Devolución de dinero retirado por error' } });
+
+      const submitBtn = screen.getByRole('button', { name: /Registrar Reintegro \/ Ingreso/i });
+      fireEvent.click(submitBtn);
+
+      // Mensaje de confirmación
+      expect(screen.getByText(/registrado en gaveta correctamente/i)).toBeInTheDocument();
+
+      // El saldo disponible en gaveta se incrementa en $250.000 ($1.180.000 + $250.000 = $1.430.000)
+      expect(screen.getByText(/\$ 1\.430\.000 COP|\$1\.430\.000 COP/)).toBeInTheDocument();
+    });
   });
 });

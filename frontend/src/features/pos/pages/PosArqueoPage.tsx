@@ -23,11 +23,14 @@ import { getPosShiftFinancialDeltas } from '../utils/posLedgerSync';
 interface RetiroOperativo {
   id: string;
   horaBogota: string;
-  tipo: 'RETIRO_CAJA_FUERTE' | 'GASTO_MENOR';
+  tipo: 'RETIRO_CAJA_FUERTE' | 'GASTO_MENOR' | 'INGRESO_REINTEGRO';
   montoCop: number;
   motivo: string;
   ejecutadoPor: string;
   comprobanteRef: string;
+  esAnulado?: boolean;
+  horaAnulacion?: string;
+  motivoAnulacion?: string;
 }
 
 interface DenominacionBillete {
@@ -135,9 +138,9 @@ export const PosArqueoPage: React.FC = () => {
   const [motivoRetiroInput, setMotivoRetiroInput] = useState<string>(
     'Traslado a caja fuerte por seguridad de gaveta'
   );
-  const [tipoRetiroInput, setTipoRetiroInput] = useState<'RETIRO_CAJA_FUERTE' | 'GASTO_MENOR'>(
-    'RETIRO_CAJA_FUERTE'
-  );
+  const [tipoRetiroInput, setTipoRetiroInput] = useState<
+    'RETIRO_CAJA_FUERTE' | 'GASTO_MENOR' | 'INGRESO_REINTEGRO'
+  >('RETIRO_CAJA_FUERTE');
   const [mensajeRetiroExito, setMensajeRetiroExito] = useState<string | null>(null);
 
   // Conteo de billetes para el arqueo ciego
@@ -159,21 +162,31 @@ export const PosArqueoPage: React.FC = () => {
   const [nuevaBaseInput, setNuevaBaseInput] = useState<number>(200000);
   const [nuevaObsApertura, setNuevaObsApertura] = useState<string>('');
 
-  // Retiros totales
+  // Retiros totales activos (excluyendo ingresos y movimientos anulados)
   const totalRetirosCop = useMemo(() => {
-    return retirosBitacora.reduce((acc, r) => acc + r.montoCop, 0);
+    return retirosBitacora
+      .filter((r) => r.tipo !== 'INGRESO_REINTEGRO' && !r.esAnulado)
+      .reduce((acc, r) => acc + r.montoCop, 0);
   }, [retirosBitacora]);
 
-  // Saldo de efectivo disponible en gaveta (Base inicial + Ventas en efectivo - Retiros anteriores)
+  // Ingresos / Reintegros totales activos a gaveta
+  const totalIngresosCop = useMemo(() => {
+    return retirosBitacora
+      .filter((r) => r.tipo === 'INGRESO_REINTEGRO' && !r.esAnulado)
+      .reduce((acc, r) => acc + r.montoCop, 0);
+  }, [retirosBitacora]);
+
+  // Saldo de efectivo disponible en gaveta (Base inicial + Ventas en efectivo + Ingresos/Reintegros - Retiros activos)
   const saldoEfectivoDisponibleEnCaja = useMemo(() => {
-    return baseInicialCop + ventasEfectivoAcumuladasCop - totalRetirosCop;
-  }, [baseInicialCop, ventasEfectivoAcumuladasCop, totalRetirosCop]);
+    return baseInicialCop + ventasEfectivoAcumuladasCop + totalIngresosCop - totalRetirosCop;
+  }, [baseInicialCop, ventasEfectivoAcumuladasCop, totalIngresosCop, totalRetirosCop]);
 
   // Efectivo esperado en el sistema (Oculto en estado ABIERTA para arqueo ciego)
   const efectivoEsperadoSistemaCop = saldoEfectivoDisponibleEnCaja;
 
   // Validación estricta: monto a retirar no puede superar el disponible en caja
-  const excedeEfectivoDisponible = montoRetiroInput > saldoEfectivoDisponibleEnCaja;
+  const excedeEfectivoDisponible =
+    tipoRetiroInput !== 'INGRESO_REINTEGRO' && montoRetiroInput > saldoEfectivoDisponibleEnCaja;
 
   // Efectivo físico declarado por el cajero
   const efectivoFisicoDeclaradoCop = useMemo(() => {
@@ -187,7 +200,7 @@ export const PosArqueoPage: React.FC = () => {
   // Diferencia
   const diferenciaArqueoCop = efectivoFisicoDeclaradoCop - efectivoEsperadoSistemaCop;
 
-  // Registrar retiro a caja fuerte / sangría / gastos menores
+  // Registrar retiro a caja fuerte / sangría / gastos menores o reintegro a caja
   const handleRegistrarRetiro = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorValidacion(null);
@@ -199,12 +212,14 @@ export const PosArqueoPage: React.FC = () => {
 
     const monto = Math.max(0, Math.trunc(montoRetiroInput));
     if (monto <= 0) {
-      setErrorValidacion('El monto a retirar debe ser un número entero mayor a cero.');
+      setErrorValidacion('El monto debe ser un número entero mayor a cero.');
       return;
     }
 
-    // Regla estricta: montoRetiro <= saldoEfectivoDisponibleEnCaja
-    if (monto > saldoEfectivoDisponibleEnCaja) {
+    const esIngreso = tipoRetiroInput === 'INGRESO_REINTEGRO';
+
+    // Regla estricta para retiros: montoRetiro <= saldoEfectivoDisponibleEnCaja
+    if (!esIngreso && monto > saldoEfectivoDisponibleEnCaja) {
       setErrorValidacion(
         `El monto a retirar (${formatCOP(monto)}) no puede superar el efectivo disponible en caja (${formatCOP(saldoEfectivoDisponibleEnCaja)})`
       );
@@ -212,25 +227,63 @@ export const PosArqueoPage: React.FC = () => {
     }
 
     if (!motivoRetiroInput.trim()) {
-      setErrorValidacion('Debes ingresar el motivo o concepto del retiro.');
+      setErrorValidacion(
+        esIngreso
+          ? 'Debes ingresar el motivo o concepto del reintegro/ingreso.'
+          : 'Debes ingresar el motivo o concepto del retiro.'
+      );
       return;
     }
 
+    const prefijo = esIngreso ? 'ING' : 'BOV';
     const nuevo: RetiroOperativo = {
-      id: `RET-${Date.now().toString().slice(-4)}`,
+      id: `${esIngreso ? 'ING' : 'RET'}-${Date.now().toString().slice(-4)}`,
       horaBogota: getBogotaTimeStr(),
       tipo: tipoRetiroInput,
       montoCop: monto,
       motivo: motivoRetiroInput.trim(),
       ejecutadoPor: 'Carlos Mendoza',
-      comprobanteRef: `BOV-00${retirosBitacora.length + 83}`,
+      comprobanteRef: `${prefijo}-00${retirosBitacora.length + 83}`,
     };
 
     setRetirosBitacora((prev) => [nuevo, ...prev]);
     setMensajeRetiroExito(
-      `Retiro ${nuevo.comprobanteRef} por ${formatCOP(monto)} registrado correctamente.`
+      esIngreso
+        ? `Reintegro / Ingreso ${nuevo.comprobanteRef} por ${formatCOP(monto)} registrado en gaveta correctamente.`
+        : `Retiro ${nuevo.comprobanteRef} por ${formatCOP(monto)} registrado correctamente.`
     );
     setTimeout(() => setMensajeRetiroExito(null), 4000);
+  };
+
+  // Anular movimiento (devolver fondos a gaveta si fue retiro por error o cancelar ingreso)
+  const handleAnularMovimiento = (id: string) => {
+    if (estadoSesion !== 'ABIERTA') {
+      setErrorValidacion('No se pueden anular movimientos con el turno cerrado.');
+      return;
+    }
+    const mov = retirosBitacora.find((r) => r.id === id);
+    if (!mov) return;
+
+    setRetirosBitacora((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              esAnulado: true,
+              horaAnulacion: getBogotaTimeStr(),
+              motivoAnulacion: 'Anulado por el cajero — Dinero devuelto a la gaveta',
+            }
+          : r
+      )
+    );
+
+    const esRetiro = mov.tipo !== 'INGRESO_REINTEGRO';
+    setMensajeRetiroExito(
+      esRetiro
+        ? `Retiro ${mov.comprobanteRef} por ${formatCOP(mov.montoCop)} fue ANULADO y los fondos han vuelto a la gaveta.`
+        : `Ingreso ${mov.comprobanteRef} por ${formatCOP(mov.montoCop)} fue ANULADO.`
+    );
+    setTimeout(() => setMensajeRetiroExito(null), 5000);
   };
 
   // Stepper de denominaciones
@@ -547,16 +600,16 @@ export const PosArqueoPage: React.FC = () => {
           COLUMNA DERECHA (7 COL): ARQUEO CIEGO POR DENOMINACIONES
       ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* PANEL IZQUIERDO: RETIROS A CAJA FUERTE */}
+        {/* PANEL IZQUIERDO: MOVIMIENTOS Y RETIROS DE EFECTIVO */}
         <section className="lg:col-span-5 bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 sm:p-5 space-y-4">
           <div className="pb-2 border-b border-[#EFEAE4] flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-[#661521]/10 text-[#661521] flex items-center justify-center">
               <Vault className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[11px] font-bold uppercase text-[#661521]">Seguridad</span>
+              <span className="text-[11px] font-bold uppercase text-[#661521]">Seguridad y Control</span>
               <h2 className="text-base font-black text-[#1C1311]">
-                Retiros de Efectivo a Caja Fuerte
+                Movimientos de Efectivo en Gaveta
               </h2>
             </div>
           </div>
@@ -576,47 +629,78 @@ export const PosArqueoPage: React.FC = () => {
               <span>Base: {formatCOP(baseInicialCop)}</span>
               <span>+</span>
               <span>Ventas: {formatCOP(ventasEfectivoAcumuladasCop)}</span>
+              {totalIngresosCop > 0 && (
+                <>
+                  <span>+</span>
+                  <span className="text-[#059669] font-bold">Reintegros: {formatCOP(totalIngresosCop)}</span>
+                </>
+              )}
               <span>-</span>
               <span>Retiros: {formatCOP(totalRetirosCop)}</span>
             </div>
           </div>
 
           <form onSubmit={handleRegistrarRetiro} className="space-y-3">
-            {/* Tipo de Movimiento */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Tipo de Movimiento: Retiro Caja Fuerte, Gasto Menor, Reintegro a Gaveta */}
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 disabled={estadoSesion !== 'ABIERTA'}
                 onClick={() => setTipoRetiroInput('RETIRO_CAJA_FUERTE')}
-                className={`min-h-[44px] px-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-[44px] px-1.5 rounded-xl text-[11px] font-bold border-2 transition-all flex flex-col items-center justify-center text-center gap-0.5 ${
                   tipoRetiroInput === 'RETIRO_CAJA_FUERTE'
                     ? 'bg-[#661521] text-white border-[#661521]'
                     : 'bg-[#FAF7F4] text-stone-700 border-[#D8CFC6]'
                 }`}
               >
-                <ArrowUpRight className="w-4 h-4" />
-                <span>Traslado a Caja Fuerte</span>
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>Caja Fuerte</span>
+                </div>
+                <span className="text-[9px] opacity-80">(Resta)</span>
               </button>
 
               <button
                 type="button"
                 disabled={estadoSesion !== 'ABIERTA'}
                 onClick={() => setTipoRetiroInput('GASTO_MENOR')}
-                className={`min-h-[44px] px-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-[44px] px-1.5 rounded-xl text-[11px] font-bold border-2 transition-all flex flex-col items-center justify-center text-center gap-0.5 ${
                   tipoRetiroInput === 'GASTO_MENOR'
                     ? 'bg-[#1C1311] text-[#D19650] border-[#1C1311]'
                     : 'bg-[#FAF7F4] text-stone-700 border-[#D8CFC6]'
                 }`}
               >
-                <ArrowDownRight className="w-4 h-4" />
-                <span>Gasto Menor</span>
+                <div className="flex items-center gap-1">
+                  <ArrowDownRight className="w-3.5 h-3.5" />
+                  <span>Gasto Menor</span>
+                </div>
+                <span className="text-[9px] opacity-80">(Resta)</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={estadoSesion !== 'ABIERTA'}
+                onClick={() => setTipoRetiroInput('INGRESO_REINTEGRO')}
+                className={`min-h-[44px] px-1.5 rounded-xl text-[11px] font-bold border-2 transition-all flex flex-col items-center justify-center text-center gap-0.5 ${
+                  tipoRetiroInput === 'INGRESO_REINTEGRO'
+                    ? 'bg-[#059669] text-white border-[#059669]'
+                    : 'bg-[#FAF7F4] text-stone-700 border-[#D8CFC6]'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reintegro</span>
+                </div>
+                <span className="text-[9px] opacity-80">(Suma)</span>
               </button>
             </div>
 
             {/* Monto y Botones Rápidos */}
             <div>
               <label htmlFor="monto-retiro-input" className="block text-xs font-bold uppercase text-stone-700 mb-1">
-                Monto a Retirar de Gaveta (COP):
+                {tipoRetiroInput === 'INGRESO_REINTEGRO'
+                  ? 'Monto a Reingresar a Gaveta (COP):'
+                  : 'Monto a Retirar de Gaveta (COP):'}
               </label>
               <input
                 id="monto-retiro-input"
@@ -666,14 +750,20 @@ export const PosArqueoPage: React.FC = () => {
             {/* Motivo */}
             <div>
               <label className="block text-xs font-bold uppercase text-stone-700 mb-1">
-                Concepto / Motivo del Retiro:
+                {tipoRetiroInput === 'INGRESO_REINTEGRO'
+                  ? 'Concepto / Motivo del Reintegro o Ingreso:'
+                  : 'Concepto / Motivo del Retiro:'}
               </label>
               <input
                 type="text"
                 disabled={estadoSesion !== 'ABIERTA'}
                 value={motivoRetiroInput}
                 onChange={(e) => setMotivoRetiroInput(e.target.value)}
-                placeholder="Ej. Traslado a caja fuerte por seguridad..."
+                placeholder={
+                  tipoRetiroInput === 'INGRESO_REINTEGRO'
+                    ? 'Ej. Reintegro por error en retiro previo / Devolución de cambio...'
+                    : 'Ej. Traslado a caja fuerte por seguridad...'
+                }
                 className="w-full min-h-[46px] px-3 rounded-xl bg-[#FAF7F4] border-2 border-[#D8CFC6] text-xs font-medium text-[#1C1311] focus:outline-none focus:border-[#661521] disabled:opacity-60"
               />
             </div>
@@ -685,10 +775,23 @@ export const PosArqueoPage: React.FC = () => {
                 montoRetiroInput <= 0 ||
                 excedeEfectivoDisponible
               }
-              className="w-full min-h-[50px] px-4 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`w-full min-h-[50px] px-4 rounded-xl text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                tipoRetiroInput === 'INGRESO_REINTEGRO'
+                  ? 'bg-[#059669] hover:bg-emerald-700'
+                  : 'bg-[#661521] hover:bg-[#52101a]'
+              }`}
             >
-              <Vault className="w-4 h-4 text-[#D19650]" />
-              <span>Registrar Retiro ({formatCOP(montoRetiroInput)})</span>
+              {tipoRetiroInput === 'INGRESO_REINTEGRO' ? (
+                <>
+                  <RotateCcw className="w-4 h-4 text-emerald-200" />
+                  <span>Registrar Reintegro / Ingreso ({formatCOP(montoRetiroInput)})</span>
+                </>
+              ) : (
+                <>
+                  <Vault className="w-4 h-4 text-[#D19650]" />
+                  <span>Registrar Retiro ({formatCOP(montoRetiroInput)})</span>
+                </>
+              )}
             </button>
           </form>
 
@@ -699,41 +802,99 @@ export const PosArqueoPage: React.FC = () => {
             </div>
           )}
 
-          {/* Bitácora de Retiros */}
+          {/* Bitácora de Movimientos (Retiros e Ingresos) */}
           <div className="pt-3 border-t border-[#EFEAE4]">
             <div className="flex justify-between items-center mb-2 text-xs">
               <span className="font-extrabold uppercase text-[#1C1311]">
                 Bitácora de Retiros ({retirosBitacora.length})
               </span>
               <span className="font-mono font-black text-[#661521]">
-                Total: -{formatCOP(totalRetirosCop)}
+                Neto: -{formatCOP(totalRetirosCop - totalIngresosCop)}
               </span>
             </div>
 
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {retirosBitacora.map((r) => (
-                <div
-                  key={r.id}
-                  className="p-3 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] flex items-center justify-between gap-3 text-xs"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-1.5 py-0.5 rounded bg-[#1C1311] text-[#D19650] font-mono text-[10px] font-bold">
-                        {r.comprobanteRef}
+            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+              {retirosBitacora.map((r) => {
+                const esIngreso = r.tipo === 'INGRESO_REINTEGRO';
+                return (
+                  <div
+                    key={r.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
+                      r.esAnulado
+                        ? 'bg-stone-100 border-stone-300 opacity-60'
+                        : esIngreso
+                        ? 'bg-emerald-50/70 border-emerald-200'
+                        : 'bg-[#FAF7F4] border-[#E5DDD3]'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-bold ${
+                            esIngreso
+                              ? 'bg-[#059669] text-white'
+                              : 'bg-[#1C1311] text-[#D19650]'
+                          }`}
+                        >
+                          {r.comprobanteRef}
+                        </span>
+                        <span className="text-stone-500 font-mono text-[11px]">{r.horaBogota}</span>
+                        {r.esAnulado ? (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-black uppercase">
+                            Anulado · Fondos Devueltos
+                          </span>
+                        ) : esIngreso ? (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            Reintegro a Gaveta
+                          </span>
+                        ) : null}
+                      </div>
+                      <p
+                        className={`font-bold mt-0.5 truncate ${
+                          r.esAnulado ? 'line-through text-stone-400' : 'text-[#1C1311]'
+                        }`}
+                      >
+                        {r.motivo}
+                      </p>
+                      <span className="text-stone-500 text-[10px] block">
+                        {esIngreso
+                          ? 'Reintegro de Efectivo'
+                          : r.tipo === 'RETIRO_CAJA_FUERTE'
+                          ? 'Caja Fuerte'
+                          : 'Gasto Menor'}{' '}
+                        · Por: {r.ejecutadoPor}
+                        {r.horaAnulacion && ` · Anulado: ${r.horaAnulacion}`}
                       </span>
-                      <span className="text-stone-500 font-mono text-[11px]">{r.horaBogota}</span>
                     </div>
-                    <p className="font-bold text-[#1C1311] mt-0.5">{r.motivo}</p>
-                    <span className="text-stone-500 text-[10px]">
-                      {r.tipo === 'RETIRO_CAJA_FUERTE' ? 'Caja Fuerte' : 'Gasto Menor'} · Por: {r.ejecutadoPor}
-                    </span>
-                  </div>
 
-                  <span className="font-mono text-sm font-black text-[#661521] shrink-0">
-                    -{formatCOP(r.montoCop)}
-                  </span>
-                </div>
-              ))}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={`font-mono text-sm font-black ${
+                          r.esAnulado
+                            ? 'line-through text-stone-400'
+                            : esIngreso
+                            ? 'text-[#059669]'
+                            : 'text-[#661521]'
+                        }`}
+                      >
+                        {esIngreso ? `+${formatCOP(r.montoCop)}` : `-${formatCOP(r.montoCop)}`}
+                      </span>
+
+                      {!r.esAnulado && estadoSesion === 'ABIERTA' && (
+                        <button
+                          type="button"
+                          onClick={() => handleAnularMovimiento(r.id)}
+                          title="Anular movimiento y restaurar dinero a la gaveta de caja"
+                          className="px-2 py-1 rounded-lg border border-[#D8CFC6] bg-white hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 text-stone-700 text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs"
+                        >
+                          <RotateCcw className="w-3 h-3 text-[#661521]" />
+                          <span>Anular</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

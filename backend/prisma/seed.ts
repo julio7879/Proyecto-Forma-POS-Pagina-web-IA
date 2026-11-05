@@ -1,6 +1,6 @@
 import { PrismaClient, RolUsuario, TipoUbicacion } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { CATALOGO_MAESTRO_130 } from './seeds/catalogSeedData.js';
+import { CATALOGO_30_PRODUCTOS } from './seeds/seed-30-productos-multisede.js';
 
 const prisma = new PrismaClient();
 
@@ -313,8 +313,8 @@ async function main() {
     mapaCategorias.set(cat.nombre, registro.id);
   }
 
-  // 7. Catálogo Masivo de 105 Productos con 500+ Variantes
-  console.log(`📦 Sembrando ${CATALOGO_MAESTRO_130.length} productos con imágenes WebP y variantes...`);
+  // 7. Catálogo Oficial de 30 Productos de Alta Costura
+  console.log(`📦 Sembrando ${CATALOGO_30_PRODUCTOS.length} productos oficiales con variantes y distribución multisede...`);
 
   const saldosParaInsertar: Array<{
     varianteId: number;
@@ -325,7 +325,25 @@ async function main() {
     noVendible: number;
   }> = [];
 
-  for (const prodData of CATALOGO_MAESTRO_130) {
+  const slugsOficiales = CATALOGO_30_PRODUCTOS.map((p) => p.slug);
+
+  // Desactivar cualquier producto residual que no pertenezca a los 30 oficiales
+  await prisma.producto.updateMany({
+    where: { slug: { notIn: slugsOficiales } },
+    data: { activo: false },
+  });
+  const prodsResiduales = await prisma.producto.findMany({
+    where: { slug: { notIn: slugsOficiales } },
+    select: { id: true },
+  });
+  if (prodsResiduales.length > 0) {
+    await prisma.variante.updateMany({
+      where: { productoId: { in: prodsResiduales.map((p) => p.id) } },
+      data: { activa: false },
+    });
+  }
+
+  for (const prodData of CATALOGO_30_PRODUCTOS) {
     const categoriaId = mapaCategorias.get(prodData.categoriaNombre);
     if (!categoriaId) continue;
 
@@ -370,9 +388,13 @@ async function main() {
         },
       });
 
-      // 8. SaldoStock Inicial en Bodega Central (40 uds) y en los 4 Puntos de Venta (10 uds c/u)
+      // 8. SaldoStock Inicial en Bodega Central (stockCentral o 40) y en Puntos de Venta (stockPunto o 15)
       for (const ubi of todasLasUbicaciones) {
-        const stockInicial = ubi.tipo === TipoUbicacion.CENTRAL ? 40 : 10;
+        const stockInicial =
+          ubi.tipo === TipoUbicacion.CENTRAL
+            ? ('stockCentral' in v ? (v as any).stockCentral : 40)
+            : ('stockPunto' in v ? (v as any).stockPunto : 15);
+
         saldosParaInsertar.push({
           varianteId: variante.id,
           ubicacionId: ubi.id,
@@ -385,35 +407,16 @@ async function main() {
     }
   }
 
-  // Garantizar que TODAS las variantes activas de la base de datos (incluyendo semillas previas) tengan SaldoStock en las 5 sedes oficiales
-  const todasLasVariantesActivas = await prisma.variante.findMany({
-    where: { activa: true },
-    select: { id: true },
-  });
-  for (const vActiva of todasLasVariantesActivas) {
-    for (const ubi of todasLasUbicaciones) {
-      const stockInicial = ubi.tipo === TipoUbicacion.CENTRAL ? 40 : 10;
-      saldosParaInsertar.push({
-        varianteId: vActiva.id,
-        ubicacionId: ubi.id,
-        fisico: stockInicial,
-        reservadoBlando: 0,
-        reservadoDuro: 0,
-        noVendible: 0,
-      });
-    }
-  }
-
   console.log(`📊 Insertando/verificando ${saldosParaInsertar.length} registros de SaldoStock en lote...`);
   await prisma.saldoStock.createMany({
     data: saldosParaInsertar,
     skipDuplicates: true,
   });
 
-  console.log('✅ Seed masivo completado exitosamente.');
+  console.log('✅ Seed oficial completado exitosamente.');
   console.log('📍 5 Sedes configuradas (1 Central + 4 Puntos de Venta).');
   console.log('👤 5 Usuarios oficiales (1 Admin + 4 Vendedores).');
-  console.log(`👗 ${CATALOGO_MAESTRO_130.length} Productos sembrados con stock multisede listo.`);
+  console.log(`👗 ${CATALOGO_30_PRODUCTOS.length} Productos oficiales activos con stock multisede listo.`);
 }
 
 main()
