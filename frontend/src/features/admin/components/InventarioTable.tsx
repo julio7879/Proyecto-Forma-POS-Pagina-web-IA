@@ -8,84 +8,88 @@ interface Props {
 
 export const InventarioTable = ({ data }: Props) => {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl">
-      <table className="w-full text-xs">
-        <thead className="bg-slate-100/80 dark:bg-slate-800/60 border-b border-slate-200/60 dark:border-slate-800/60">
+    <div className="glass-mirror-card overflow-x-auto rounded-3xl">
+      <table className="w-full text-sm">
+        <thead className="bg-[#E7DED2]/85 border-b border-[#50322A]/20">
           <tr className="text-left">
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px]">
+            <th className="px-5 py-4 font-extrabold text-[#351912] uppercase tracking-wider text-xs">
               Sede
             </th>
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px]">
+            <th className="px-5 py-4 font-extrabold text-[#351912] uppercase tracking-wider text-xs">
               SKU / Producto
             </th>
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] text-right">
+            <th className="px-5 py-4 font-extrabold text-[#50322A] uppercase tracking-wider text-xs text-right">
               Físico
             </th>
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] text-right">
+            <th className="px-5 py-4 font-extrabold text-[#351912] uppercase tracking-wider text-xs text-right">
               Disponible
             </th>
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] text-right">
+            <th className="px-5 py-4 font-extrabold text-[#50322A] uppercase tracking-wider text-xs text-right">
               Res. Blando
             </th>
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] text-right">
+            <th className="px-5 py-4 font-extrabold text-[#50322A] uppercase tracking-wider text-xs text-right">
               Res. Duro
             </th>
-            <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] text-right">
+            <th className="px-5 py-4 font-extrabold text-[#50322A] uppercase tracking-wider text-xs text-right">
               No Vendible
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+        <tbody className="divide-y divide-[#50322A]/10">
           {data.map((item) => {
             const isStockBajo = item.disponible <= item.umbralStockBajo;
             return (
               <tr
                 key={item.id}
-                className={`transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 ${
-                  isStockBajo ? 'bg-amber-50/60 dark:bg-amber-950/20' : ''
+                className={`transition-colors hover:bg-white/75 ${
+                  isStockBajo ? 'bg-[#D19650]/15' : ''
                 }`}
               >
-                <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
-                  <div className="flex items-center gap-1.5">
-                    {item.sedeNombre}
+                <td className="px-5 py-4 font-bold text-[#171717]">
+                  <div className="flex items-center gap-2">
+                    <span className="glass-mirror-pill px-3 py-1 rounded-xl text-xs font-extrabold text-[#351912] border border-[#D19650]/35">
+                      {item.sedeNombre}
+                    </span>
                     {isStockBajo && (
                       <AlertTriangle
-                        className="w-3.5 h-3.5 text-amber-500"
+                        className="w-4 h-4 text-[#661521] shrink-0"
                         aria-label="Stock bajo"
                       />
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                <td className="px-5 py-4">
+                  <div className="font-mono tabular-nums text-xs font-bold text-[#661521]">
                     {item.sku}
                   </div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
+                  <div className="font-bold text-sm text-[#171717] mt-0.5">
                     {item.nombreProducto}
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <div className="text-xs font-semibold text-[#50322A]">
                     {item.categoriaNombre}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                <td className="px-5 py-4 text-right font-mono tabular-nums font-bold text-[#171717]">
                   {item.fisico}
                 </td>
-                <td
-                  className={`px-4 py-3 text-right font-mono font-bold ${
-                    isStockBajo
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-emerald-600 dark:text-emerald-400'
-                  }`}
-                >
-                  {item.disponible}
+                <td className="px-5 py-4 text-right font-mono tabular-nums">
+                  <span
+                    className={`inline-flex items-center justify-end px-2.5 py-1 rounded-lg text-sm font-black ${
+                      isStockBajo
+                        ? 'bg-[#661521] text-white border border-[#D19650]/50'
+                        : 'bg-[#D19650]/20 text-[#171717] border border-[#D19650]/45'
+                    }`}
+                  >
+                    {item.disponible}
+                  </span>
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                <td className="px-5 py-4 text-right font-mono tabular-nums font-semibold text-[#50322A]">
                   {item.reservadoBlando}
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                <td className="px-5 py-4 text-right font-mono tabular-nums font-semibold text-[#50322A]">
                   {item.reservadoDuro}
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-slate-500 dark:text-slate-400">
+                <td className="px-5 py-4 text-right font-mono tabular-nums font-semibold text-[#50322A]">
                   {item.noVendible}
                 </td>
               </tr>

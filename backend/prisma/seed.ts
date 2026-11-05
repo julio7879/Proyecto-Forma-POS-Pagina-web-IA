@@ -1,10 +1,11 @@
 import { PrismaClient, RolUsuario, TipoUbicacion } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { CATALOGO_MAESTRO_130 } from './seeds/catalogSeedData.js';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Ejecutando seed oficial de parámetros y datos iniciales...');
+  console.log('🌱 Ejecutando seed oficial de parámetros y datos iniciales para Sandbox...');
 
   // 1. Zonas de Envío DANE (RN-ENV-03)
   const tarifas = [
@@ -83,7 +84,8 @@ async function main() {
     },
   });
 
-  // 4. Ubicaciones Oficiales (Parametros-Oficiales-y-Semillas)
+  // 4. Ubicaciones Oficiales: Bodega Central + 4 Puntos de Venta
+  console.log('📍 Sembrando Bodega Central y 4 Puntos de Venta físicos...');
   const central = await prisma.ubicacion.upsert({
     where: { nombre: 'Bodega Central' },
     update: {},
@@ -91,76 +93,204 @@ async function main() {
       nombre: 'Bodega Central',
       tipo: TipoUbicacion.CENTRAL,
       municipioDaneId: cucuta.codigoDane,
-      direccion: 'Zona Industrial Cúcuta',
+      direccion: 'Zona Industrial Cúcuta, Bodega 4',
       prioridadDespacho: 40,
       despachaWeb: true,
       baseCajaCop: 0,
     },
   });
 
-  await prisma.ubicacion.upsert({
+  const puntoCentro = await prisma.ubicacion.upsert({
     where: { nombre: 'Punto Centro' },
     update: {},
     create: {
       nombre: 'Punto Centro',
       tipo: TipoUbicacion.PUNTO_VENTA,
       municipioDaneId: cucuta.codigoDane,
-      direccion: 'Av. 5 # 10-20 Centro Cúcuta',
+      direccion: 'Av. 5 # 10-20 Centro, Cúcuta',
       prioridadDespacho: 10,
       despachaWeb: true,
       baseCajaCop: 200000,
     },
   });
 
-  await prisma.ubicacion.upsert({
+  const puntoCaobos = await prisma.ubicacion.upsert({
+    where: { nombre: 'Punto Caobos / Ventura Plaza' },
+    update: {},
+    create: {
+      nombre: 'Punto Caobos / Ventura Plaza',
+      tipo: TipoUbicacion.PUNTO_VENTA,
+      municipioDaneId: cucuta.codigoDane,
+      direccion: 'Calle 11 # 1E-45 Los Caobos, Cúcuta',
+      prioridadDespacho: 15,
+      despachaWeb: true,
+      baseCajaCop: 200000,
+    },
+  });
+
+  const puntoOcana = await prisma.ubicacion.upsert({
     where: { nombre: 'Punto Ocaña' },
     update: {},
     create: {
       nombre: 'Punto Ocaña',
       tipo: TipoUbicacion.PUNTO_VENTA,
       municipioDaneId: ocana.codigoDane,
-      direccion: 'Calle Principal Ocaña',
+      direccion: 'Calle Principal # 12-34, Ocaña',
       prioridadDespacho: 20,
       despachaWeb: true,
       baseCajaCop: 200000,
     },
   });
 
-  await prisma.ubicacion.upsert({
+  const puntoBucaramanga = await prisma.ubicacion.upsert({
     where: { nombre: 'Punto Bucaramanga' },
     update: {},
     create: {
       nombre: 'Punto Bucaramanga',
       tipo: TipoUbicacion.PUNTO_VENTA,
       municipioDaneId: bucaramanga.codigoDane,
-      direccion: 'Carrera 33 Bucaramanga',
+      direccion: 'Carrera 33 # 48-15 Cabecera, Bucaramanga',
       prioridadDespacho: 30,
       despachaWeb: true,
       baseCajaCop: 200000,
     },
   });
 
-  // 5. Usuario Administrador Inicial
-  const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash('Admin2026*', salt);
+  const todasLasUbicaciones = [central, puntoCentro, puntoCaobos, puntoOcana, puntoBucaramanga];
 
+  // 5. Usuarios Oficiales: 1 Administrador + 4 Vendedores (uno por cada sede)
+  console.log('👤 Sembrando 1 Administrador General y 4 Vendedores con sedes asignadas...');
+  const salt = await bcrypt.genSalt(10);
+  const passwordHashAdmin = await bcrypt.hash('Admin2026*', salt);
+  const passwordHashVendedor = await bcrypt.hash('Vendedor2026*', salt);
+
+  // Administrador General
   await prisma.usuario.upsert({
     where: { correo: 'admin@forma.com' },
     update: {},
     create: {
       nombreCompleto: 'Administrador General',
       correo: 'admin@forma.com',
-      passwordHash,
+      passwordHash: passwordHashAdmin,
       rol: RolUsuario.ADMIN,
-      ubicacionId: central.id,
+      ubicacion: { connect: { id: central.id } },
       activo: true,
+      permVender: true,
+      permCaja: true,
+      permDescuentoManual: true,
+      permAnularVentas: true,
+      permDevoluciones: true,
+      permVerInventario: true,
+      permSolicitarTraslado: true,
+      permRecibirTraslado: true,
+      permVerOtrosPuntos: true,
+      permPedidosWeb: true,
+      permVerVentasPunto: true,
     },
   });
 
-  // 6. Catálogo de Mercancía Estándar (RN-CAT-01 a RN-CAT-04, RF-CAT-01 a 03)
-  console.log('📦 Sembrando categorías y catálogo estándar por SKU...');
+  // Vendedor 1 - Punto Centro
+  await prisma.usuario.upsert({
+    where: { correo: 'vendedor.centro@forma.com' },
+    update: {},
+    create: {
+      nombreCompleto: 'Camilo Vendedor Centro',
+      correo: 'vendedor.centro@forma.com',
+      passwordHash: passwordHashVendedor,
+      rol: RolUsuario.VENDEDOR,
+      ubicacion: { connect: { id: puntoCentro.id } },
+      activo: true,
+      permVender: true,
+      permCaja: true,
+      permDescuentoManual: true,
+      permAnularVentas: false,
+      permDevoluciones: true,
+      permVerInventario: true,
+      permSolicitarTraslado: true,
+      permRecibirTraslado: true,
+      permVerOtrosPuntos: true,
+      permPedidosWeb: true,
+      permVerVentasPunto: true,
+    },
+  });
 
-  // RN-CAT-01 y RN-CAT-02: Las 4 categorías base (Cosméticos con esCosmeticoUsoPersonal = true)
+  // Vendedor 2 - Punto Caobos
+  await prisma.usuario.upsert({
+    where: { correo: 'vendedor.caobos@forma.com' },
+    update: {},
+    create: {
+      nombreCompleto: 'Valeria Vendedora Caobos',
+      correo: 'vendedor.caobos@forma.com',
+      passwordHash: passwordHashVendedor,
+      rol: RolUsuario.VENDEDOR,
+      ubicacion: { connect: { id: puntoCaobos.id } },
+      activo: true,
+      permVender: true,
+      permCaja: true,
+      permDescuentoManual: true,
+      permAnularVentas: false,
+      permDevoluciones: true,
+      permVerInventario: true,
+      permSolicitarTraslado: true,
+      permRecibirTraslado: true,
+      permVerOtrosPuntos: true,
+      permPedidosWeb: true,
+      permVerVentasPunto: true,
+    },
+  });
+
+  // Vendedor 3 - Punto Ocaña
+  await prisma.usuario.upsert({
+    where: { correo: 'vendedor.ocana@forma.com' },
+    update: {},
+    create: {
+      nombreCompleto: 'Mateo Vendedor Ocaña',
+      correo: 'vendedor.ocana@forma.com',
+      passwordHash: passwordHashVendedor,
+      rol: RolUsuario.VENDEDOR,
+      ubicacion: { connect: { id: puntoOcana.id } },
+      activo: true,
+      permVender: true,
+      permCaja: true,
+      permDescuentoManual: true,
+      permAnularVentas: false,
+      permDevoluciones: true,
+      permVerInventario: true,
+      permSolicitarTraslado: true,
+      permRecibirTraslado: true,
+      permVerOtrosPuntos: true,
+      permPedidosWeb: true,
+      permVerVentasPunto: true,
+    },
+  });
+
+  // Vendedor 4 - Punto Bucaramanga
+  await prisma.usuario.upsert({
+    where: { correo: 'vendedor.bucaramanga@forma.com' },
+    update: {},
+    create: {
+      nombreCompleto: 'Daniela Vendedora Bucaramanga',
+      correo: 'vendedor.bucaramanga@forma.com',
+      passwordHash: passwordHashVendedor,
+      rol: RolUsuario.VENDEDOR,
+      ubicacion: { connect: { id: puntoBucaramanga.id } },
+      activo: true,
+      permVender: true,
+      permCaja: true,
+      permDescuentoManual: true,
+      permAnularVentas: false,
+      permDevoluciones: true,
+      permVerInventario: true,
+      permSolicitarTraslado: true,
+      permRecibirTraslado: true,
+      permVerOtrosPuntos: true,
+      permPedidosWeb: true,
+      permVerVentasPunto: true,
+    },
+  });
+
+  // 6. Categorías Oficiales
+  console.log('🏷️ Sembrando categorías base...');
   const categoriasBase = [
     { nombre: 'Ropa', esCosmeticoUsoPersonal: false },
     { nombre: 'Accesorios', esCosmeticoUsoPersonal: false },
@@ -183,76 +313,19 @@ async function main() {
     mapaCategorias.set(cat.nombre, registro.id);
   }
 
-  // Productos de prueba y variantes estándar con SKUs únicos y precios enteros COP
-  const catalogoSemilla = [
-    // 1. Ropa (RN-CAT-01: Tallas S, M, L y Color)
-    {
-      categoriaNombre: 'Ropa',
-      nombre: 'Camiseta Básica de Algodón',
-      slug: 'camiseta-basica-algodon',
-      descripcion: 'Camiseta clásica unisex 100% algodón de tacto suave para uso diario.',
-      reintegrableEnDevolucion: true,
-      imagenesUrls: ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518'],
-      variantes: [
-        { sku: 'ROP-CAM-NEG-S', talla: 'S', color: 'Negro', precioVentaCop: 45000 },
-        { sku: 'ROP-CAM-NEG-M', talla: 'M', color: 'Negro', precioVentaCop: 45000 },
-        { sku: 'ROP-CAM-NEG-L', talla: 'L', color: 'Negro', precioVentaCop: 45000 },
-        { sku: 'ROP-CAM-BLA-M', talla: 'M', color: 'Blanco', precioVentaCop: 45000 },
-      ],
-    },
-    // 2. Accesorios (RN-CAT-01: Gorras / Talla única)
-    {
-      categoriaNombre: 'Accesorios',
-      nombre: 'Gorra Urbana Snapback',
-      slug: 'gorra-urbana-snapback',
-      descripcion: 'Gorra deportiva estructurada con visera plana y broche ajustable posterior.',
-      reintegrableEnDevolucion: true,
-      imagenesUrls: ['https://images.unsplash.com/photo-1588850561407-ed78c282e89b'],
-      variantes: [
-        { sku: 'ACC-GOR-NEG-U', talla: 'Única', color: 'Negro', precioVentaCop: 38000 },
-        { sku: 'ACC-GOR-AZU-U', talla: 'Única', color: 'Azul', precioVentaCop: 38000 },
-      ],
-    },
-    // 3. Cosméticos (RN-CAT-02: reintegrableEnDevolucion = false obligatorio)
-    {
-      categoriaNombre: 'Cosméticos',
-      nombre: 'Sérum Facial Vitamina C',
-      slug: 'serum-facial-vitamina-c',
-      descripcion: 'Tratamiento facial antioxidante e iluminador enriquecido con ácido hialurónico 30ml.',
-      reintegrableEnDevolucion: false, // RN-CAT-02: no reintegrable
-      imagenesUrls: ['https://images.unsplash.com/photo-1620916566398-39f1143ab7be'],
-      variantes: [
-        { sku: 'COS-SER-30ML', talla: '30ml', color: 'Neutro', precioVentaCop: 65000 },
-      ],
-    },
-    {
-      categoriaNombre: 'Cosméticos',
-      nombre: 'Labial Cremoso Larga Duración',
-      slug: 'labial-cremoso-larga-duracion',
-      descripcion: 'Labial con acabado satinado hidratante con vitamina E.',
-      reintegrableEnDevolucion: false, // RN-CAT-02: no reintegrable
-      imagenesUrls: ['https://images.unsplash.com/photo-1586495777744-4413f21062fa'],
-      variantes: [
-        { sku: 'COS-LAB-ROJ-U', talla: 'Única', color: 'Rojo Carmín', precioVentaCop: 28000 },
-        { sku: 'COS-LAB-ROS-U', talla: 'Única', color: 'Rosa Palo', precioVentaCop: 28000 },
-      ],
-    },
-    // 4. Artesanías (RN-CAT-01: Piezas terminadas)
-    {
-      categoriaNombre: 'Artesanías',
-      nombre: 'Mochila Wayuu Tradicional',
-      slug: 'mochila-wayuu-tradicional',
-      descripcion: 'Mochila artesanal colombiana tejida a mano con diseño geométrico.',
-      reintegrableEnDevolucion: true,
-      imagenesUrls: ['https://images.unsplash.com/photo-1590874103328-eac38a683ce7'],
-      variantes: [
-        { sku: 'ART-MOC-GEO-M', talla: 'Mediana', color: 'Multicolor', precioVentaCop: 140000 },
-      ],
-    },
-  ];
+  // 7. Catálogo Masivo de 105 Productos con 500+ Variantes
+  console.log(`📦 Sembrando ${CATALOGO_MAESTRO_130.length} productos con imágenes WebP y variantes...`);
 
-  // Inserción idempotente de Productos y Variantes
-  for (const prodData of catalogoSemilla) {
+  const saldosParaInsertar: Array<{
+    varianteId: number;
+    ubicacionId: number;
+    fisico: number;
+    reservadoBlando: number;
+    reservadoDuro: number;
+    noVendible: number;
+  }> = [];
+
+  for (const prodData of CATALOGO_MAESTRO_130) {
     const categoriaId = mapaCategorias.get(prodData.categoriaNombre);
     if (!categoriaId) continue;
 
@@ -278,7 +351,7 @@ async function main() {
     });
 
     for (const v of prodData.variantes) {
-      await prisma.variante.upsert({
+      const variante = await prisma.variante.upsert({
         where: { sku: v.sku },
         update: {
           talla: v.talla,
@@ -296,10 +369,51 @@ async function main() {
           tieneMovimientos: false,
         },
       });
+
+      // 8. SaldoStock Inicial en Bodega Central (40 uds) y en los 4 Puntos de Venta (10 uds c/u)
+      for (const ubi of todasLasUbicaciones) {
+        const stockInicial = ubi.tipo === TipoUbicacion.CENTRAL ? 40 : 10;
+        saldosParaInsertar.push({
+          varianteId: variante.id,
+          ubicacionId: ubi.id,
+          fisico: stockInicial,
+          reservadoBlando: 0,
+          reservadoDuro: 0,
+          noVendible: 0,
+        });
+      }
     }
   }
 
-  console.log('✅ Seed completado exitosamente.');
+  // Garantizar que TODAS las variantes activas de la base de datos (incluyendo semillas previas) tengan SaldoStock en las 5 sedes oficiales
+  const todasLasVariantesActivas = await prisma.variante.findMany({
+    where: { activa: true },
+    select: { id: true },
+  });
+  for (const vActiva of todasLasVariantesActivas) {
+    for (const ubi of todasLasUbicaciones) {
+      const stockInicial = ubi.tipo === TipoUbicacion.CENTRAL ? 40 : 10;
+      saldosParaInsertar.push({
+        varianteId: vActiva.id,
+        ubicacionId: ubi.id,
+        fisico: stockInicial,
+        reservadoBlando: 0,
+        reservadoDuro: 0,
+        noVendible: 0,
+      });
+    }
+  }
+
+  console.log(`📊 Insertando/verificando ${saldosParaInsertar.length} registros de SaldoStock en lote...`);
+  await prisma.saldoStock.createMany({
+    data: saldosParaInsertar,
+    skipDuplicates: true,
+  });
+
+  console.log('✅ Seed masivo completado exitosamente.');
+  console.log('📍 5 Sedes configuradas (1 Central + 4 Puntos de Venta).');
+  console.log('👤 5 Usuarios oficiales (1 Admin + 4 Vendedores).');
+  console.log(`👗 ${CATALOGO_MAESTRO_130.length} Productos sembrados con stock multisede listo.`);
 }
 
 main()

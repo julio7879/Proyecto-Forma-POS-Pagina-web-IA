@@ -54,6 +54,27 @@ export class VentaPosService {
           valor: data.descuento.valor,
           ...(data.descuento.motivoManual ? { motivo: data.descuento.motivoManual } : {}),
         };
+
+        // Si es un cupón con código, validar en la base de datos
+        if (data.descuento.descuentoCodigo && typeof tx.promocion?.findUnique === 'function') {
+          const promo = await tx.promocion.findUnique({
+            where: { codigo: data.descuento.descuentoCodigo.trim().toUpperCase() },
+          });
+          if (!promo || !promo.activa) {
+            throw AppError.badRequest(`El cupón '${data.descuento.descuentoCodigo}' no existe o está inactivo.`);
+          }
+          if (promo.canalPermitido !== 'AMBOS' && promo.canalPermitido !== 'POS') {
+            throw AppError.badRequest(`El cupón '${promo.codigo}' no es válido para ventas en tienda física.`);
+          }
+        }
+
+        // Si es descuento manual de vendedor, validar permisos (RN-DES-05)
+        if (data.descuento.motivoManual && typeof tx.usuario?.findUnique === 'function') {
+          const vendedor = await tx.usuario.findUnique({ where: { id: usuarioId } });
+          if (vendedor && vendedor.rol !== 'ADMIN' && vendedor.permDescuentoManual === false) {
+            throw AppError.forbidden('No tiene permisos para aplicar descuentos manuales.');
+          }
+        }
       }
 
       const resultadoDescuento = DiscountEngine.calcular(lineasCalculo, solicitudDescuento);
@@ -80,6 +101,7 @@ export class VentaPosService {
       );
 
       const lineasOrdenadas = [...data.lineas].sort((a, b) => a.varianteId - b.varianteId);
+      const movimientosCreadosIds: bigint[] = [];
 
       for (const linea of lineasOrdenadas) {
         // Bloqueo pesimista de fila en SaldoStock para evitar TOCTOU y condiciones de carrera
@@ -173,17 +195,18 @@ export class VentaPosService {
         }
 
         // Descontar inventario físico por la venta POS vía Kardex único (RN-GEN-02)
-        await InventoryLedgerService.registrarMovimiento(tx, {
+        const movVenta = await InventoryLedgerService.registrarMovimiento(tx, {
           tipo: 'VENTA_POS',
           ubicacionId: data.ubicacionId,
           varianteId: linea.varianteId,
           cantidadConSigno: -linea.cantidad,
           afectaSaldo: 'FISICO',
           documentoTipo: 'VENTA_POS',
-          documentoId: 0, // Se enlaza con el registro VentaPOS
+          documentoId: 0, // Se actualiza con venta.id inmediatamente después
           usuarioId,
           motivo: `Venta mostrador POS`,
         });
+        movimientosCreadosIds.push(movVenta.id);
       }
 
       // 6. Consecutivo Diferido por Ubicación (RN-VTA-09) inmediatamente antes del COMMIT
@@ -275,7 +298,23 @@ export class VentaPosService {
         },
       });
 
-      // 8. Registro de auditoría inmutable (RN-GEN-03)
+      // 8. Enlazar movimientos Kardex al ID de la venta creada
+      if (movimientosCreadosIds.length > 0 && typeof tx.movimientoInventario?.updateMany === 'function') {
+        await tx.movimientoInventario.updateMany({
+          where: { id: { in: movimientosCreadosIds } },
+          data: { documentoId: venta.id },
+        });
+      }
+
+      // 9. Si se utilizó un cupón de descuento, marcar que tiene usos
+      if (data.descuento?.descuentoCodigo && typeof tx.promocion?.updateMany === 'function') {
+        await tx.promocion.updateMany({
+          where: { codigo: data.descuento.descuentoCodigo.trim().toUpperCase() },
+          data: { tieneUsos: true },
+        });
+      }
+
+      // 10. Registro de auditoría inmutable (RN-GEN-03)
       await tx.registroAuditoria.create({
         data: {
           usuarioId,
@@ -293,7 +332,7 @@ export class VentaPosService {
         },
       });
 
-      // 9. Persistencia de Idempotencia Atómica (RN-GEN-08)
+      // 11. Persistencia de Idempotencia Atómica (RN-GEN-08)
       if (idempotencyKey) {
         const snapshot = JSON.parse(JSON.stringify({ ok: true, datos: venta })) as Prisma.InputJsonValue;
         await tx.registroIdempotencia.create({
@@ -308,7 +347,7 @@ export class VentaPosService {
       }
 
       return venta;
-    });
+    }, { timeout: 30000, maxWait: 15000 });
   }
 
   static async listar(filtros: ListarVentasPosQuery) {

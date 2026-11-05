@@ -728,7 +728,7 @@ export class TrasladoService {
       });
 
       return trasladoActualizado;
-    });
+    }, { timeout: 30000, maxWait: 15000 });
   }
 
   /**

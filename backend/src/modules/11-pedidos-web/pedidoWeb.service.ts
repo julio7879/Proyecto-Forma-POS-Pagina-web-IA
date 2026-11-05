@@ -370,7 +370,7 @@ export class PedidoWebService {
       }
 
       return pedidoCreado;
-    });
+    }, { timeout: 30000, maxWait: 15000 });
   }
 
   /**

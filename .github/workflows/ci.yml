@@ -1,0 +1,72 @@
+name: Integración Continua (CI) - Forma POS + Tienda Web
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'test/**'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  backend-audit:
+    name: ⚙️ Backend (TypeCheck & Pruebas Vitest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Instalar Dependencias Backend
+        run: npm ci --prefix backend
+
+      - name: Generar Prisma Client
+        run: npx --prefix backend prisma generate
+
+      - name: Verificación Estricta de Tipos TypeScript (tsc --noEmit)
+        run: npm run typecheck --prefix backend
+
+      - name: Ejecutar Batería de Pruebas Automatizadas (Vitest)
+        run: npm test --prefix backend
+        env:
+          NODE_ENV: test
+          PORT: 3001
+          JWT_SECRET: ci_secret_super_seguro_para_pruebas_2026_dian_pos
+
+  frontend-audit:
+    name: 🎨 Frontend (TypeCheck, Vitest & Build Producción)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Instalar Dependencias Frontend
+        run: npm ci --prefix frontend
+
+      - name: Verificación de Tipos TypeScript
+        run: npx --prefix frontend tsc --noEmit
+
+      - name: Ejecutar Pruebas de Componentes y Páginas (Vitest)
+        run: npm test --prefix frontend
+
+      - name: Compilación del Bundle de Producción (Vite Build)
+        run: npm run build --prefix frontend

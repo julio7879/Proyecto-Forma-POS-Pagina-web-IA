@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer, X } from 'lucide-react';
 import { VentaTicketDTO } from '../types/ticket.types';
+import { FormaLogo } from '../../../components/common/FormaLogo';
 
 interface TicketVentaPOSProps {
   ticket: VentaTicketDTO;
@@ -58,7 +59,8 @@ export const TicketVentaPOS: React.FC<TicketVentaPOSProps> = ({
         className="w-[80mm] max-w-[80mm] bg-white text-black p-4 font-mono text-xs shadow-md border border-gray-200 print:border-none print:shadow-none print:p-2 print:w-[80mm]"
       >
         {/* Encabezado */}
-        <div className="text-center space-y-0.5">
+        <div className="text-center space-y-1 flex flex-col items-center">
+          <FormaLogo variant="full" size="sm" theme="monochrome" className="mb-1" />
           <h1 className="text-sm font-bold tracking-tight uppercase">
             {ticket.nombreTienda}
           </h1>

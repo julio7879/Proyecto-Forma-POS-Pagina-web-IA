@@ -307,6 +307,34 @@ describe('Módulo 01: AuthService - Autenticación Híbrida y Bloqueo (RF-USU-01
         })
       ).rejects.toThrow('El inicio de sesión con Google está restringido exclusivamente a clientes');
     });
+
+    it('debe procesar login con idToken en modo dev cuando no hay GOOGLE_CLIENT_ID', async () => {
+      delete process.env.GOOGLE_CLIENT_ID;
+      const mockPayload = {
+        sub: 'google-sub-999',
+        email: 'cliente.token@gmail.com',
+        name: 'Cliente Con Token',
+      };
+      const fakeJwt = `header.${Buffer.from(JSON.stringify(mockPayload)).toString('base64')}.signature`;
+
+      vi.spyOn(prisma.usuario, 'findFirst').mockResolvedValue(null);
+      const createSpy = vi.spyOn(prisma.usuario, 'create').mockResolvedValue({
+        id: 77,
+        nombreCompleto: 'Cliente Con Token',
+        correo: 'cliente.token@gmail.com',
+        googleId: 'google-sub-999',
+        rol: 'CLIENTE',
+        activo: true,
+      } as any);
+
+      const resultado = await AuthService.loginGoogle({
+        idToken: fakeJwt,
+      });
+
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(resultado.usuario.id).toBe(77);
+      expect(resultado.usuario.correo).toBe('cliente.token@gmail.com');
+    });
   });
 
   describe('4. Consulta de Perfil Actual (RF-USU-03)', () => {

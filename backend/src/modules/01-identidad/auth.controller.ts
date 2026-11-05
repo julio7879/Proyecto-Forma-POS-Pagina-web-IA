@@ -1,6 +1,12 @@
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
-import type { RegistroClienteDTO, LoginDTO, GoogleAuthDTO } from './auth.schema.js';
+import type {
+  RegistroClienteDTO,
+  LoginDTO,
+  GoogleAuthDTO,
+  CrearVendedorDTO,
+  ActualizarVendedorDTO,
+} from './auth.schema.js';
 import { AppError } from '../../shared/domain/AppError.js';
 
 export class AuthController {
@@ -42,6 +48,36 @@ export class AuthController {
     res.status(200).json({
       ok: true,
       datos: perfil,
+    });
+  }
+
+  static async listarVendedores(_req: Request, res: Response) {
+    const vendedores = await AuthService.listarVendedores();
+    res.status(200).json({
+      ok: true,
+      datos: vendedores,
+      total: vendedores.length,
+    });
+  }
+
+  static async crearVendedor(req: Request, res: Response) {
+    const dto = req.body as CrearVendedorDTO;
+    const vendedor = await AuthService.crearVendedor(dto);
+    res.status(201).json({
+      ok: true,
+      mensaje: 'Vendedor creado y asignado exitosamente a la sede física',
+      datos: vendedor,
+    });
+  }
+
+  static async actualizarVendedor(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    const dto = req.body as ActualizarVendedorDTO;
+    const vendedor = await AuthService.actualizarVendedor(id, dto);
+    res.status(200).json({
+      ok: true,
+      mensaje: 'Permisos y datos del vendedor actualizados',
+      datos: vendedor,
     });
   }
 }

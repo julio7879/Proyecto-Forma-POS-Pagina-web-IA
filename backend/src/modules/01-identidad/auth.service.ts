@@ -1,12 +1,20 @@
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../../config/database.js';
 import { AppError } from '../../shared/domain/AppError.js';
+import { EmailService } from '../../shared/infrastructure/email/EmailService.js';
 import {
   generateToken,
   UserPermissionCache,
   type UserAuthSnapshot,
 } from '../../shared/middlewares/authPermission.js';
-import type { RegistroClienteDTO, LoginDTO, GoogleAuthDTO } from './auth.schema.js';
+import type {
+  RegistroClienteDTO,
+  LoginDTO,
+  GoogleAuthDTO,
+  CrearVendedorDTO,
+  ActualizarVendedorDTO,
+} from './auth.schema.js';
 
 const BCRYPT_SALT_ROUNDS = 10; // RN-ROL-06
 const MAX_INTENTOS_FALLIDOS = 5; // RF-USU-02
@@ -68,6 +76,14 @@ export class AuthService {
       correo: nuevoUsuario.correo,
       rol: nuevoUsuario.rol,
     });
+
+    // Despacho asíncrono de correo de bienvenida de alta costura
+    EmailService.getInstance()
+      .enviarBienvenidaRegistro({
+        clienteNombre: nuevoUsuario.nombreCompleto,
+        clienteEmail: nuevoUsuario.correo,
+      })
+      .catch((err) => console.warn('Aviso: envío de correo bienvenida:', err));
 
     return {
       token,
@@ -197,9 +213,63 @@ export class AuthService {
    * Inicio de sesión o registro automático vía Google OAuth (RN-ROL-06)
    */
   static async loginGoogle(dto: GoogleAuthDTO) {
+    let googleId = dto.googleId;
+    let correo = dto.correo;
+    let nombreCompleto = dto.nombreCompleto;
+
+    // Validación criptográfica si viene idToken (RN-ROL-06)
+    if (dto.idToken) {
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      if (googleClientId) {
+        try {
+          const client = new OAuth2Client(googleClientId);
+          const ticket = await client.verifyIdToken({
+            idToken: dto.idToken,
+            audience: googleClientId,
+          });
+          const payload = ticket.getPayload();
+          if (!payload || !payload.sub || !payload.email) {
+            throw AppError.unauthorized('Token de Google inválido o incompleto');
+          }
+          googleId = payload.sub;
+          correo = payload.email.toLowerCase();
+          nombreCompleto = payload.name || payload.email.split('@')[0] || 'Cliente Google';
+        } catch (error: any) {
+          if (error instanceof AppError) throw error;
+          throw AppError.unauthorized(`Fallo en verificación criptográfica de Google: ${error.message}`);
+        }
+      } else {
+        // Modo dev/test: Si no está GOOGLE_CLIENT_ID configurado, decodifica el token o usa los datos del payload
+        try {
+          const parts = dto.idToken.split('.');
+          if (parts.length === 3 && parts[1]) {
+            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = Buffer.from(base64, 'base64').toString('utf-8');
+            const parsed = JSON.parse(jsonPayload);
+            googleId = parsed.sub || googleId || `g_dev_${dto.idToken.slice(0, 8)}`;
+            correo = (parsed.email || correo || `google_dev_${dto.idToken.slice(0, 8)}@gmail.com`).toLowerCase();
+            nombreCompleto = parsed.name || nombreCompleto || 'Cliente Google Dev';
+          } else {
+            googleId = googleId || `g_dev_${dto.idToken}`;
+            correo = (correo || `${dto.idToken}@sandbox.com`).toLowerCase();
+            nombreCompleto = nombreCompleto || 'Cliente Google Dev';
+          }
+        } catch {
+          googleId = googleId || `g_dev_${dto.idToken}`;
+          correo = (correo || 'cliente.google@sandbox.com').toLowerCase();
+          nombreCompleto = nombreCompleto || 'Cliente Google Dev';
+        }
+      }
+    }
+
+    if (!googleId || !correo) {
+      throw AppError.badRequest('No se pudieron obtener credenciales válidas de Google');
+    }
+    nombreCompleto = nombreCompleto || correo.split('@')[0] || 'Cliente Google';
+
     let usuario = await prisma.usuario.findFirst({
       where: {
-        OR: [{ googleId: dto.googleId }, { correo: dto.correo }],
+        OR: [{ googleId }, { correo }],
       },
     });
 
@@ -230,7 +300,7 @@ export class AuthService {
         usuario = await prisma.usuario.update({
           where: { id: usuario.id },
           data: {
-            googleId: dto.googleId,
+            googleId,
             authProvider: 'GOOGLE',
           },
         });
@@ -239,9 +309,9 @@ export class AuthService {
       // Si no existe, se crea automáticamente como CLIENTE con consentimiento registrado
       usuario = await prisma.usuario.create({
         data: {
-          nombreCompleto: dto.nombreCompleto,
-          correo: dto.correo,
-          googleId: dto.googleId,
+          nombreCompleto,
+          correo,
+          googleId,
           authProvider: 'GOOGLE',
           rol: 'CLIENTE',
           activo: true,
@@ -259,6 +329,14 @@ export class AuthService {
           permVerVentasPunto: false,
         },
       });
+
+      // Despacho asíncrono de correo de bienvenida para nuevo cliente registrado con Google
+      EmailService.getInstance()
+        .enviarBienvenidaRegistro({
+          clienteNombre: usuario.nombreCompleto,
+          clienteEmail: usuario.correo,
+        })
+        .catch((err) => console.warn('Aviso: envío de correo bienvenida Google:', err));
     }
 
     // Poblado de snapshot en caché en memoria para O(1) en peticiones subsecuentes (CA-50)
@@ -340,5 +418,156 @@ export class AuthService {
     }
 
     return usuario;
+  }
+
+  /**
+   * Listar todos los colaboradores / vendedores con su sede física asignada (RN-ROL-03)
+   */
+  static async listarVendedores() {
+    return prisma.usuario.findMany({
+      where: { rol: 'VENDEDOR' },
+      select: {
+        id: true,
+        nombreCompleto: true,
+        correo: true,
+        rol: true,
+        activo: true,
+        telefono: true,
+        ubicacionId: true,
+        ubicacion: {
+          select: { id: true, nombre: true, tipo: true },
+        },
+        permVender: true,
+        permCaja: true,
+        permDescuentoManual: true,
+        permAnularVentas: true,
+        permDevoluciones: true,
+        permVerInventario: true,
+        permSolicitarTraslado: true,
+        permRecibirTraslado: true,
+        permVerOtrosPuntos: true,
+        permPedidosWeb: true,
+        permVerVentasPunto: true,
+        createdAt: true,
+      },
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  /**
+   * Crear nuevo vendedor con sede física obligatoria (RN-ROL-04, RN-ROL-05)
+   */
+  static async crearVendedor(dto: CrearVendedorDTO) {
+    const usuarioExistente = await prisma.usuario.findUnique({
+      where: { correo: dto.correo },
+      select: { id: true },
+    });
+
+    if (usuarioExistente) {
+      throw AppError.conflict('El correo electrónico ya se encuentra registrado');
+    }
+
+    const sede = await prisma.ubicacion.findUnique({
+      where: { id: dto.ubicacionId },
+      select: { id: true, nombre: true, tipo: true },
+    });
+
+    if (!sede) {
+      throw AppError.notFound(`La sede con ID ${dto.ubicacionId} no existe`);
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+
+    const vendedor = await prisma.usuario.create({
+      data: {
+        nombreCompleto: dto.nombreCompleto,
+        correo: dto.correo,
+        passwordHash,
+        rol: 'VENDEDOR',
+        ubicacion: { connect: { id: dto.ubicacionId } },
+        telefono: dto.telefono ?? null,
+        activo: true,
+        permVender: dto.permVender,
+        permCaja: dto.permCaja,
+        permDescuentoManual: dto.permDescuentoManual,
+        permAnularVentas: dto.permAnularVentas,
+        permDevoluciones: dto.permDevoluciones,
+        permVerInventario: dto.permVerInventario,
+        permSolicitarTraslado: dto.permSolicitarTraslado,
+        permRecibirTraslado: dto.permRecibirTraslado,
+        permVerOtrosPuntos: dto.permVerOtrosPuntos,
+        permPedidosWeb: dto.permPedidosWeb,
+        permVerVentasPunto: dto.permVerVentasPunto,
+      },
+      select: {
+        id: true,
+        nombreCompleto: true,
+        correo: true,
+        rol: true,
+        activo: true,
+        telefono: true,
+        ubicacionId: true,
+        ubicacion: {
+          select: { id: true, nombre: true, tipo: true },
+        },
+      },
+    });
+
+    return vendedor;
+  }
+
+  /**
+   * Actualizar permisos o sede física de un vendedor (RN-ROL-05)
+   */
+  static async actualizarVendedor(id: number, dto: ActualizarVendedorDTO) {
+    const vendedorExistente = await prisma.usuario.findUnique({
+      where: { id },
+      select: { id: true, rol: true },
+    });
+
+    if (!vendedorExistente || vendedorExistente.rol !== 'VENDEDOR') {
+      throw AppError.notFound('Vendedor no encontrado');
+    }
+
+    const data: any = { ...dto };
+    if (dto.password) {
+      data.passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+      delete data.password;
+    }
+
+    if (dto.ubicacionId) {
+      data.ubicacion = { connect: { id: dto.ubicacionId } };
+      delete data.ubicacionId;
+    }
+
+    const actualizado = await prisma.usuario.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        nombreCompleto: true,
+        correo: true,
+        rol: true,
+        activo: true,
+        ubicacionId: true,
+        ubicacion: {
+          select: { id: true, nombre: true, tipo: true },
+        },
+        permVender: true,
+        permCaja: true,
+        permDescuentoManual: true,
+        permAnularVentas: true,
+        permDevoluciones: true,
+        permVerInventario: true,
+        permSolicitarTraslado: true,
+        permRecibirTraslado: true,
+        permVerOtrosPuntos: true,
+        permPedidosWeb: true,
+        permVerVentasPunto: true,
+      },
+    });
+
+    UserPermissionCache.invalidate(id);
+    return actualizado;
   }
 }

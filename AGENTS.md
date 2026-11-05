@@ -27,7 +27,7 @@ Toda funcionalidad, tarea o requerimiento nuevo sigue estrictamente este flujo d
 6. **Idempotencia y Consecutivos Diferidos (`RN-GEN-08`, `RN-VTA-09`):** Exige `Idempotency-Key` en endpoints `POST` transaccionales y calcula el consecutivo por punto en el último paso antes del `COMMIT`.
 7. **Inmutabilidad y Seguridad (`RN-GEN-03`, `RN-ROL-05`):** Prohibido borrar físicamente registros con historial. Pide confirmación humana antes de modificar `schema.prisma`, borrar archivos o ejecutar migraciones destructivas.
 
-## 4. Matriz de Skills Especializadas por Agente (Invocación Quirúrgica)
+## 4. Matriz de Skills Especializadas por Agente (Invocación Quirúrgico-Automática)
 Para mantener el consumo de tokens al mínimo, cada skill se consulta **únicamente** cuando se activa su disparador:
 
 | Agente Responsable | Skill Especializada (.agent/skills/) | Origen / Inspiración GitHub | Cuándo Invocar |
@@ -41,6 +41,10 @@ Para mantener el consumo de tokens al mínimo, cada skill se consulta **únicame
 | **`@Forja-Backend` / `@Vitral-UI`** | `pos-ecommerce-checkout-machine` | `finsilabs/awesome-ecommerce-skills` | Máquina de estados de pedidos web, carrito de compras, webhooks y checkout idempotente. |
 | **`@Forja-Backend` / `@Sabueso`** | `pos-financial-ledger-audit` | `openaccountant/skills` | Arqueos ciegos de caja, bases iniciales, prorrateo de descuentos y cuadre de Ventas Netas. |
 | **`@Vitral-UI`** | `pos-storefront-ui-designer` | `anthropics/skills` + `tailwind-design-system` | Vistas React, Tailwind CSS, Apple Liquid Glass UI, estados vacíos/error y accesibilidad WCAG. |
+| **`@Vitral-UI`** | `ui-ux-pro-max` | `nextlevelbuilder/ui-ux-pro-max-skill` | Inteligencia de diseño, distribución Grid/Flexbox, proporción áurea y prevención de anti-patrones. |
+| **`@Vitral-UI`** | `storefront-best-practices` | `medusajs/medusa-agent-skills` | Portal 1 (Tienda Web): Navbar, secciones de inicio, sidebar de categorías, ofertas y PDP 3D. |
+| **`@Vitral-UI`** | `pos-sales-ui-design` | `peterbamuhigire/skills-web-dev` | Portal 2 (Terminal POS): Jerarquía de 3 niveles, cero scroll, botones táctiles >=56px y cobro rápido. |
+| **`@Vitral-UI`** | `react-shadcn-admin` | `fusengine/agents` + `admin-panel` | Portal 3 (Dashboard Admin): Sidebar colapsable, tablas densas, KPIs ejecutivos y exportación Excel. |
 | **`@Sabueso-Hunter`** | `pos-adversarial-audit` / `security-audit` | Cloudflare Adversarial Review | Búsqueda exhaustiva de fallos de lógica, concurrencia, precios y fugas multisede. |
 | **`@Juez-Esceptico`** | `pos-adversarial-audit` | Cloudflare Adversarial Review | Desmonta falsas alarmas verificando constraints SQL, Zod y middlewares. |
 | **`@Centinela-QA`** | `pos-gitflow-pr-review` / `pos-sprint-progress-tracker` | GitFlow Gates | Revisión de PRs, verificación `tsc` + `vitest` y actualización del progreso en el vault. |

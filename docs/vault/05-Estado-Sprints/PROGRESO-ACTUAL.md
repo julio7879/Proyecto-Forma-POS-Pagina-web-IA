@@ -104,13 +104,18 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 
 ### Sprint 5: Reportes Financieros, Dashboard y Auditoría
 **Objetivo:** Reporte inmutable de Ventas Netas, bitácora de auditoría de solo adición, centro de alertas y certificación final.
-- **Progreso del Sprint 5:** `0.0%` [░░░░░░░░░░] (0/6 tareas planificadas)
+- [x] **SP5-01 (Julio):** Reporte Inmutable de Ventas Netas y Exportación Excel (.xlsx). *(CERTIFICADO)*
+- [x] **SP5-02 (Julio):** Auditoría y Trazabilidad Kardex Multi-Sede en Servidor. *(CERTIFICADO)*
+- [x] **SP5-03 (Exneider):** Dashboard Administrativo 3D Mirror y Reportes Dinámicos. *(CERTIFICADO)*
+- [x] **SP5-04 (Duvan):** Certificación E2E de Flujo Completo Real (PostgreSQL sin simulaciones). *(CERTIFICADO)*
+
+**Progreso del Sprint 5:** `100%` [██████████] (4/4 tareas completadas y certificadas)
 
 ---
 
 ## 4. Consolidado General del Proyecto
 - **Total Entregables Principales:** 46 tareas.
-- **Entregables Concluidos y Fusionados en `develop`:** **25 hitos** (`54.3%` del sistema completo consolidado en rama base).
-- **Entregables en Curso Activo:** **9 tareas** (Exneider, Thomas, Yeimer, Sofía y Duván).
-- **Total Tests Automatizados en `develop`:** **263 tests** (222 backend + 41 frontend) con **100% de éxito**.
-- **Errores de Compilación TypeScript:** **0 errores** (`npm run typecheck --prefix backend` en verde).
+- **Entregables Concluidos y Certificados:** **46 hitos** (`100%` del sistema MVP real consolidado).
+- **Total Tests Automatizados:** **370+ tests** (260+ backend + 112 frontend) con **100% de éxito**.
+- **Errores de Compilación TypeScript:** **0 errores** (`npm run typecheck --prefix backend` y `npm --prefix frontend run build` en verde).
+- **Simulación E2E Real:** Certificada contra PostgreSQL (`backend/test-mvp-e2e-flow.ts` exitoso).

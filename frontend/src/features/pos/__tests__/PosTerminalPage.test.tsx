@@ -101,4 +101,47 @@ describe('PosTerminalPage Component - Ergonomía Táctil CA-53 y Cobro Rápido (
     fireEvent.click(botonImprimir);
     expect(window.print).toHaveBeenCalledTimes(1);
   });
+
+  it('abre el modal de recibo digital por Telegram y permite despachar por Chat ID o abrir deep link bot', async () => {
+    render(<PosTerminalPage />);
+
+    // Abrir modal de cobro y confirmar venta
+    fireEvent.click(screen.getByRole('button', { name: /COBRAR \(F12\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exacto' }));
+    fireEvent.click(screen.getByRole('button', { name: /CONFIRMAR VENTA E IMPRIMIR \(Enter\)/i }));
+
+    // Pulsar "Enviar Recibo por Telegram"
+    const botonTelegram = screen.getByRole('button', { name: /Enviar Recibo por Telegram/i });
+    fireEvent.click(botonTelegram);
+
+    // Debe abrir el modal dialog elegante
+    const modalTelegram = screen.getByRole('dialog');
+    expect(modalTelegram).toBeInTheDocument();
+    expect(screen.getByText(/Envío de Recibo Digital por Telegram/i)).toBeInTheDocument();
+
+    // Opción A: Bot y Deep link
+    expect(screen.getByText(/Opción A — Código QR y Deep Link con Bot de Telegram/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Abrir en Telegram Web \/ App/i })).toBeInTheDocument();
+
+    // Opción B: Despacho directo por Chat ID o Username
+    expect(screen.getByText(/Opción B — Envío Directo por Chat ID o Username/i)).toBeInTheDocument();
+    const inputChat = screen.getByPlaceholderText(/@usuario_telegram o Chat ID.../i);
+    fireEvent.change(inputChat, { target: { value: '@cliente_vip' } });
+
+    const botonDespachar = screen.getByRole('button', { name: /Despachar al Chat/i });
+    expect(botonDespachar).not.toBeDisabled();
+    fireEvent.click(botonDespachar);
+
+    // Confirmación en verde
+    expect(await screen.findByText(/Recibo despachado a Telegram con éxito/i)).toBeInTheDocument();
+
+    // Vista previa colapsable
+    const botonVistaPrevia = screen.getByRole('button', { name: /Vista previa del recibo \(Formato Telegram\)/i });
+    fireEvent.click(botonVistaPrevia);
+    expect(screen.getByText(/FORMA BOUTIQUE - RECIBO DIGITAL/i)).toBeInTheDocument();
+
+    // Cerrar modal
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

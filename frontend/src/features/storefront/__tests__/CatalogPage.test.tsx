@@ -107,4 +107,64 @@ describe('CatalogPage - Catálogo Público Storefront (SP1-09)', () => {
       expect(screen.getByText('No se encontraron productos')).toBeInTheDocument();
     });
   });
+
+  it('filtra productos por rango de precio interactivo en COP', async () => {
+    render(<CatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Camiseta Básica de Algodón')).toBeInTheDocument();
+      expect(screen.getByText('Mochila Wayuu Tradicional')).toBeInTheDocument();
+    });
+
+    // Filtrar a máximo $50.000 COP
+    const botonRango50k = screen.getAllByRole('button', { name: /Hasta \$50\.000/i })[0];
+    fireEvent.click(botonRango50k);
+
+    await waitFor(() => {
+      expect(screen.getByText('Camiseta Básica de Algodón')).toBeInTheDocument();
+      expect(screen.getByText('Gorra Urbana Snapback')).toBeInTheDocument();
+      expect(screen.queryByText('Mochila Wayuu Tradicional')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sérum Facial Vitamina C')).not.toBeInTheDocument();
+    });
+
+    // Restablecer precio
+    const botonRestablecer = screen.getByRole('button', { name: /Restablecer precio/i });
+    fireEvent.click(botonRestablecer);
+
+    await waitFor(() => {
+      expect(screen.getByText('Mochila Wayuu Tradicional')).toBeInTheDocument();
+    });
+  });
+
+  it('abre la vista dedicada de Ropa de Autor y filtra por subcategoría interactiva', async () => {
+    render(<CatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Camiseta Básica de Algodón')).toBeInTheDocument();
+    });
+
+    const botonRopa = screen.getByRole('tab', { name: 'Ropa' });
+    fireEvent.click(botonRopa);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Ropa de Autor' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Camisas' })).toBeInTheDocument();
+    });
+
+    // Al filtrar por Camisas, la Camiseta se mantiene visible
+    const botonCamisas = screen.getByRole('button', { name: 'Camisas' });
+    fireEvent.click(botonCamisas);
+
+    await waitFor(() => {
+      expect(screen.getByText('Camiseta Básica de Algodón')).toBeInTheDocument();
+    });
+
+    // Al filtrar por Pantalones, no hay prendas en semilla y se oculta la camiseta
+    const botonPantalones = screen.getByRole('button', { name: 'Pantalones' });
+    fireEvent.click(botonPantalones);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Camiseta Básica de Algodón')).not.toBeInTheDocument();
+    });
+  });
 });

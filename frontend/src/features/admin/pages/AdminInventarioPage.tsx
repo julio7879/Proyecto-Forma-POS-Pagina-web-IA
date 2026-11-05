@@ -49,30 +49,45 @@ export const AdminInventarioPage = () => {
   });
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
       {/* Encabezado */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-          Inventario Multisede
-        </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Consulta el desglose de saldos por sede, reservas y mercancía no vendible.
-        </p>
+      <div className="glass-mirror-card rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span className="glass-mirror-pill inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest text-[#661521] border border-[#D19650]/40 mb-2">
+            RN-GEN-02 · Kardex Único Multisede
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-black text-[#171717] tracking-tight font-display">
+            Inventario Multisede
+          </h1>
+          <p className="text-sm sm:text-base font-medium text-[#50322A] mt-1">
+            Consulta el desglose de saldos por sede, reservas blandas/duras y mercancía en custodia o no vendible.
+          </p>
+        </div>
+        <div className="glass-mirror-pill px-4 py-3 rounded-2xl border border-[#D19650]/40 flex items-center gap-3 self-start md:self-auto">
+          <div className="text-right">
+            <span className="block text-[11px] font-bold uppercase tracking-wider text-[#50322A]">
+              Registros Visibles
+            </span>
+            <span className="text-2xl font-black font-mono tabular-nums text-[#171717]">
+              {data.length}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Barra de Filtros Liquid Glass */}
-      <div className="mb-6 p-4 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+      {/* Barra de Filtros 3D Mirror Liquid Glass */}
+      <div className="glass-mirror-card p-5 rounded-3xl flex flex-col md:flex-row gap-3.5 items-stretch md:items-center">
         {/* Selector de Categoría */}
         <div className="relative">
-          <Filter className="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Filter className="absolute left-3.5 top-3.5 w-4 h-4 text-[#50322A] pointer-events-none" />
           <select
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
             aria-label="Filtrar por categoría"
-            className="pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+            className="capsule-mirror-input pl-10 pr-9 py-2.5 rounded-2xl text-sm font-bold text-[#171717] cursor-pointer w-full md:w-auto"
           >
             {CATEGORIAS.map((cat) => (
-              <option key={cat} value={cat}>
+              <option key={cat} value={cat} className="bg-[#F4EFE8] text-[#171717]">
                 {cat}
               </option>
             ))}
@@ -81,20 +96,20 @@ export const AdminInventarioPage = () => {
 
         {/* Buscador por SKU */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[#50322A] pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por SKU o nombre..."
             aria-label="Buscar por SKU o nombre"
-            className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder-slate-400"
+            className="capsule-mirror-input w-full pl-10 pr-9 py-2.5 rounded-2xl text-sm font-semibold text-[#171717] placeholder-[#50322A]/60"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               aria-label="Limpiar búsqueda"
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-3 text-[#50322A] hover:text-[#661521] transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -102,15 +117,15 @@ export const AdminInventarioPage = () => {
         </div>
 
         {/* Toggle de Stock Bajo */}
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800 cursor-pointer hover:border-amber-400 transition-colors">
+        <label className="glass-mirror-pill flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border border-[#D19650]/45 cursor-pointer hover:border-[#661521] transition-all select-none">
           <input
             type="checkbox"
             checked={soloStockBajo}
             onChange={(e) => setSoloStockBajo(e.target.checked)}
-            className="w-4 h-4 text-amber-600 rounded"
+            className="w-4 h-4 accent-[#661521] rounded cursor-pointer"
           />
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+          <span className="text-sm font-bold text-[#171717] flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 text-[#661521]" />
             Stock bajo
           </span>
         </label>
@@ -122,12 +137,12 @@ export const AdminInventarioPage = () => {
           data-testid="inventario-skeleton"
           aria-label="Cargando inventario"
           aria-busy="true"
-          className="rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl overflow-hidden"
+          className="glass-mirror-card rounded-3xl overflow-hidden"
         >
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="h-14 border-b border-slate-100 dark:border-slate-800/60 animate-pulse bg-slate-200/40 dark:bg-slate-800/40"
+              className="h-16 border-b border-[#50322A]/10 animate-pulse bg-white/50"
             />
           ))}
         </div>
@@ -135,13 +150,13 @@ export const AdminInventarioPage = () => {
 
       {/* ESTADO 2: Error */}
       {isError && !isLoading && (
-        <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 flex items-center justify-between text-xs text-red-800 dark:text-red-200">
+        <div className="glass-mirror-card p-5 rounded-3xl border border-[#661521]/40 flex items-center justify-between text-sm font-semibold text-[#661521]">
           <span>No se pudo cargar el inventario. Verifica tu conexión.</span>
           <button
             onClick={() => refetch()}
-            className="px-3 py-1.5 bg-red-200 dark:bg-red-800 rounded-lg font-bold flex items-center gap-1.5 hover:bg-red-300 transition-colors"
+            className="px-4 py-2 bg-[#661521] text-white border border-[#D19650]/50 rounded-xl font-bold flex items-center gap-2 hover:bg-[#4A0E17] transition-all shadow-md"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Reintentar
           </button>
         </div>
@@ -149,12 +164,12 @@ export const AdminInventarioPage = () => {
 
       {/* ESTADO 3: Empty */}
       {!isLoading && !isError && data.length === 0 && (
-        <div className="text-center py-16 px-4 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md">
-          <PackageX className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+        <div className="glass-mirror-card text-center py-16 px-6 rounded-3xl">
+          <PackageX className="w-12 h-12 text-[#50322A] mx-auto mb-3" />
+          <h3 className="text-xl font-black text-[#171717] font-display">
             No se encontraron registros
           </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+          <p className="text-sm font-medium text-[#50322A] max-w-sm mx-auto mt-1 mb-5">
             No hay productos que coincidan con los filtros aplicados.
           </p>
           <button
@@ -163,7 +178,7 @@ export const AdminInventarioPage = () => {
               setSearchQuery('');
               setSoloStockBajo(false);
             }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-500 transition-all shadow-md shadow-indigo-500/20"
+            className="px-5 py-2.5 bg-[#661521] text-white border border-[#D19650]/50 rounded-xl text-sm font-bold hover:bg-[#4A0E17] transition-all shadow-md"
           >
             Restablecer filtros
           </button>
@@ -177,8 +192,8 @@ export const AdminInventarioPage = () => {
 
       {/* Indicador de refetch en vuelo (discreto) */}
       {isFetching && !isLoading && !isError && (
-        <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1.5">
-          <RefreshCw className="w-3 h-3 animate-spin" />
+        <div className="mt-2 text-xs font-semibold text-[#50322A] flex items-center gap-1.5">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#661521]" />
           Actualizando...
         </div>
       )}

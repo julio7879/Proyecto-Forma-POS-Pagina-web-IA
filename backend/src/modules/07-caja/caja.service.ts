@@ -184,7 +184,7 @@ export class CajaService {
       });
 
       return sesion;
-    });
+    }, { timeout: 30000, maxWait: 15000 });
   }
 
   /**
@@ -247,7 +247,7 @@ export class CajaService {
       });
 
       return movimiento;
-    });
+    }, { timeout: 30000, maxWait: 15000 });
   }
 
   /**

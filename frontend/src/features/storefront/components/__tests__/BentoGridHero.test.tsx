@@ -12,7 +12,7 @@ describe('BentoGridHero Component - Apple Liquid Glass Storefront (SP1-08)', () 
     tiempoEntregaDias: '1-2 días hábiles',
   };
 
-  it('renderiza la Hero Card 2x2 con el producto insignia y precio entero en COP (RN-GEN-04)', () => {
+  it('renderiza la Hero Card principal con el producto insignia y precio entero en COP (RN-GEN-04)', () => {
     render(
       <BentoGridHero
         sedeActiva={mockSede}
@@ -26,10 +26,29 @@ describe('BentoGridHero Component - Apple Liquid Glass Storefront (SP1-08)', () 
     expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
     expect(screen.getByText('$189.000 COP')).toBeInTheDocument();
     expect(screen.getByText(/Colección Oficial 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/Precio de Atelier/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Comprar Ahora/i })).toBeInTheDocument();
   });
 
-  it('renderiza la sede activa con pulso de stock multisede en tiempo real', () => {
+  it('ejecuta onExplorarProducto al hacer clic en Comprar Ahora', () => {
+    const onExplorarProductoMock = vi.fn();
     render(
+      <BentoGridHero
+        sedeActiva={mockSede}
+        categoriaActiva="todas"
+        onSeleccionarCategoria={vi.fn()}
+        onExplorarProducto={onExplorarProductoMock}
+      />
+    );
+
+    const botonComprar = screen.getByRole('button', { name: /Comprar Ahora/i });
+    fireEvent.click(botonComprar);
+
+    expect(onExplorarProductoMock).toHaveBeenCalledWith('prod-001');
+  });
+
+  it('no renderiza las 3 tarjetas inferiores eliminadas para una vista limpia y despejada', () => {
+    const { container } = render(
       <BentoGridHero
         sedeActiva={mockSede}
         categoriaActiva="todas"
@@ -38,42 +57,9 @@ describe('BentoGridHero Component - Apple Liquid Glass Storefront (SP1-08)', () 
       />
     );
 
-    expect(screen.getByText('Sede Principal (Medellín)')).toBeInTheDocument();
-    expect(screen.getByText(/Entrega local estimada:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Respaldo de inventario nacional desde Bodega Central/i)).toBeInTheDocument();
-  });
-
-  it('renderiza la tarjeta de garantías legales con 5 días de retracto (RN-DEV-01) y 30 días de garantía', () => {
-    render(
-      <BentoGridHero
-        sedeActiva={mockSede}
-        categoriaActiva="todas"
-        onSeleccionarCategoria={vi.fn()}
-        onExplorarProducto={vi.fn()}
-      />
-    );
-
-    expect(
-      screen.getByText(/5 Días Hábiles de Retracto & 30 Días de Garantía/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Envíos Seguros a Toda Colombia/i)).toBeInTheDocument();
-  });
-
-  it('permite cambiar de categoría al pulsar los botones del selector rápido', () => {
-    const onSeleccionarCategoriaMock = vi.fn();
-
-    render(
-      <BentoGridHero
-        sedeActiva={mockSede}
-        categoriaActiva="todas"
-        onSeleccionarCategoria={onSeleccionarCategoriaMock}
-        onExplorarProducto={vi.fn()}
-      />
-    );
-
-    const botonRopa = screen.getByRole('button', { name: 'Ropa' });
-    fireEvent.click(botonRopa);
-
-    expect(onSeleccionarCategoriaMock).toHaveBeenCalledWith('ropa');
+    const html = container.innerHTML;
+    expect(html).not.toMatch(/Categorías Ramificadas/i);
+    expect(html).not.toMatch(/Tu Boutique Cercana/i);
+    expect(html).not.toMatch(/5 Días Hábiles de Retracto & 30 Días de Garantía/i);
   });
 });

@@ -263,3 +263,92 @@ export const resolverNovedadTraslado = async (
   );
   return response.datos;
 };
+
+
+// ============================================
+// DTOs y Funciones de Vendedores y Sedes (RN-ROL-03, RN-ROL-04, RN-ROL-05)
+// ============================================
+export interface UbicacionDTO {
+  id: number;
+  nombre: string;
+  codigo: string;
+  tipo: 'BODEGA_CENTRAL' | 'TIENDA_FISICA';
+  esBodegaCentral: boolean;
+  activo: boolean;
+  ciudad?: string;
+}
+
+export interface PermisosVendedorDTO {
+  permVender: boolean;
+  permCaja: boolean;
+  permDescuentoManual: boolean;
+  permAnularVentas: boolean;
+  permDevoluciones: boolean;
+  permVerInventario: boolean;
+  permSolicitarTraslado: boolean;
+  permRecibirTraslado: boolean;
+  permVerOtrosPuntos: boolean;
+  permPedidosWeb: boolean;
+  permVerVentasPunto: boolean;
+}
+
+export interface VendedorDTO extends PermisosVendedorDTO {
+  id: number;
+  nombreCompleto: string;
+  correo: string;
+  telefono?: string | null;
+  activo: boolean;
+  rol: string;
+  ubicacionId: number | null;
+  ubicacion?: {
+    id: number;
+    nombre: string;
+    codigo: string;
+    tipo: string;
+  } | null;
+  creadoEn: string;
+}
+
+export interface CrearVendedorDTO extends PermisosVendedorDTO {
+  nombreCompleto: string;
+  correo: string;
+  password: string;
+  ubicacionId: number;
+  telefono?: string;
+}
+
+export interface ActualizarVendedorDTO extends Partial<PermisosVendedorDTO> {
+  nombreCompleto?: string;
+  ubicacionId?: number;
+  telefono?: string;
+  activo?: boolean;
+}
+
+export const fetchVendedores = async (): Promise<VendedorDTO[]> => {
+  const response = await apiRequest<{ datos: VendedorDTO[] }>('/identidad/vendedores');
+  return response.datos;
+};
+
+export const crearVendedor = async (payload: CrearVendedorDTO): Promise<VendedorDTO> => {
+  const response = await apiRequest<{ datos: VendedorDTO }>('/identidad/vendedores', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return response.datos;
+};
+
+export const actualizarVendedor = async (
+  id: number,
+  payload: ActualizarVendedorDTO
+): Promise<VendedorDTO> => {
+  const response = await apiRequest<{ datos: VendedorDTO }>(`/identidad/vendedores/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  return response.datos;
+};
+
+export const fetchUbicaciones = async (): Promise<UbicacionDTO[]> => {
+  const response = await apiRequest<{ datos: UbicacionDTO[] }>('/ubicaciones');
+  return response.datos;
+};

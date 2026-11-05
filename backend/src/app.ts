@@ -21,6 +21,9 @@ import { descuentosRouter } from './modules/09-descuentos/index.js';
 import { devolucionesCambiosRouter } from './modules/10-devoluciones-cambios/index.js';
 import { pedidosWebRouter } from './modules/11-pedidos-web/index.js';
 import { reportesAuditoriaRouter } from './modules/12-reportes-auditoria/index.js';
+import { notificacionesRouter } from './modules/13-notificaciones/index.js';
+import { telegramRouter } from './modules/14-telegram/index.js';
+import { qrPagoRouter } from './modules/15-qr-pago/index.js';
 
 export const app = express();
 
@@ -52,6 +55,9 @@ app.use('/api/descuentos', descuentosRouter);
 app.use('/api/devoluciones', devolucionesCambiosRouter);
 app.use('/api/pedidos-web', pedidosWebRouter);
 app.use('/api/reportes', reportesAuditoriaRouter);
+app.use('/api/notificaciones', notificacionesRouter);
+app.use('/api/telegram', telegramRouter);
+app.use('/api/qr-pago', qrPagoRouter);
 
 // Manejador centralizado de errores
 app.use(errorHandler);
