@@ -13,10 +13,10 @@
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **Fase 1 (Sprint 1)** | Identidad, Seguridad Híbrida, Sedes y Catálogo | 9 | 8 | 1 (QA Gate #7) | 🟢 Estable (88.9% en develop) |
 | **Fase 2 (Sprint 2)** | Kardex Centralizado, Compras y Traslados | 8 | 7 | 1 (Thomas #58 / Sofía #40) | 🟢 Consolidado (87.5% en develop) |
-| **Fase 3 (Sprint 3)** | Caja, Terminal POS, Descuentos y Devoluciones | 9 | 5 | 4 (Exneider #62, Thomas #59) | 🟢 Core Fusionado (55.6% en develop) |
+| **Fase 3 (Sprint 3)** | Caja, Terminal POS, Descuentos y Devoluciones | 9 | 6 | 3 (Exneider #62, Duvan #83) | 🟢 Avanzado (66.7% en develop) |
 | **Fase 4 (Sprint 4)** | E-Commerce, Despachos DANE, Worker TTL y Devoluciones | 8 | 5 | 3 (Yeimer #74, Thomas, Exneider) | 🟢 Avanzado (62.5% en develop) |
 | **Fase 5 (Sprint 5)** | Reportes Financieros, Dashboard y Auditoría Final | 6 | 0 | 0 | ⚪ Planificado (0.0%) |
-| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **25** | **9** | **54.3% MERGED / 73.9% EN CURSO** |
+| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **26** | **8** | **56.5% MERGED / 73.9% EN CURSO** |
 
 ---
 
@@ -80,9 +80,9 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [ ] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout con Integración de Cobro y Comprobante (`RF-POS-01`). *(Issue #62 Asignado)*
 - [ ] **SP3-07 (Sofía):** Prototipos Catálogo Público Web y Checkout 3 Pasos.
 - [ ] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja.
-- [ ] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(PR #75 AUDITADO - Calificación 9.3/10 Aprobado para QA y Merge - QA Gate Issue #83 en manos de Duvan)*
+- [x] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(PR #75 FUSIONADO en `develop` - Issue #59 Closed - QA Gate Issue #83 en manos de Duvan)*
 
-**Progreso del Sprint 3:** `55.6%` [█████░░░░░] (5/9 tareas completadas y fusionadas en `develop`)
+**Progreso del Sprint 3:** `66.7%` [███████░░░] (6/9 tareas completadas y fusionadas en `develop`)
 
 ---
 
