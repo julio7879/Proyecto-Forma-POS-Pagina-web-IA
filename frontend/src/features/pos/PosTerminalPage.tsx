@@ -13,7 +13,6 @@ import {
   X,
   ShoppingBag,
   ShieldAlert,
-  PackageCheck,
   ArrowLeft,
   QrCode,
   ExternalLink,
@@ -1720,69 +1719,65 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
           })}
         </div>
 
-        {/* Cuadrícula de Productos con Fotos de Estudio Reales y Alto Contraste */}
-        <div className="flex-1 overflow-visible lg:overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3 pr-0 sm:pr-1">
+        {/* Cuadrícula de Productos Compacta con Fotos Cuadradas 1:1 y Sin Desbordamiento */}
+        <div className="flex-1 overflow-x-hidden overflow-y-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-3 pr-0.5">
           {variantesFiltradas.map((item) => (
             <button
               key={`${item.id}-${item.sku}`}
               type="button"
               onClick={() => handleAddVariante(item)}
-              className="p-3.5 rounded-2xl bg-[#FFFFFF] border border-[#50322A]/15 hover:border-[#661521] active:scale-[0.99] transition-all text-left flex flex-col justify-between shadow-sm hover:shadow-md group"
+              className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFFFF] border border-[#50322A]/15 hover:border-[#661521] active:scale-[0.99] transition-all text-left flex flex-col justify-between shadow-xs hover:shadow-sm group cursor-pointer overflow-hidden"
             >
-              {/* Cabecera con Foto de Estudio Real + Metadatos de SKU y Stock */}
-              <div className="flex items-start gap-3 w-full">
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#F4EFEA] border border-[#50322A]/15 shrink-0">
-                  <img
-                    src={item.imagenUrl}
-                    alt={item.nombre}
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
+              {/* Contenedor Cuadrado de Imagen Proporción 1:1 */}
+              <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#F4EFEA] border border-[#50322A]/10 relative mb-2 shrink-0">
+                <img
+                  src={item.imagenUrl}
+                  alt={item.nombre}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
 
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-md bg-[#F4EFEA] border border-[#50322A]/15 font-mono text-xs font-bold text-[#351912]">
-                      {item.sku}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-xs font-bold inline-flex items-center gap-1 ${
-                        item.stockSede > 0
-                          ? 'bg-emerald-50 text-[#059669] border border-[#059669]/25'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}
-                    >
-                      <PackageCheck className="w-3.5 h-3.5" />
-                      Stock: {item.stockSede} uds
-                    </span>
-                  </div>
+                {/* Badge Pequeño de Stock */}
+                <span
+                  className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold shadow-2xs backdrop-blur-xs ${
+                    item.stockSede > 0
+                      ? 'bg-white/95 text-[#059669] border border-emerald-300'
+                      : 'bg-rose-50 text-rose-700 border border-rose-300'
+                  }`}
+                >
+                  Stock: {item.stockSede} uds
+                </span>
 
-                  <h4 className="text-base font-bold text-[#171717] line-clamp-2 leading-snug">
-                    {item.nombre}
-                  </h4>
-
-                  <p className="text-xs font-semibold text-[#50322A]">
-                    Talla: {item.talla} • Color: {item.color}
-                  </p>
-                </div>
-              </div>
-
-              {/* Pie de Tarjeta: Badge de Reintegrabilidad (RN-CAT-02) y Precio COP */}
-              <div className="mt-3 pt-2.5 border-t border-[#50322A]/15 flex items-center justify-between gap-2 w-full">
-                {!item.esReintegrable ? (
-                  <span className="px-2.5 py-1 rounded-lg bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold inline-flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                {/* Badge Discreto de Cosméticos / No Reintegrable */}
+                {!item.esReintegrable && (
+                  <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-amber-100/95 border border-amber-300 text-amber-900 text-[10px] font-bold">
                     Uso personal (No reintegrable)
                   </span>
-                ) : (
-                  <span className="text-xs font-semibold text-[#50322A]">
+                )}
+              </div>
+
+              {/* Información Primaria: Nombre y Precio */}
+              <div className="w-full min-w-0 space-y-1">
+                <h4 className="text-xs sm:text-sm font-bold text-[#171717] line-clamp-1 leading-snug">
+                  {item.nombre}
+                </h4>
+
+                <div className="flex items-baseline justify-between gap-1">
+                  <span className="font-mono tabular-nums text-sm sm:text-base font-black text-[#661521]">
+                    {formatCOP(item.precioUnitarioCOP)}
+                  </span>
+                  <span className="text-[11px] text-[#50322A] font-medium truncate">
+                    {item.talla} • {item.color}
+                  </span>
+                </div>
+
+                {/* SKU como Metadato Secundario Pequeño */}
+                <div className="flex items-center justify-between text-[10px] font-mono text-[#50322A]/70 pt-0.5 border-t border-[#50322A]/10">
+                  <span className="truncate">{item.sku}</span>
+                  <span className="font-sans text-[10px] text-[#50322A]/60 shrink-0">
                     {item.categoria}
                   </span>
-                )}
-
-                <span className="font-mono tabular-nums text-lg font-black text-[#661521] shrink-0">
-                  {formatCOP(item.precioUnitarioCOP)}
-                </span>
+                </div>
               </div>
             </button>
           ))}
@@ -1796,17 +1791,22 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
         className="w-full lg:w-[40%] min-h-[480px] lg:h-full flex flex-col justify-between p-3 sm:p-4 bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm overflow-visible lg:overflow-hidden"
         aria-label="Carrito de compra y cobro de mostrador"
       >
-        {/* Encabezado: Selector de Cliente y Estado */}
-        <div className="pb-3 sm:pb-3.5 border-b border-[#50322A]/15 flex items-center justify-between shrink-0 gap-2">
+        {/* Encabezado: Selector de Cliente y Contador de Ticket */}
+        <div className="pb-2.5 sm:pb-3 border-b border-[#50322A]/15 flex items-center justify-between shrink-0 gap-2">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 text-[#661521] flex items-center justify-center shrink-0">
               <User className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <span className="block text-xs font-bold uppercase tracking-wider text-[#50322A]">
-                Cliente Mostrador
-              </span>
-              <span className="text-sm sm:text-base font-bold text-[#1C1311] truncate block">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-[#50322A]">
+                  TU VENTA
+                </span>
+                <span className="px-1.5 py-0.5 rounded-full bg-[#661521]/10 text-[#661521] text-[11px] font-mono font-bold">
+                  {totalCantidadPrendas} {totalCantidadPrendas === 1 ? 'prenda' : 'prendas'}
+                </span>
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-[#1C1311] truncate block">
                 {clienteNombre}
               </span>
             </div>
@@ -1815,7 +1815,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
           <button
             type="button"
             onClick={() => setMostrarModalCliente(true)}
-            className="px-3 sm:px-3.5 py-2 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors shrink-0"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors shrink-0"
           >
             Cambiar Cliente
           </button>

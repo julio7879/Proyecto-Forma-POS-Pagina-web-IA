@@ -17,6 +17,8 @@ export type RegistroClienteDTO = z.infer<typeof registroClienteSchema>;
 export const loginSchema = z.object({
   correo: z.string().trim().email('Formato de correo electrónico inválido').toLowerCase(),
   password: z.string().min(1, 'La contraseña es requerida'),
+  terminalId: z.string().trim().optional(),
+  forzarRelevo: z.boolean().optional(),
 });
 
 export type LoginDTO = z.infer<typeof loginSchema>;

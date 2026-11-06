@@ -164,6 +164,32 @@ export class AuthService {
       });
     }
 
+    // 3.1 Bloqueo Estricto por Turno Activo Concurrente (Opción A)
+    if (usuario.rol === 'VENDEDOR' && usuario.ubicacionId) {
+      const sesionAbierta = await prisma.sesionCaja.findFirst({
+        where: {
+          abiertaPorId: usuario.id,
+          estado: 'ABIERTA',
+        },
+        include: {
+          ubicacion: { select: { nombre: true } },
+        },
+      });
+
+      if (sesionAbierta && !dto.forzarRelevo) {
+        const esMismaTerminal = Boolean(
+          dto.terminalId &&
+            sesionAbierta.observacionApertura?.includes(`[TERM:${dto.terminalId}]`)
+        );
+
+        if (!esMismaTerminal && dto.terminalId) {
+          throw AppError.conflict(
+            `Acceso Bloqueado por Turno Activo: Esta cuenta ya tiene una sesión de caja abierta en ${sesionAbierta.ubicacion.nombre} en otra terminal. Cierre el turno anterior o solicite intervención del Administrador.`
+          );
+        }
+      }
+    }
+
     // 4. Preparar snapshot de permisos en memoria
     const userSnapshot: UserAuthSnapshot = {
       id: usuario.id,

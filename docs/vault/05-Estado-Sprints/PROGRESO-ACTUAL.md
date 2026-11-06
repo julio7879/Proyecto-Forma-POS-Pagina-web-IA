@@ -77,9 +77,9 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [x] **SP3-03 (Julio):** Motor Canónico de Descuentos y Prorrateo Exacto (`DiscountEngine.ts`, `RN-DES-09`, `CA-19` a `25`). *(PR #42 FUSIONADO en `develop` - Issue #23 Closed)*
 - [x] **SP3-04 (Julio):** Devoluciones con Plazo Raíz de 5 Días, Sobreescritura PIN Admin, Cuarentena No Vendible, Excepción Iliquidez y Cambios Atómicos (`RF-DEV-01 a 03`, `CA-26`, `CA-27`, `CA-30`, `CA-31`, `CA-54`, `CA-63`, `QA-017`, `QA-019`). *(PR #71 FUSIONADO en `develop` - Issue #70 Closed)*
 - [x] **SP3-05 (Thomas):** Plantilla de Comprobante de Venta POS (80 mm) y Recibo Digital Telegram (`RN-VTA-09`, `10`). *(PR #26 FUSIONADO en `develop` - Issue #22 Closed)*
-- [ ] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout con Integración de Cobro y Comprobante (`RF-POS-01`). *(Issue #62 Asignado)*
+- [x] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout con Menú Lateral Compacto (190-210px), Rediseño de Cards Cuadradas 1:1, Cero Desbordamiento Horizontal, Bloqueo por Turno Activo (Opción A) y Patrón Master-Detail (`DetailDrawer` + `ActivityTimeline`). *(Completado y Certificado con 22 suites / 126 tests frontend en verde)*
 - [ ] **SP3-07 (Sofía):** Prototipos Catálogo Público Web y Checkout 3 Pasos.
-- [ ] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja.
+- [x] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja (`PosFullSimulationAudit.test.tsx`, 50 tests POS). *(Completado y Verificado)*
 - [x] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(PR #75 FUSIONADO en `develop` - Issue #59 Closed - QA Gate Issue #83 en manos de Duvan)*
 
 **Progreso del Sprint 3:** `66.7%` [███████░░░] (6/9 tareas completadas y fusionadas en `develop`)

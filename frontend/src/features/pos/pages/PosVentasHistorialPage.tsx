@@ -7,7 +7,6 @@ import {
   CreditCard,
   Printer,
   Eye,
-  X,
   ShoppingBag,
   User,
   MapPin,
@@ -18,6 +17,7 @@ import {
 import { TicketVentaPOS } from '../components/TicketVentaPOS';
 import { VentaTicketDTO } from '../types/ticket.types';
 import { getPosRegisteredSales } from '../utils/posLedgerSync';
+import { DetailDrawer } from '../components/DetailDrawer';
 
 export interface PrendaVentaHistorial {
   sku: string;
@@ -289,6 +289,7 @@ export const PosVentasHistorialPage: React.FC = () => {
   const [busqueda, setBusqueda] = useState<string>('');
   const [filtroPago, setFiltroPago] = useState<'TODOS' | 'EFECTIVO' | 'TRANSFERENCIA'>('TODOS');
   const [ventaSeleccionada, setVentaSeleccionada] = useState<VentaHistorialItem | null>(null);
+  const [drawerTab, setDrawerTab] = useState<string>('detalle');
   const [mostrarModalTicket, setMostrarModalTicket] = useState<boolean>(false);
 
   // Vendedor y sede activa del turno
@@ -924,170 +925,201 @@ export const PosVentasHistorialPage: React.FC = () => {
       </section>
 
       {/* =========================================================================
-          MODAL CON EL DETALLE DE LA VENTA SELECCIONADA
+          DRAWER LATERAL DE DETALLE DE VENTA (Master-Detail + Actividad)
       ========================================================================= */}
       {ventaSeleccionada && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[#F4EFEA] text-[#1C1311] rounded-3xl border-2 border-[#D19650] shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            {/* Cabecera del Detalle */}
-            <div className="bg-[#1C1311] text-white p-4 sm:p-5 rounded-t-3xl flex items-center justify-between gap-3 border-b border-[#D19650]/40">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#661521] border border-[#D19650]/50 flex items-center justify-center text-[#D19650]">
-                  <Receipt className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-black text-[#D19650]">
-                      {ventaSeleccionada.consecutivo}
-                    </span>
-                    <span className="text-xs text-[#E7DED2]/80">Detalle de Factura</span>
-                  </div>
-                  <p className="text-xs text-stone-300">{ventaSeleccionada.fechaHora}</p>
-                </div>
-              </div>
+        <DetailDrawer
+          isOpen={Boolean(ventaSeleccionada)}
+          onClose={() => setVentaSeleccionada(null)}
+          title={`Factura ${ventaSeleccionada.consecutivo}`}
+          subtitle={`${ventaSeleccionada.cliente} · ${ventaSeleccionada.fechaHora}`}
+          badge={{
+            label: ventaSeleccionada.medioPago,
+            variant: ventaSeleccionada.medioPago === 'EFECTIVO' ? 'success' : 'info',
+          }}
+          activeTab={drawerTab}
+          onTabChange={setDrawerTab}
+          activityItems={[
+            {
+              id: 'act-vta-1',
+              timestamp: ventaSeleccionada.fechaHora,
+              title: `Venta registrada en caja (${ventaSeleccionada.consecutivo})`,
+              description: `Emitida por ${ventaSeleccionada.vendedor} en Sede ${sedeActiva}. Cliente: ${ventaSeleccionada.cliente}.`,
+              user: ventaSeleccionada.vendedor,
+              type: 'success',
+            },
+            {
+              id: 'act-vta-2',
+              timestamp: ventaSeleccionada.fechaHora,
+              title: `Cobro liquidado vía ${ventaSeleccionada.medioPago}`,
+              description: `Total de ${formatCOP(ventaSeleccionada.totalCop)} liquidado exitosamente.${
+                ventaSeleccionada.referenciaPago ? ` Ref: ${ventaSeleccionada.referenciaPago}` : ''
+              }`,
+              user: 'Pasarela / Gaveta POS',
+              type: 'info',
+            },
+            {
+              id: 'act-vta-3',
+              timestamp: ventaSeleccionada.fechaHora,
+              title: 'Descarga de inventario en Kardex efectuada',
+              description: `${ventaSeleccionada.prendas.length} prendas descontadas en tiempo real de SaldoStock (RN-GEN-02).`,
+              user: 'InventoryLedgerService',
+              type: 'info',
+            },
+            {
+              id: 'act-vta-4',
+              timestamp: ventaSeleccionada.fechaHora,
+              title: 'Consecutivo diferido asignado y comprobante generado',
+              description: `Consecutivo ${ventaSeleccionada.consecutivo} emitido antes del commit conforme a RN-VTA-09.`,
+              user: 'ConsecutivoService',
+              type: 'success',
+            },
+          ]}
+          footerActions={
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => setMostrarModalTicket(true)}
+                className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+              >
+                <Printer className="w-4 h-4 text-[#D19650]" />
+                <span>Reimprimir Ticket de Venta (80mm)</span>
+              </button>
 
               <button
                 type="button"
                 onClick={() => setVentaSeleccionada(null)}
-                aria-label="Cerrar modal de detalle"
-                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                className="min-h-[46px] px-4 rounded-xl bg-white border border-[#D8CFC6] text-stone-800 font-bold text-xs hover:bg-stone-50 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                Cerrar
               </button>
             </div>
+          }
+        >
+          {/* Contenido de la pestaña Detalle */}
+          <div className="space-y-4 text-xs">
+            {/* Banner identificador */}
+            <div className="p-3 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] flex items-center justify-between">
+              <div>
+                <span className="font-bold text-[#1C1311] block">Detalle de Factura</span>
+                <span className="text-[11px] text-stone-500 font-mono">
+                  {ventaSeleccionada.consecutivo} • {ventaSeleccionada.fechaHora}
+                </span>
+              </div>
+              <span className="font-mono font-bold text-sm text-[#059669]">
+                {formatCOP(ventaSeleccionada.totalCop)} COP
+              </span>
+            </div>
 
-            {/* Contenido del Detalle */}
-            <div className="p-4 sm:p-6 space-y-4">
-              {/* Metadatos del Cliente y Vendedor */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-4 rounded-2xl border border-[#E5DDD3]">
-                <div>
-                  <span className="text-xs font-bold uppercase text-stone-500 block">Cliente</span>
-                  <p className="text-sm font-black text-[#1C1311] mt-0.5">
-                    {ventaSeleccionada.cliente}
-                  </p>
-                  {ventaSeleccionada.documentoCliente && (
-                    <span className="text-xs font-mono text-stone-600 block">
-                      {ventaSeleccionada.documentoCliente}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <span className="text-xs font-bold uppercase text-stone-500 block">
-                    Atendido por
+            {/* Metadatos del Cliente y Vendedor */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-2xl border border-[#E5DDD3]">
+              <div>
+                <span className="text-[11px] font-bold uppercase text-stone-500 block">Cliente</span>
+                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
+                  {ventaSeleccionada.cliente}
+                </p>
+                {ventaSeleccionada.documentoCliente && (
+                  <span className="text-[11px] font-mono text-stone-600 block">
+                    {ventaSeleccionada.documentoCliente}
                   </span>
-                  <p className="text-sm font-black text-[#1C1311] mt-0.5">
-                    {ventaSeleccionada.vendedor}
-                  </p>
-                  <span className="text-xs text-stone-600 block">Cajero Mostrador POS</span>
-                </div>
+                )}
               </div>
 
-              {/* Lista de Prendas Vendidas con Fotos de Estudio */}
               <div>
-                <h3 className="text-xs font-extrabold uppercase text-stone-700 tracking-wider mb-2.5">
-                  Prendas en esta Venta ({ventaSeleccionada.prendas.length})
-                </h3>
+                <span className="text-[11px] font-bold uppercase text-stone-500 block">
+                  Atendido por
+                </span>
+                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
+                  {ventaSeleccionada.vendedor}
+                </p>
+                <span className="text-[11px] text-stone-600 block">Cajero Mostrador POS</span>
+              </div>
+            </div>
 
-                <div className="space-y-2.5">
-                  {ventaSeleccionada.prendas.map((prenda, idx) => (
-                    <div
-                      key={`${prenda.sku}-${idx}`}
-                      className="p-3 bg-white rounded-2xl border border-[#E5DDD3] flex items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={prenda.imagenUrl}
-                          alt={prenda.nombre}
-                          className="w-16 h-16 rounded-xl object-cover border border-stone-200 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-black text-[#1C1311] truncate">
-                            {prenda.nombre}
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs font-mono text-stone-600">
-                            <span className="px-1.5 py-0.5 rounded bg-stone-100 text-[#1C1311] font-bold">
-                              SKU: {prenda.sku}
-                            </span>
-                            <span>Talla: {prenda.talla}</span>
-                            <span>Color: {prenda.color}</span>
-                          </div>
-                          <p className="text-xs text-stone-600 mt-1">
-                            {prenda.cantidad} unidad(es) × {formatCOP(prenda.precioUnitarioCop)}
-                          </p>
+            {/* Lista de Prendas Vendidas */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
+                Prendas en esta Venta ({ventaSeleccionada.prendas.length})
+              </h4>
+
+              <div className="space-y-2">
+                {ventaSeleccionada.prendas.map((prenda, idx) => (
+                  <div
+                    key={`${prenda.sku}-${idx}`}
+                    className="p-2.5 sm:p-3 bg-white rounded-2xl border border-[#E5DDD3] flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={prenda.imagenUrl}
+                        alt={prenda.nombre}
+                        className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="text-xs sm:text-sm font-bold text-[#1C1311] truncate">
+                          {prenda.nombre}
+                        </h5>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] font-mono text-stone-600">
+                          <span className="px-1.5 py-0.2 rounded bg-stone-100 text-[#1C1311] font-bold">
+                            SKU: {prenda.sku}
+                          </span>
+                          <span>Talla: {prenda.talla}</span>
+                          <span>Color: {prenda.color}</span>
                         </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className="font-mono text-sm font-black text-[#1C1311]">
-                          {formatCOP(prenda.totalCop)}
-                        </span>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          {prenda.cantidad} ud(s) × {formatCOP(prenda.precioUnitarioCop)}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="font-mono text-xs sm:text-sm font-black text-[#1C1311]">
+                        {formatCOP(prenda.totalCop)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Liquidación Financiera con IVA 19% discriminado */}
+            <div className="bg-[#FAF7F4] p-3.5 sm:p-4 rounded-2xl border border-[#E5DDD3] space-y-2">
+              <div className="flex justify-between text-xs font-medium text-stone-600">
+                <span>Subtotal antes de impuestos:</span>
+                <span className="font-mono">{formatCOP(ventaSeleccionada.subtotalCop)}</span>
+              </div>
+              <div className="flex justify-between text-xs font-medium text-stone-600">
+                <span>IVA discriminado (19% incluido):</span>
+                <span className="font-mono">{formatCOP(ventaSeleccionada.iva19Cop)}</span>
+              </div>
+              <div className="pt-2 border-t border-[#E5DDD3] flex justify-between items-baseline">
+                <span className="text-xs sm:text-sm font-black text-[#1C1311]">Total Pagado:</span>
+                <span className="text-base sm:text-lg font-black font-mono text-[#059669]">
+                  {formatCOP(ventaSeleccionada.totalCop)} COP
+                </span>
               </div>
 
-              {/* Liquidación Financiera con IVA 19% discriminado */}
-              <div className="bg-[#FAF7F4] p-4 rounded-2xl border-2 border-[#E5DDD3] space-y-2">
-                <div className="flex justify-between text-xs font-medium text-stone-600">
-                  <span>Subtotal antes de impuestos:</span>
-                  <span className="font-mono">{formatCOP(ventaSeleccionada.subtotalCop)}</span>
-                </div>
-                <div className="flex justify-between text-xs font-medium text-stone-600">
-                  <span>IVA discriminado (19% incluido):</span>
-                  <span className="font-mono">{formatCOP(ventaSeleccionada.iva19Cop)}</span>
-                </div>
-                <div className="pt-2 border-t border-[#E5DDD3] flex justify-between items-baseline">
-                  <span className="text-sm font-black text-[#1C1311]">Total Pagado:</span>
-                  <span className="text-xl font-black font-mono text-[#059669]">
-                    {formatCOP(ventaSeleccionada.totalCop)} COP
-                  </span>
-                </div>
-
-                {/* Desglose de Pago */}
-                <div className="pt-2 border-t border-dashed border-[#D8CFC6] flex flex-wrap items-center justify-between text-xs">
-                  <span className="font-bold text-stone-700">
-                    Medio de pago: {ventaSeleccionada.medioPago}
-                  </span>
-                  {ventaSeleccionada.medioPago === 'EFECTIVO' &&
-                    ventaSeleccionada.montoRecibidoCop && (
-                      <span className="font-mono text-stone-600">
-                        Recibido: {formatCOP(ventaSeleccionada.montoRecibidoCop)} · Cambio:{' '}
-                        {formatCOP(ventaSeleccionada.cambioCop || 0)}
-                      </span>
-                    )}
-                  {ventaSeleccionada.medioPago === 'TRANSFERENCIA' &&
-                    ventaSeleccionada.referenciaPago && (
-                      <span className="font-mono text-stone-600">
-                        Ref: {ventaSeleccionada.referenciaPago}
-                      </span>
-                    )}
-                </div>
-              </div>
-
-              {/* Botón de Reimpresión de Ticket */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setMostrarModalTicket(true)}
-                  className="flex-1 min-h-[52px] px-5 rounded-2xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-sm flex items-center justify-center gap-2 shadow-md transition-all"
-                >
-                  <Printer className="w-4 h-4 text-[#D19650]" />
-                  <span>Reimprimir Ticket de Venta (80mm)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setVentaSeleccionada(null)}
-                  className="min-h-[52px] px-5 rounded-2xl bg-white border-2 border-[#D8CFC6] text-stone-800 font-extrabold text-xs hover:bg-stone-100"
-                >
-                  Cerrar
-                </button>
+              {/* Desglose de Pago */}
+              <div className="pt-2 border-t border-dashed border-[#D8CFC6] flex flex-wrap items-center justify-between text-[11px]">
+                <span className="font-bold text-stone-700">
+                  Medio de pago: {ventaSeleccionada.medioPago}
+                </span>
+                {ventaSeleccionada.medioPago === 'EFECTIVO' &&
+                  ventaSeleccionada.montoRecibidoCop && (
+                    <span className="font-mono text-stone-600">
+                      Recibido: {formatCOP(ventaSeleccionada.montoRecibidoCop)} · Cambio:{' '}
+                      {formatCOP(ventaSeleccionada.cambioCop || 0)}
+                    </span>
+                  )}
+                {ventaSeleccionada.medioPago === 'TRANSFERENCIA' &&
+                  ventaSeleccionada.referenciaPago && (
+                    <span className="font-mono text-stone-600">
+                      Ref: {ventaSeleccionada.referenciaPago}
+                    </span>
+                  )}
               </div>
             </div>
           </div>
-        </div>
+        </DetailDrawer>
       )}
 
       {/* =========================================================================
