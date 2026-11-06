@@ -22,7 +22,13 @@ export async function apiRequest<T>(
     }
   }
 
-  const response = await fetch(`/api${endpoint}`, {
+  const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
+  const baseUrl = typeof rawBaseUrl === 'string' ? rawBaseUrl.replace(/\/$/, '') : '';
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : `${baseUrl}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
