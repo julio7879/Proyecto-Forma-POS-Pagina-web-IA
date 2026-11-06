@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: forma-spos-backend
+    env: node
+    plan: free
+    region: ohio
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        value: 342333810050-dqo87t5rq8a6fpnfrhr7fva4fe3d1pl5.apps.googleusercontent.com
+      - key: TELEGRAM_BOT_TOKEN
+        value: 9190201751:AAF_dvfLXp2NQWWd_GipNLfzh2HWRY9y49Y
+      - key: TELEGRAM_BOT_USERNAME
+        value: Forma_Venta_Bot
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: Forma Atelier <soporte@forma.com>
