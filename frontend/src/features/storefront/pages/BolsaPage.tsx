@@ -90,17 +90,17 @@ export const BolsaPage: React.FC = () => {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-3xl bg-white/85 backdrop-blur-2xl border border-white/90 shadow-[0_8px_30px_rgb(80,50,42,0.06)] p-4 sm:p-6 transition-all hover:shadow-[0_12px_36px_rgb(80,50,42,0.10)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  className="rounded-3xl bg-white/85 backdrop-blur-2xl border border-white/90 shadow-[0_8px_30px_rgb(80,50,42,0.06)] p-3.5 sm:p-6 transition-all hover:shadow-[0_12px_36px_rgb(80,50,42,0.10)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 w-full max-w-full overflow-hidden"
                 >
                   {/* Foto y Datos Principales */}
-                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
                     <img
                       src={
                         item.imagenUrl ||
                         'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80'
                       }
                       alt={item.nombre}
-                      className="w-24 h-32 rounded-2xl object-cover border border-[#50322A]/10 shadow-sm shrink-0 bg-[#E7DED2]/30"
+                      className="w-20 h-24 sm:w-24 sm:h-32 rounded-2xl object-cover border border-[#50322A]/10 shadow-sm shrink-0 bg-[#E7DED2]/30"
                     />
 
                     <div className="space-y-1.5 flex-1 min-w-0">
@@ -140,7 +140,7 @@ export const BolsaPage: React.FC = () => {
                   </div>
 
                   {/* Acciones: Steppers, Subtotal y Eliminar */}
-                  <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-[#50322A]/10">
+                  <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-4 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-[#50322A]/10">
                     {/* Steppers Táctiles Ergonomía */}
                     <div className="flex items-center border border-[#50322A]/20 rounded-full overflow-hidden bg-white shadow-xs">
                       <button
@@ -165,7 +165,7 @@ export const BolsaPage: React.FC = () => {
                     </div>
 
                     {/* Subtotal de Línea en COP Entero */}
-                    <div className="text-right min-w-[100px]">
+                    <div className="text-right sm:min-w-[100px]">
                       <span className="block text-base sm:text-lg font-black font-mono-tabular text-[#50322A]">
                         {formatCOP(item.precioUnitarioCOP * item.cantidad)}
                       </span>

@@ -99,11 +99,11 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="fixed top-2 sm:top-4 left-0 right-0 z-40 px-2.5 sm:px-4 pointer-events-none transition-all duration-300">
+      <header className="fixed top-2 sm:top-4 left-0 right-0 z-40 px-2 sm:px-4 pointer-events-none transition-all duration-300">
         <div className="max-w-5xl mx-auto pointer-events-auto">
           <nav
             aria-label="Navegación Principal Tienda FORMA"
-            className="rounded-full bg-white/90 backdrop-blur-2xl border border-white/90 shadow-[0_8px_30px_rgb(80,50,42,0.12)] px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4"
+            className="rounded-full bg-white/90 backdrop-blur-2xl border border-white/90 shadow-[0_8px_30px_rgb(80,50,42,0.12)] px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4"
           >
             {/* Logotipo Oficial FORMA de Alta Costura */}
             <Link
@@ -119,7 +119,7 @@ export const Navbar: React.FC = () => {
             >
               {/* En móviles extra pequeños (< sm), logo compacto para evitar desbordar el header */}
               <div className="block sm:hidden">
-                <FormaLogo variant="horizontal" size="sm" theme="light" showSubtitle={false} />
+                <FormaLogo variant="horizontal" size="xs" theme="light" showSubtitle={false} />
               </div>
               <div className="hidden sm:block">
                 <FormaLogo variant="horizontal" size="md" theme="light" showSubtitle={true} />
@@ -194,7 +194,7 @@ export const Navbar: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full bg-[#661521] hover:bg-[#50322A] text-white text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95 shrink-0"
               >
                 <ShoppingBag className="w-4 h-4 text-[#D19650]" />
-                <span className="hidden xs:inline">Bolsa</span>
+                <span className="hidden sm:inline">Bolsa</span>
                 <span className="font-mono">({totalItems})</span>
                 {totalCOP > 0 && (
                   <span className="hidden lg:inline font-mono-tabular text-xs px-2 py-0.5 rounded-full bg-white/20 text-[#E7DED2]">
@@ -229,7 +229,7 @@ export const Navbar: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full bg-[#D19650] hover:bg-[#bf833e] text-white text-xs sm:text-sm font-bold transition-all shadow-sm shrink-0"
                 >
                   <User className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">Ingresar</span>
+                  <span className="hidden sm:inline">Ingresar</span>
                 </Link>
               )}
 
@@ -264,7 +264,7 @@ export const Navbar: React.FC = () => {
 
           {/* Panel Lateral Drawer Deslizante */}
           <div
-            className="fixed inset-y-0 right-0 w-[85%] max-w-sm bg-[#FAF6EF] shadow-2xl border-l border-white/90 flex flex-col p-5 sm:p-6 animate-in slide-in-from-right duration-300 overflow-y-auto z-10"
+            className="fixed inset-y-0 right-0 w-[88%] max-w-xs sm:max-w-sm bg-[#FAF6EF] shadow-2xl border-l border-white/90 flex flex-col p-4 sm:p-6 animate-in slide-in-from-right duration-300 overflow-y-auto overflow-x-hidden z-10"
             role="dialog"
             aria-modal="true"
             aria-label="Menú principal móvil"

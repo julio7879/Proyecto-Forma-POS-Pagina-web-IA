@@ -26,12 +26,12 @@ export const CategoryFilters = ({
   onSearchChange,
 }: Props) => {
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-10">
+    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-10 w-full max-w-full">
       {/* Píldoras de Categoría con paleta Crema/Vinotinto/Dorado/Café (Stitch v2.4) */}
       <div
         role="tablist"
         aria-label="Filtro de categorías de productos"
-        className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none"
+        className="flex items-center gap-2 w-full max-w-full overflow-x-auto pb-2 lg:pb-0 scrollbar-none no-scrollbar touch-pan-x"
       >
         {CATEGORIES.map((cat) => {
           const isActive = selectedCategory === cat;

@@ -469,7 +469,7 @@ export const CheckoutPage: React.FC = () => {
   if (pedidoExitoso) {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6">
-        <div className="glass-mirror-card rounded-3xl p-6 sm:p-10 border border-[#D19650]/40 shadow-2xl bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-300 space-y-8">
+        <div className="glass-mirror-card rounded-3xl p-4 sm:p-6 lg:p-10 border border-[#D19650]/40 shadow-2xl bg-white/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-300 space-y-6 sm:space-y-8 w-full">
           {/* Header de Éxito */}
           <div className="text-center space-y-3">
             <div className="w-20 h-20 mx-auto rounded-full bg-emerald-50 text-emerald-600 border-2 border-emerald-500/30 flex items-center justify-center shadow-lg">
@@ -659,7 +659,7 @@ export const CheckoutPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl w-full mx-auto py-4 sm:py-10 px-3 sm:px-6 lg:px-8">
       {/* Barra de Retorno y Título */}
       <div className="mb-8">
         <Link
@@ -691,7 +691,7 @@ export const CheckoutPage: React.FC = () => {
           {/* COLUMNA IZQUIERDA: FORMULARIO PASO 1 Y PASO 3 (7 COLS) */}
           <div className="lg:col-span-7 space-y-8">
             {/* PASO 1: DATOS DE ENVÍO Y FACTURACIÓN */}
-            <section className="glass-mirror-card rounded-3xl p-6 sm:p-7 bg-white/95 border border-[#50322A]/15 shadow-xl space-y-6">
+            <section className="glass-mirror-card rounded-3xl p-4 sm:p-6 lg:p-7 bg-white/95 border border-[#50322A]/15 shadow-xl space-y-5 sm:space-y-6 w-full">
               <div className="flex items-center justify-between pb-4 border-b border-[#50322A]/10">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#661521] text-white flex items-center justify-center font-bold text-sm">
@@ -896,7 +896,7 @@ export const CheckoutPage: React.FC = () => {
             </section>
 
             {/* PASO 3: SELECCIÓN DE MÉTODO DE PAGO */}
-            <section className="glass-mirror-card rounded-3xl p-6 sm:p-7 bg-white/95 border border-[#50322A]/15 shadow-xl space-y-6">
+            <section className="glass-mirror-card rounded-3xl p-4 sm:p-6 lg:p-7 bg-white/95 border border-[#50322A]/15 shadow-xl space-y-5 sm:space-y-6 w-full">
               <div className="flex items-center justify-between pb-4 border-b border-[#50322A]/10">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#661521] text-white flex items-center justify-center font-bold text-sm">
@@ -1149,7 +1149,7 @@ export const CheckoutPage: React.FC = () => {
 
           {/* COLUMNA DERECHA: RESUMEN DE LA BOLSA Y BOTÓN DE CONFIRMACIÓN (5 COLS - STICKY) */}
           <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-28">
-            <section className="glass-mirror-card rounded-3xl p-6 sm:p-7 bg-white/95 border border-[#50322A]/15 shadow-2xl space-y-5">
+            <section className="glass-mirror-card rounded-3xl p-4 sm:p-6 lg:p-7 bg-white/95 border border-[#50322A]/15 shadow-2xl space-y-5 w-full">
               <div className="flex items-center justify-between pb-4 border-b border-[#50322A]/10">
                 <div className="flex items-center gap-2.5">
                   <ShoppingBag className="w-5 h-5 text-[#661521]" />

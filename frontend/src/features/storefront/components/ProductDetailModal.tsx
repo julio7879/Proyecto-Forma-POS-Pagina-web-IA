@@ -121,11 +121,11 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
       aria-modal="true"
       aria-labelledby="modal-product-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-[#171717]/65 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-[#171717]/65 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-6xl bg-[#E7DED2] border-2 border-white/85 rounded-[2.25rem] shadow-[0_35px_90px_-15px_rgba(23,23,23,0.6)] overflow-hidden p-6 sm:p-8 lg:p-10 my-auto max-h-[92vh] overflow-y-auto"
+        className="relative w-full max-w-6xl bg-[#E7DED2] border-2 border-white/85 rounded-3xl sm:rounded-[2.25rem] shadow-[0_35px_90px_-15px_rgba(23,23,23,0.6)] overflow-hidden p-4 sm:p-6 lg:p-10 my-auto max-h-[92vh] overflow-y-auto"
       >
         {/* Capas de Luz Ambiental Sutil */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
@@ -138,7 +138,7 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
           type="button"
           onClick={onClose}
           aria-label="Cerrar modal"
-          className="absolute top-5 right-5 z-20 w-10 h-10 rounded-full bg-white/80 border border-white/90 flex items-center justify-center text-[#50322A] hover:bg-[#661521] hover:text-white transition-all shadow-sm active:scale-95"
+          className="absolute top-3 right-3 sm:top-5 sm:right-5 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/80 border border-white/90 flex items-center justify-center text-[#50322A] hover:bg-[#661521] hover:text-white transition-all shadow-sm active:scale-95"
         >
           <X className="w-5 h-5" />
         </button>
@@ -182,7 +182,7 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
 
           {/* ================= COLUMNA CENTRAL (lg:col-span-5): Escenario Protagonista de la Prenda ================= */}
           <div className="lg:col-span-5 order-1 lg:order-2 flex flex-col items-center">
-            <div className="relative w-full max-w-[380px] aspect-[3/3.8] rounded-3xl overflow-hidden bg-white/70 border-2 border-white/95 shadow-xl flex items-center justify-center group">
+            <div className="relative w-full max-w-[300px] sm:max-w-[380px] aspect-[3/3.8] rounded-2xl sm:rounded-3xl overflow-hidden bg-white/70 border-2 border-white/95 shadow-xl flex items-center justify-center group">
               <img
                 src={producto.imagenesUrls[selectedImageIndex] || producto.imagenesUrls[0]}
                 alt={producto.nombre}
@@ -292,7 +292,7 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
                 <span className="text-xs font-bold text-[#171717]">
                   Talla: <span className="font-semibold text-[#50322A]">{selectedVariante.talla}</span>
                 </span>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   {tallasDisponibles.map((talla) => {
                     const isSelected = selectedVariante.talla === talla;
                     return (
@@ -321,7 +321,7 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
                 Disponibilidad en Boutiques
               </span>
 
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
                 {SEDES_FISICAS.map((sede) => {
                   const rawStock = selectedVariante.stockPorSede?.[sede.key];
                   const unidades =
@@ -333,7 +333,7 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
                   return (
                     <div
                       key={sede.key}
-                      className="bg-white/80 border border-white/95 rounded-xl p-1.5 text-center shadow-xs"
+                      className="bg-white/80 border border-white/95 rounded-xl p-1 sm:p-1.5 text-center shadow-xs"
                     >
                       <p className="text-[10px] font-bold text-[#50322A]/75 truncate">
                         {sede.label}

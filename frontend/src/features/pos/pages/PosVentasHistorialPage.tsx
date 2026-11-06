@@ -629,7 +629,7 @@ export const PosVentasHistorialPage: React.FC = () => {
   }, [ventaSeleccionada]);
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-[#F4EFEA] text-[#1C1311] rounded-2xl border border-[#D8CFC6] shadow-inner p-3 sm:p-5 select-none font-sans">
+    <div className="min-h-full lg:h-full w-full overflow-y-auto bg-[#F4EFEA] text-[#1C1311] rounded-2xl border border-[#D8CFC6] shadow-inner p-2.5 sm:p-5 select-none font-sans">
       {/* =========================================================================
           CABECERA EDITORIAL Y KPIS DE VENTAS DEL PUNTO DE VENTA
       ========================================================================= */}

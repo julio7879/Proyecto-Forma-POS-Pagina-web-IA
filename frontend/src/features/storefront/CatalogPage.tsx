@@ -646,9 +646,9 @@ export const CatalogPage: React.FC = () => {
               </div>
 
               {/* Fila de Botones Rápidos + Slider de Precisión */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1 w-full max-w-full">
                 {/* Botones de selección rápida */}
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
                   {RANGOS_PRECIO.map((rango) => {
                     const isActivo =
                       (rango.max === null && precioMaximo === null) ||
@@ -661,7 +661,7 @@ export const CatalogPage: React.FC = () => {
                           setPrecioMaximo(rango.max);
                           setCurrentPage(1);
                         }}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                        className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                           isActivo
                             ? 'bg-[#661521] text-white shadow-xs'
                             : 'bg-white hover:bg-[#E7DED2] text-[#50322A] border border-[#50322A]/15'
@@ -773,7 +773,7 @@ export const CatalogPage: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
                   {ARBOL_CATEGORIAS.filter((c) => c.id !== 'Todas').map((dep) => (
                     <button
                       key={dep.id}
@@ -844,7 +844,7 @@ export const CatalogPage: React.FC = () => {
             {/* ESTADO 4: Success (Grilla de Productos Paginada a 12 items por página) */}
             {!isLoading && productosFiltrados.length > 0 && (
               <div className="space-y-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-10 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-8 pt-2 w-full max-w-full overflow-hidden">
                   {paginatedProductos.map((prod) => (
                     <ProductCard
                       key={prod.id}

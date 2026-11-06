@@ -820,11 +820,11 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
   if (mostrarModalExito) {
     return (
       <div
-        className="h-full w-full flex flex-col items-center justify-center bg-[#F4EFEA] rounded-2xl border border-[#50322A]/15 shadow-sm p-4 select-none overflow-y-auto"
+        className="min-h-full lg:h-full w-full flex flex-col items-center justify-center bg-[#F4EFEA] rounded-2xl border border-[#50322A]/15 shadow-sm p-3 sm:p-6 select-none overflow-y-auto"
         role="region"
         aria-label="Venta exitosa"
       >
-        <div className="w-full max-w-lg bg-[#FFFFFF] rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#50322A]/20 text-center animate-in fade-in duration-200">
+        <div className="w-full max-w-lg bg-[#FFFFFF] rounded-3xl p-5 sm:p-8 shadow-2xl border border-[#50322A]/20 text-center animate-in fade-in duration-200 my-auto">
           <div className="w-20 h-20 rounded-full bg-emerald-100 text-[#059669] flex items-center justify-center mx-auto mb-4 shadow-inner">
             <CheckCircle2 className="w-12 h-12" />
           </div>
@@ -1119,44 +1119,45 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
   if (mostrarModalCobro) {
     return (
       <div
-        className="h-full w-full flex flex-col bg-[#F4EFEA] rounded-2xl border border-[#50322A]/15 shadow-sm select-none overflow-hidden"
+        className="min-h-full lg:h-full w-full flex flex-col bg-[#F4EFEA] rounded-2xl border border-[#50322A]/15 shadow-sm select-none overflow-y-auto lg:overflow-hidden"
         role="region"
         aria-label="Vista de cobro de venta"
       >
         {/* Barra Superior de Navegación de Cobro */}
-        <header className="h-16 px-4 sm:px-6 bg-[#FFFFFF] border-b border-[#50322A]/15 flex items-center justify-between shrink-0 shadow-sm">
-          <div className="flex items-center gap-3 sm:gap-4">
+        <header className="min-h-[56px] sm:h-16 px-3 sm:px-6 py-2 sm:py-0 bg-[#FFFFFF] border-b border-[#50322A]/15 flex items-center justify-between shrink-0 shadow-sm gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
             <button
               type="button"
               onClick={() => setMostrarModalCobro(false)}
-              className="min-h-[44px] px-3.5 sm:px-4 rounded-xl border border-[#50322A]/20 bg-[#F4EFEA] hover:bg-[#E7DED2] text-[#351912] font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+              className="min-h-[44px] px-3 sm:px-4 rounded-xl border border-[#50322A]/20 bg-[#F4EFEA] hover:bg-[#E7DED2] text-[#351912] font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95 shadow-sm shrink-0"
               title="Regresar a la selección de prendas"
             >
               <ArrowLeft className="w-4 h-4 text-[#661521]" />
-              <span>← Modificar Carrito / Volver</span>
+              <span className="hidden xs:inline">← Modificar Carrito / Volver</span>
+              <span className="xs:hidden">← Volver</span>
             </button>
 
-            <div className="h-6 w-px bg-[#50322A]/20 hidden sm:block" />
+            <div className="h-6 w-px bg-[#50322A]/20 hidden sm:block shrink-0" />
 
-            <div>
-              <h2 className="text-lg sm:text-xl font-black text-[#1C1311] leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-black text-[#1C1311] leading-tight truncate">
                 Cobro de Venta
               </h2>
-              <p className="text-xs font-semibold text-[#50322A] hidden sm:block">
+              <p className="text-xs font-semibold text-[#50322A] hidden sm:block truncate">
                 Liquidación de Mostrador • Sede Medellín
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="px-3 py-1.5 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 flex items-center gap-2 text-xs font-bold text-[#1C1311]">
-              <User className="w-3.5 h-3.5 text-[#661521]" />
-              <span className="truncate max-w-[140px]">{clienteNombre}</span>
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 flex items-center gap-1.5 sm:gap-2 text-xs font-bold text-[#1C1311] max-w-[120px] xs:max-w-[160px]">
+              <User className="w-3.5 h-3.5 text-[#661521] shrink-0" />
+              <span className="truncate">{clienteNombre}</span>
             </div>
             <button
               type="button"
               onClick={() => setMostrarModalCobro(false)}
-              className="p-2 rounded-xl text-[#50322A] hover:text-[#1C1311] hover:bg-[#F4EFEA] transition-colors"
+              className="p-2 rounded-xl text-[#50322A] hover:text-[#1C1311] hover:bg-[#F4EFEA] transition-colors shrink-0"
               aria-label="Cerrar cobro"
               title="Cancelar (Esc)"
             >
@@ -1166,12 +1167,12 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
         </header>
 
         {/* Cuerpo Principal de Cobro: 2 Columnas Balanceadas y Espaciosas */}
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-3 sm:p-4 gap-3 sm:gap-4">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden p-2.5 sm:p-4 gap-3 sm:gap-4 min-h-0">
           {/* =========================================================================
               COLUMNA IZQUIERDA (45% ANCHO): RESUMEN DE PRENDAS Y TOTAL A LIQUIDAR
           ========================================================================= */}
           <section
-            className="w-full lg:w-[45%] h-full flex flex-col justify-between bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm p-4 overflow-hidden"
+            className="w-full lg:w-[45%] min-h-[300px] lg:h-full flex flex-col justify-between bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm p-3.5 sm:p-4 overflow-visible lg:overflow-hidden"
             aria-label="Resumen de prendas a facturar"
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#50322A]/15 shrink-0">
@@ -1184,7 +1185,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
             </div>
 
             {/* Lista Scrollable de Prendas en el Ticket */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-2.5 pr-1">
+            <div className="flex-1 max-h-[260px] lg:max-h-none overflow-y-auto py-2.5 sm:py-3 space-y-2.5 pr-1">
               {cartLines.map((line) => (
                 <div
                   key={line.id}
@@ -1259,7 +1260,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
               COLUMNA DERECHA (55% ANCHO): MEDIOS DE PAGO, DIGITACIÓN Y VUELTO
           ========================================================================= */}
           <section
-            className="w-full lg:w-[55%] h-full flex flex-col justify-between bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm p-4 overflow-y-auto"
+            className="w-full lg:w-[55%] min-h-[460px] lg:h-full flex flex-col justify-between bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm p-3.5 sm:p-4 overflow-visible lg:overflow-y-auto"
             aria-label="Medios de pago y cálculo de vueltos"
           >
             {/* Pestañas Ergonómicas de Método de Pago */}
@@ -1627,11 +1628,11 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
             )}
 
             {/* Botón de Confirmación de Alta Visibilidad */}
-            <div className="pt-3 border-t border-[#50322A]/15 shrink-0 flex items-center gap-2.5">
+            <div className="pt-3 border-t border-[#50322A]/15 shrink-0 flex items-center gap-2 sm:gap-2.5">
               <button
                 type="button"
                 onClick={() => setMostrarModalCobro(false)}
-                className="min-h-[54px] px-4 rounded-2xl border-2 border-[#50322A]/20 font-bold text-xs sm:text-sm text-[#351912] hover:bg-[#F4EFEA] transition-colors"
+                className="min-h-[54px] px-3 sm:px-4 rounded-2xl border-2 border-[#50322A]/20 font-bold text-xs sm:text-sm text-[#351912] hover:bg-[#F4EFEA] transition-colors shrink-0"
               >
                 Cancelar (Esc)
               </button>
@@ -1640,9 +1641,9 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                 type="button"
                 disabled={metodoPago === 'EFECTIVO' && efectivoRecibido < totalPagarCOP}
                 onClick={handleConfirmarVenta}
-                className="flex-1 min-h-[54px] py-3 px-4 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-black text-sm sm:text-base shadow-lg shadow-[#059669]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.99]"
+                className="flex-1 min-h-[54px] sm:min-h-[56px] py-3 px-3 sm:px-4 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-black text-xs sm:text-base shadow-lg shadow-[#059669]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.99]"
               >
-                <CheckCircle2 className="w-5 h-5" />
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
                 <span>CONFIRMAR VENTA E IMPRIMIR (Enter)</span>
               </button>
             </div>
@@ -1656,16 +1657,16 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
   // ESTADO 1: VISTA PRINCIPAL (CATÁLOGO TÁCTIL + CARRITO DE VENTA)
   // =========================================================================
   return (
-    <div className="h-full w-full flex flex-col lg:flex-row overflow-hidden bg-[#F4EFEA] rounded-2xl border border-[#50322A]/15 shadow-sm select-none gap-3">
+    <div className="min-h-full lg:h-full w-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden bg-[#F4EFEA] rounded-2xl border border-[#50322A]/15 shadow-sm select-none gap-3">
       {/* =========================================================================
           COLUMNA IZQUIERDA (60% ANCHO): CATÁLOGO TÁCTIL CON FOTOS Y BÚSQUEDA RÁPIDA
       ========================================================================= */}
       <section
-        className="w-full lg:w-[60%] h-full flex flex-col bg-[#F4EFEA] p-3 overflow-hidden"
+        className="w-full lg:w-[60%] lg:h-full flex flex-col bg-[#F4EFEA] p-2 sm:p-3 overflow-visible lg:overflow-hidden"
         aria-label="Catálogo táctil de productos para venta"
       >
         {/* Barra Superior: Buscador Táctil con Foco Automático y Atajo F2 (Limpio, sin botones ficticios de USB) */}
-        <div className="relative mb-3 flex gap-2.5 shrink-0">
+        <div className="relative mb-2.5 sm:mb-3 flex gap-2.5 shrink-0">
           <div className="relative flex-1">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#50322A]"
@@ -1694,7 +1695,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
 
         {/* Píldoras de Categorías (Botones Táctiles con role="tab" y nombres exactos) */}
         <div
-          className="flex gap-2 overflow-x-auto pb-2.5 mb-2 shrink-0 scrollbar-none"
+          className="flex gap-2 overflow-x-auto pb-2 sm:pb-2.5 mb-2 shrink-0 scrollbar-none"
           role="tablist"
           aria-label="Categorías del catálogo POS"
         >
@@ -1720,10 +1721,10 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
         </div>
 
         {/* Cuadrícula de Productos con Fotos de Estudio Reales y Alto Contraste */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pr-1">
+        <div className="flex-1 overflow-visible lg:overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3 pr-0 sm:pr-1">
           {variantesFiltradas.map((item) => (
             <button
-              key={item.sku}
+              key={`${item.id}-${item.sku}`}
               type="button"
               onClick={() => handleAddVariante(item)}
               className="p-3.5 rounded-2xl bg-[#FFFFFF] border border-[#50322A]/15 hover:border-[#661521] active:scale-[0.99] transition-all text-left flex flex-col justify-between shadow-sm hover:shadow-md group"
@@ -1792,20 +1793,20 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
           COLUMNA DERECHA (40% ANCHO): TICKET DE VENTA Y COBRO RÁPIDO (CA-53)
       ========================================================================= */}
       <section
-        className="w-full lg:w-[40%] h-full flex flex-col justify-between p-4 bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm overflow-hidden"
+        className="w-full lg:w-[40%] min-h-[480px] lg:h-full flex flex-col justify-between p-3 sm:p-4 bg-[#FFFFFF] rounded-2xl border border-[#50322A]/15 shadow-sm overflow-visible lg:overflow-hidden"
         aria-label="Carrito de compra y cobro de mostrador"
       >
         {/* Encabezado: Selector de Cliente y Estado */}
-        <div className="pb-3.5 border-b border-[#50322A]/15 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 text-[#661521] flex items-center justify-center">
+        <div className="pb-3 sm:pb-3.5 border-b border-[#50322A]/15 flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 text-[#661521] flex items-center justify-center shrink-0">
               <User className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="block text-xs font-bold uppercase tracking-wider text-[#50322A]">
                 Cliente Mostrador
               </span>
-              <span className="text-base font-bold text-[#1C1311]">
+              <span className="text-sm sm:text-base font-bold text-[#1C1311] truncate block">
                 {clienteNombre}
               </span>
             </div>
@@ -1814,7 +1815,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
           <button
             type="button"
             onClick={() => setMostrarModalCliente(true)}
-            className="px-3.5 py-2 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors"
+            className="px-3 sm:px-3.5 py-2 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors shrink-0"
           >
             Cambiar Cliente
           </button>
@@ -1842,16 +1843,16 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
         )}
 
         {/* Lista de Líneas del Ticket */}
-        <div className="flex-1 overflow-y-auto py-3 space-y-2.5">
+        <div className="flex-1 max-h-[380px] lg:max-h-none overflow-y-auto py-2.5 sm:py-3 space-y-2.5">
           {cartLines.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[#50322A]">
-              <div className="w-16 h-16 rounded-2xl bg-[#F4EFEA] border border-[#50322A]/15 flex items-center justify-center mb-3">
-                <ShoppingBag className="w-8 h-8 text-[#661521]" />
+            <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-center p-4 sm:p-6 text-[#50322A]">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#F4EFEA] border border-[#50322A]/15 flex items-center justify-center mb-3">
+                <ShoppingBag className="w-7 h-7 sm:w-8 sm:h-8 text-[#661521]" />
               </div>
-              <h4 className="text-base font-bold text-[#1C1311] mb-1">
+              <h4 className="text-sm sm:text-base font-bold text-[#1C1311] mb-1">
                 Carrito de venta vacío
               </h4>
-              <p className="text-sm text-[#50322A] max-w-xs">
+              <p className="text-xs sm:text-sm text-[#50322A] max-w-xs">
                 Escanee un código de barras o pulse una prenda del catálogo táctil para iniciar la facturación.
               </p>
             </div>
@@ -1859,25 +1860,25 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
             cartLines.map((line) => (
               <div
                 key={line.id}
-                className="p-3 rounded-2xl bg-[#F4EFEA]/70 border border-[#50322A]/15 flex items-center justify-between gap-3"
+                className="p-2.5 sm:p-3 rounded-2xl bg-[#F4EFEA]/70 border border-[#50322A]/15 flex items-center justify-between gap-2 sm:gap-3"
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <img
                     src={line.imagenUrl}
                     alt={line.nombre}
-                    className="w-12 h-12 rounded-xl object-cover border border-[#50322A]/15 shrink-0 bg-white"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border border-[#50322A]/15 shrink-0 bg-white"
                   />
                   <div className="flex-1 min-w-0">
-                    <h5 className="text-sm font-bold text-[#171717] truncate">
+                    <h5 className="text-xs sm:text-sm font-bold text-[#171717] truncate">
                       {line.nombre}
                     </h5>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-[#50322A] mt-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-[#50322A] mt-0.5">
                       <span className="font-mono tabular-nums font-bold text-[#661521]">
                         {formatCOP(line.precioUnitarioCOP)}
                       </span>
                       {line.talla && <span className="font-semibold">• Talla: {line.talla}</span>}
                       {!line.esReintegrable && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-xs">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px] sm:text-xs">
                           No reintegrable
                         </span>
                       )}
@@ -1886,37 +1887,37 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                 </div>
 
                 {/* Controles Táctiles de Cantidad */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <div className="flex items-center border border-[#50322A]/20 rounded-xl overflow-hidden bg-[#FFFFFF]">
                     <button
                       type="button"
                       onClick={() => handleUpdateCantidad(line.id, -1)}
-                      className="min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-[#F4EFEA] text-[#1C1311] transition-colors"
+                      className="min-w-[32px] sm:min-w-[36px] min-h-[32px] sm:min-h-[36px] flex items-center justify-center hover:bg-[#F4EFEA] text-[#1C1311] transition-colors"
                       aria-label="Restar una unidad"
                     >
-                      <Minus className="w-4 h-4" />
+                      <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
-                    <span className="px-2.5 text-sm font-bold font-mono tabular-nums text-[#171717]">
+                    <span className="px-2 sm:px-2.5 text-xs sm:text-sm font-bold font-mono tabular-nums text-[#171717]">
                       {line.cantidad}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleUpdateCantidad(line.id, 1)}
-                      className="min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-[#F4EFEA] text-[#1C1311] transition-colors"
+                      className="min-w-[32px] sm:min-w-[36px] min-h-[32px] sm:min-h-[36px] flex items-center justify-center hover:bg-[#F4EFEA] text-[#1C1311] transition-colors"
                       aria-label="Sumar una unidad"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
 
-                  <span className="text-sm font-black font-mono tabular-nums min-w-[88px] text-right text-[#1C1311]">
+                  <span className="text-xs sm:text-sm font-black font-mono tabular-nums min-w-[70px] sm:min-w-[88px] text-right text-[#1C1311]">
                     {formatCOP(line.precioUnitarioCOP * line.cantidad)}
                   </span>
 
                   <button
                     type="button"
                     onClick={() => handleRemoveLine(line.id)}
-                    className="p-2 rounded-xl text-[#50322A] hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-xl text-[#50322A] hover:text-rose-700 hover:bg-rose-50 transition-colors"
                     aria-label={`Eliminar ${line.nombre}`}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1929,7 +1930,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
 
         {/* Panel de Totales y Botón Dominante de Cobro F12 */}
         <div className="pt-3.5 border-t-2 border-[#50322A]/15 bg-[#FFFFFF] shrink-0">
-          <div className="space-y-1.5 text-sm mb-3">
+          <div className="space-y-1.5 text-xs sm:text-sm mb-3">
             <div className="flex justify-between text-[#50322A] font-medium">
               <span>Subtotal:</span>
               <span className="font-mono tabular-nums font-bold text-[#171717]">
@@ -1949,7 +1950,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
           </div>
 
           {/* Caja Destacada: TOTAL A PAGAR */}
-          <div className="p-4 rounded-2xl bg-[#1C1311] text-white flex items-center justify-between mb-3 shadow-md border border-[#D19650]/35">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#1C1311] text-white flex items-center justify-between mb-3 shadow-md border border-[#D19650]/35">
             <div>
               <span className="block text-xs font-bold uppercase tracking-widest text-[#D19650]">
                 TOTAL A PAGAR
@@ -1968,7 +1969,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
             type="button"
             disabled={cartLines.length === 0}
             onClick={abrirModalCobro}
-            className={`w-full min-h-[60px] py-3.5 px-5 rounded-2xl font-extrabold text-lg flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.99] ${
+            className={`w-full min-h-[56px] sm:min-h-[60px] py-3.5 px-5 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.99] ${
               cartLines.length === 0
                 ? 'bg-[#E7DED2] text-[#50322A]/50 cursor-not-allowed shadow-none'
                 : 'bg-[#059669] hover:bg-[#047857] text-white shadow-[#059669]/25'

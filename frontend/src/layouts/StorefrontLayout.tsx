@@ -16,7 +16,7 @@ const StorefrontShell: React.FC = () => {
     <div className="min-h-screen flex flex-col forma-storefront-canvas text-[#171717]">
       <Navbar />
 
-      <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-20">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-28 pb-16 sm:pb-20">
         <Outlet />
       </main>
 

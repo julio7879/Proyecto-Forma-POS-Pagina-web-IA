@@ -15,7 +15,7 @@ export const BentoGridHero: React.FC<BentoGridHeroProps> = ({
   return (
     <section className="mb-12" aria-label="Sección Destacada Bento Grid">
       {/* Tarjeta Principal Hero Limpia y Elegante */}
-      <div className="glass-mirror-card rounded-[2.25rem] p-6 sm:p-10 lg:p-12 overflow-hidden">
+      <div className="glass-mirror-card rounded-3xl sm:rounded-[2.25rem] p-4 sm:p-10 lg:p-12 overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           {/* Columna Izquierda: Narrativa Editorial & CTA */}
           <div className="lg:col-span-7 space-y-5">
@@ -38,7 +38,7 @@ export const BentoGridHero: React.FC<BentoGridHeroProps> = ({
             </p>
 
             {/* Fila de Precio + Botón Dorado (#D19650) + Botón Secundario */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 pt-2">
               <div className="pr-3 border-r border-[#50322A]/15">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#50322A]/70 block">
                   Precio de Atelier
@@ -107,13 +107,13 @@ export const BentoGridHero: React.FC<BentoGridHeroProps> = ({
             </div>
 
             {/* Badge Flotante Izquierdo */}
-            <div className="glass-mirror-pill px-3.5 py-2 rounded-full flex items-center gap-2 absolute top-5 -left-2 sm:left-2 shadow-lg">
+            <div className="glass-mirror-pill px-3.5 py-2 rounded-full flex items-center gap-2 absolute top-5 left-2 sm:left-4 shadow-lg">
               <Leaf className="w-3.5 h-3.5 text-[#D19650]" />
               <span className="text-[11px] font-bold text-[#50322A]">Confección Artesanal</span>
             </div>
 
             {/* Badge Flotante Derecho */}
-            <div className="glass-mirror-pill px-3.5 py-2 rounded-full flex items-center gap-2 absolute bottom-6 -right-2 sm:right-2 shadow-lg">
+            <div className="glass-mirror-pill px-3.5 py-2 rounded-full flex items-center gap-2 absolute bottom-6 right-2 sm:right-4 shadow-lg">
               <Award className="w-3.5 h-3.5 text-[#661521]" />
               <span className="text-[11px] font-bold text-[#50322A]">Edición Limitada</span>
             </div>

@@ -362,16 +362,16 @@ export const PosLayout: React.FC = () => {
   ];
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-[#F4EFEA] text-[#171717] font-sans select-none">
+    <div className="min-h-screen lg:h-screen w-full lg:w-screen overflow-y-auto lg:overflow-hidden flex flex-col bg-[#F4EFEA] text-[#171717] font-sans select-none">
       {/* HEADER SUPERIOR LIMPIO Y SIN SOLAPAMIENTOS (h-14 sm:h-16) */}
-      <header className="h-14 sm:h-16 bg-[#1C1311] border-b border-[#D19650]/25 px-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-40 text-white shadow-md">
+      <header className="h-14 sm:h-16 bg-[#1C1311] border-b border-[#D19650]/25 px-2.5 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-3 shrink-0 z-40 text-white shadow-md">
         {/* Lado izquierdo: Botón alternar menú lateral + Logo FORMA POS + Breadcrumb */}
-        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
           <button
             type="button"
             onClick={() => setSidebarOpen((prev) => !prev)}
             aria-label={sidebarOpen ? 'Colapsar menú lateral' : 'Expandir menú lateral'}
-            className="p-2 rounded-xl text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
           >
             {sidebarOpen ? (
               <X className="w-5 h-5 text-[#D19650]" />
@@ -380,17 +380,22 @@ export const PosLayout: React.FC = () => {
             )}
           </button>
 
-          <Link to="/pos/venta" className="flex items-center gap-2.5 shrink-0 group" aria-label="Terminal FORMA POS">
-            <FormaLogo variant="horizontal" size="sm" theme="dark" />
-            <span className="px-2 py-0.5 rounded-lg bg-[#661521] border border-[#D19650]/60 text-[#D19650] font-black text-[11px] font-mono shadow-xs tracking-wider">
+          <Link to="/pos/venta" className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group" aria-label="Terminal FORMA POS">
+            <div className="block sm:hidden">
+              <FormaLogo variant="horizontal" size="xs" theme="dark" />
+            </div>
+            <div className="hidden sm:block">
+              <FormaLogo variant="horizontal" size="sm" theme="dark" />
+            </div>
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-[#661521] border border-[#D19650]/60 text-[#D19650] font-black text-[10px] sm:text-[11px] font-mono shadow-xs tracking-wider">
               POS
             </span>
           </Link>
 
-          <div className="h-5 w-px bg-white/20 hidden sm:block shrink-0" />
+          <div className="h-5 w-px bg-white/20 hidden md:block shrink-0" />
 
           {/* Breadcrumb / Título de la vista actual */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#E7DED2]/90 font-medium truncate">
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-[#E7DED2]/90 font-medium truncate">
             <span className="text-stone-400">Terminal</span>
             <span className="text-white/30">/</span>
             <span className="text-[#D19650] font-bold truncate">{activeViewTitle}</span>
@@ -398,11 +403,11 @@ export const PosLayout: React.FC = () => {
         </div>
 
         {/* Lado derecho: Estado de caja + Vendedor + Botón Cerrar Sesión */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {cajero && (
             <>
               {/* Badge discreto de estado de caja */}
-              <div className="hidden xs:flex items-center">
+              <div className="hidden md:flex items-center">
                 {cajaAbierta ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#059669]/20 border border-[#059669]/40 text-emerald-300 text-xs font-bold tracking-wide">
                     <span className="w-2 h-2 rounded-full bg-[#059669] animate-pulse" />
@@ -417,17 +422,17 @@ export const PosLayout: React.FC = () => {
               </div>
 
               {/* Nombre limpio del vendedor autenticado y sede activa */}
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/5 border border-white/10">
-                <div className="w-7 h-7 rounded-lg bg-[#661521] border border-[#D19650]/40 flex items-center justify-center text-[#D19650] font-bold text-xs shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 max-w-[130px] xs:max-w-[160px] sm:max-w-[220px]">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#661521] border border-[#D19650]/40 flex items-center justify-center text-[#D19650] font-bold text-xs shrink-0">
                   <User className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs sm:text-sm font-bold text-white max-w-[110px] sm:max-w-[140px] truncate leading-tight">
+                  <span className="text-xs sm:text-sm font-bold text-white truncate leading-tight">
                     {nombreVendedor}
                   </span>
                   {sedeActiva && (
-                    <span className="text-[10px] text-[#D19650] font-bold truncate leading-tight">
-                      {sedeActiva}
+                    <span className="text-[9px] sm:text-[10px] text-[#D19650] font-bold truncate leading-tight">
+                      {sedeActiva.replace(/\s*\(Cúcuta\)/i, '')}
                     </span>
                   )}
                 </div>
@@ -438,10 +443,10 @@ export const PosLayout: React.FC = () => {
                 type="button"
                 onClick={handleCerrarSesion}
                 title="Cerrar Sesión"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-950/40 border border-rose-500/20 hover:border-rose-500/40 transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-950/40 border border-rose-500/20 hover:border-rose-500/40 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Salir</span>
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Salir</span>
               </button>
             </>
           )}
@@ -449,10 +454,10 @@ export const PosLayout: React.FC = () => {
       </header>
 
       {/* CUERPO PRINCIPAL: SIDEBAR + WORKSPACE */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden relative min-h-0">
         {/* Si no hay usuario logueado, se muestra la tarjeta limpia de acceso a Terminal POS */}
         {!cajero ? (
-          <div className="flex-1 flex items-center justify-center p-4 bg-[#F4EFEA] overflow-y-auto">
+          <div className="flex-1 flex items-center justify-center p-3 sm:p-4 bg-[#F4EFEA] overflow-y-auto">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-[#D8CFC6] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               {/* Encabezado Editorial Oscuro de Alta Costura */}
               <div className="bg-[#1C1311] p-6 sm:p-8 text-center border-b border-[#D19650]/30 relative overflow-hidden">
@@ -551,17 +556,17 @@ export const PosLayout: React.FC = () => {
             {sidebarOpen && (
               <div
                 onClick={() => setSidebarOpen(false)}
-                className="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 lg:hidden"
+                className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 lg:hidden"
                 aria-hidden="true"
               />
             )}
 
-            {/* MENÚ LATERAL (SIDEBAR TIPO DASHBOARD / HAMBURGUESA) */}
+            {/* MENÚ LATERAL (SIDEBAR TIPO DASHBOARD / HAMBURGUESA / DRAWER) */}
             <aside
               className={`
-                fixed lg:static top-14 sm:top-16 bottom-0 left-0 z-30
+                fixed lg:static top-14 sm:top-16 bottom-0 left-0 z-50 lg:z-30
                 bg-white border-r border-[#D8CFC6] flex flex-col justify-between
-                transition-all duration-200 ease-in-out shadow-sm
+                transition-transform duration-200 ease-in-out shadow-xl lg:shadow-sm
                 ${sidebarOpen ? 'w-64 translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-0 lg:border-r-0 lg:overflow-hidden'}
               `}
               aria-label="Menú lateral de módulos POS"
@@ -591,7 +596,7 @@ export const PosLayout: React.FC = () => {
                       to={item.to}
                       onClick={() => {
                         // En pantallas móviles cerramos el drawer al navegar
-                        if (window.innerWidth < 1024) {
+                        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                           setSidebarOpen(false);
                         }
                       }}
@@ -619,6 +624,11 @@ export const PosLayout: React.FC = () => {
               <div className="p-3 border-t border-[#D8CFC6]/60 bg-[#FAF7F4]/60 space-y-1 shrink-0">
                 <Link
                   to="/"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                      setSidebarOpen(false);
+                    }
+                  }}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-stone-600 hover:text-[#1C1311] hover:bg-stone-200/60 transition-colors"
                 >
                   <Store className="w-4 h-4 text-[#D19650]" />
@@ -628,6 +638,11 @@ export const PosLayout: React.FC = () => {
                 {esAdmin && (
                   <Link
                     to="/admin/dashboard"
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                        setSidebarOpen(false);
+                      }
+                    }}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-stone-600 hover:text-[#1C1311] hover:bg-stone-200/60 transition-colors"
                   >
                     <Shield className="w-4 h-4 text-[#661521]" />
@@ -637,7 +652,12 @@ export const PosLayout: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={handleCerrarSesion}
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                      setSidebarOpen(false);
+                    }
+                    handleCerrarSesion();
+                  }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-100/70 transition-colors cursor-pointer mt-1"
                 >
                   <LogOut className="w-4 h-4" />
@@ -647,7 +667,7 @@ export const PosLayout: React.FC = () => {
             </aside>
 
             {/* ÁREA DE TRABAJO PRINCIPAL (OUTLET) */}
-            <main className="flex-1 overflow-hidden p-2 sm:p-3 bg-[#F4EFEA] relative flex flex-col">
+            <main className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-2 sm:p-3 bg-[#F4EFEA] relative flex flex-col">
               <Outlet />
             </main>
           </>
