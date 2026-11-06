@@ -166,7 +166,8 @@ export const AdminLayout: React.FC = () => {
     setLoginError(null);
 
     try {
-      const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
+      const isTest = import.meta.env.MODE === 'test';
+      const rawBaseUrl = isTest ? '' : (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '');
       const baseUrl = typeof rawBaseUrl === 'string' ? rawBaseUrl.replace(/\/$/, '') : '';
       const res = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
