@@ -20,6 +20,13 @@
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
     "@prisma/client": "^6.19.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/exceljs": "^0.5.3",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "date-fns": "^4.4.0",
@@ -32,21 +39,14 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^10.3.1",
+    "prisma": "^6.19.3",
+    "typescript": "^7.0.2",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cors": "^2.8.19",
-    "@types/exceljs": "^0.5.3",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^26.6.6",
-    "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^7.2.1",
-    "prisma": "^6.19.3",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }
 }
