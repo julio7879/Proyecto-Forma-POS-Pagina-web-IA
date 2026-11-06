@@ -17,8 +17,10 @@ import {
   ArrowUpRight,
   Sparkles,
   FileCheck2,
+  Eye,
 } from 'lucide-react';
 import { getPosShiftFinancialDeltas } from '../utils/posLedgerSync';
+import { DetailDrawer } from '../components/DetailDrawer';
 
 interface RetiroOperativo {
   id: string;
@@ -92,6 +94,10 @@ export const PosArqueoPage: React.FC = () => {
   const [turnoNumero, setTurnoNumero] = useState<number>(104);
   const [horaApertura, setHoraApertura] = useState<string>('08:00 a. m. (America/Bogota)');
   const [horaCierre, setHoraCierre] = useState<string | null>(null);
+
+  // Master-Detail Drawer para movimientos de caja
+  const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<RetiroOperativo | null>(null);
+  const [drawerTab, setDrawerTab] = useState<string>('detalle');
 
   // Base inicial y ventas acumuladas en COP sincronizadas con las ventas cobradas en el POS
   const [baseInicialCop, setBaseInicialCop] = useState<number>(200000);
@@ -880,10 +886,22 @@ export const PosArqueoPage: React.FC = () => {
                         {esIngreso ? `+${formatCOP(r.montoCop)}` : `-${formatCOP(r.montoCop)}`}
                       </span>
 
+                      <button
+                        type="button"
+                        onClick={() => setMovimientoSeleccionado(r)}
+                        title="Ver detalle del movimiento"
+                        className="p-1.5 rounded-lg border border-[#D8CFC6] bg-white hover:bg-stone-100 text-stone-700 text-[10px] font-bold transition-all shadow-2xs"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-stone-600" />
+                      </button>
+
                       {!r.esAnulado && estadoSesion === 'ABIERTA' && (
                         <button
                           type="button"
-                          onClick={() => handleAnularMovimiento(r.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAnularMovimiento(r.id);
+                          }}
                           title="Anular movimiento y restaurar dinero a la gaveta de caja"
                           className="px-2 py-1 rounded-lg border border-[#D8CFC6] bg-white hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 text-stone-700 text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs"
                         >
@@ -1180,6 +1198,137 @@ export const PosArqueoPage: React.FC = () => {
           )}
         </section>
       </div>
+      {/* =========================================================================
+          DRAWER LATERAL DE DETALLE DE MOVIMIENTO / TURNO DE CAJA
+      ========================================================================= */}
+      {movimientoSeleccionado && (
+        <DetailDrawer
+          isOpen={Boolean(movimientoSeleccionado)}
+          onClose={() => setMovimientoSeleccionado(null)}
+          title={`Movimiento ${movimientoSeleccionado.comprobanteRef}`}
+          subtitle={`${movimientoSeleccionado.motivo} · ${movimientoSeleccionado.horaBogota}`}
+          badge={{
+            label: movimientoSeleccionado.esAnulado
+              ? 'Anulado'
+              : movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO'
+              ? 'Reintegro'
+              : 'Retiro',
+            variant: movimientoSeleccionado.esAnulado
+              ? 'danger'
+              : movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO'
+              ? 'success'
+              : 'warning',
+          }}
+          activeTab={drawerTab}
+          onTabChange={setDrawerTab}
+          activityItems={[
+            {
+              id: 'act-caj-1',
+              timestamp: movimientoSeleccionado.horaBogota,
+              title: `${
+                movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO' ? 'Reintegro / Ingreso' : 'Retiro'
+              } registrado por ${formatCOP(movimientoSeleccionado.montoCop)}`,
+              description: `Concepto: ${movimientoSeleccionado.motivo}. Registrado en gaveta física.`,
+              user: movimientoSeleccionado.ejecutadoPor,
+              type: movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO' ? 'success' : 'warning',
+            },
+            ...(movimientoSeleccionado.esAnulado
+              ? [
+                  {
+                    id: 'act-caj-2',
+                    timestamp: movimientoSeleccionado.horaAnulacion || 'Hoy',
+                    title: 'Movimiento anulado · Fondos restaurados',
+                    description:
+                      movimientoSeleccionado.motivoAnulacion ||
+                      'Anulación registrada por el cajero para corregir la gaveta.',
+                    user: movimientoSeleccionado.ejecutadoPor,
+                    type: 'warning' as const,
+                  },
+                ]
+              : []),
+          ]}
+          footerActions={
+            <div className="flex flex-col sm:flex-row gap-2">
+              {!movimientoSeleccionado.esAnulado && estadoSesion === 'ABIERTA' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAnularMovimiento(movimientoSeleccionado.id);
+                    setMovimientoSeleccionado((prev) =>
+                      prev ? { ...prev, esAnulado: true, horaAnulacion: getBogotaTimeStr() } : null
+                    );
+                  }}
+                  className="flex-1 min-h-[46px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Anular Movimiento y Restaurar Fondos</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setMovimientoSeleccionado(null)}
+                className="min-h-[46px] px-4 rounded-xl bg-white border border-[#D8CFC6] text-stone-800 font-bold text-xs hover:bg-stone-50 cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] flex items-center justify-between">
+              <div>
+                <span className="font-bold text-[#1C1311] block">Comprobante de Caja</span>
+                <span className="text-[11px] text-stone-500 font-mono">
+                  {movimientoSeleccionado.comprobanteRef} • {movimientoSeleccionado.horaBogota}
+                </span>
+              </div>
+              <span
+                className={`font-mono font-bold text-sm ${
+                  movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO'
+                    ? 'text-[#059669]'
+                    : 'text-[#661521]'
+                }`}
+              >
+                {movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO' ? '+' : '-'}
+                {formatCOP(movimientoSeleccionado.montoCop)} COP
+              </span>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-[#E5DDD3] space-y-2">
+              <div>
+                <span className="text-[10px] font-bold uppercase text-stone-500 block">Tipo de Operación</span>
+                <p className="text-xs font-black text-[#1C1311] mt-0.5">
+                  {movimientoSeleccionado.tipo === 'INGRESO_REINTEGRO'
+                    ? 'Reintegro / Ingreso a Gaveta'
+                    : movimientoSeleccionado.tipo === 'RETIRO_CAJA_FUERTE'
+                    ? 'Retiro a Caja Fuerte / Bóveda'
+                    : 'Gasto Menor Operativo'}
+                </p>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold uppercase text-stone-500 block">Concepto o Motivo</span>
+                <p className="text-xs text-stone-800 mt-0.5 font-medium">
+                  {movimientoSeleccionado.motivo}
+                </p>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold uppercase text-stone-500 block">Ejecutado por</span>
+                <p className="text-xs text-stone-800 mt-0.5 font-semibold">
+                  {movimientoSeleccionado.ejecutadoPor}
+                </p>
+              </div>
+
+              {movimientoSeleccionado.esAnulado && (
+                <div className="pt-2 border-t border-rose-200 text-rose-800 text-[11px] font-medium">
+                  <strong>Estado:</strong> Anulado el {movimientoSeleccionado.horaAnulacion}. Los fondos fueron reincorporados a la gaveta de caja física.
+                </div>
+              )}
+            </div>
+          </div>
+        </DetailDrawer>
+      )}
     </div>
   );
 };

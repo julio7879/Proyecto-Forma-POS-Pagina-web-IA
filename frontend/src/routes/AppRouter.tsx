@@ -25,6 +25,7 @@ const AdminInventarioPage = lazy(() => import('../features/admin/pages/AdminInve
 const AdminTrasladosPage = lazy(() => import('../features/admin/pages/AdminTrasladosPage'));
 const AdminVendedoresPage = lazy(() => import('../features/admin/pages/AdminVendedoresPage'));
 const AdminReportesPage = lazy(() => import('../features/admin/pages/AdminReportesPage'));
+const AdminPedidosWebPage = lazy(() => import('../features/admin/pages/AdminPedidosWebPage'));
 
 // Formularios de auth
 const LoginForm = lazy(() =>
@@ -84,6 +85,7 @@ export const AppRouter: React.FC = () => {
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="vendedores" element={<AdminVendedoresPage />} />
             <Route path="reportes" element={<AdminReportesPage />} />
+            <Route path="pedidos-web" element={<AdminPedidosWebPage />} />
             <Route path="inventario" element={<AdminInventarioPage />} />
             <Route path="traslados" element={<AdminTrasladosPage />} />
             <Route path="compras" element={<Navigate to="/admin/dashboard" replace />} />

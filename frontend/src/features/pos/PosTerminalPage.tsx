@@ -363,6 +363,30 @@ export const PosTerminalPage: React.FC = () => {
     };
   }, []);
 
+  // Re-sincronizar inventario ante mutaciones de Kardex (ventas, cambios, devoluciones)
+  useEffect(() => {
+    const syncStock = () => {
+      setCatalogo((prev) =>
+        prev.map((item) => {
+          const base = CATALOGO_INICIAL_POS.find(
+            (b) => b.sku.toUpperCase() === item.sku.toUpperCase()
+          );
+          const baseStock = base ? base.stockSede : item.stockSede;
+          return {
+            ...item,
+            stockSede: Math.max(0, baseStock + getStockDelta(item.sku)),
+          };
+        })
+      );
+    };
+    window.addEventListener('forma-pos-ledger-update', syncStock);
+    window.addEventListener('storage', syncStock);
+    return () => {
+      window.removeEventListener('forma-pos-ledger-update', syncStock);
+      window.removeEventListener('storage', syncStock);
+    };
+  }, []);
+
   // Totales Financieros en COP Enteros (Invariante RN-GEN-04: Cero centavos)
   const totalPagarCOP = cartLines.reduce(
     (acc, line) => acc + line.precioUnitarioCOP * line.cantidad,
@@ -690,6 +714,7 @@ export const PosTerminalPage: React.FC = () => {
     recordPosSale({
       id: `vta-${Date.now()}`,
       consecutivo: `#${nuevoConsecutivo}`,
+      fechaIso: new Date().toISOString(),
       fechaHora: `Hoy · ${horaCol} (America/Bogota)`,
       fechaCorta: `Hoy ${horaCol}`,
       vendedor: vendedorNombre,
@@ -1720,16 +1745,16 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
         </div>
 
         {/* Cuadrícula de Productos Compacta con Fotos Cuadradas 1:1 y Sin Desbordamiento */}
-        <div className="flex-1 overflow-x-hidden overflow-y-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-3 pr-0.5">
+        <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto content-start auto-rows-max grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-3 pr-0.5">
           {variantesFiltradas.map((item) => (
             <button
               key={`${item.id}-${item.sku}`}
               type="button"
               onClick={() => handleAddVariante(item)}
-              className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFFFF] border border-[#50322A]/15 hover:border-[#661521] active:scale-[0.99] transition-all text-left flex flex-col justify-between shadow-xs hover:shadow-sm group cursor-pointer overflow-hidden"
+              className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFFFF] border border-[#50322A]/15 hover:border-[#661521] active:scale-[0.99] transition-all text-left flex flex-col justify-between shadow-xs hover:shadow-sm group cursor-pointer overflow-hidden min-h-[220px]"
             >
               {/* Contenedor Cuadrado de Imagen Proporción 1:1 */}
-              <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#F4EFEA] border border-[#50322A]/10 relative mb-2 shrink-0">
+              <div className="w-full aspect-square min-h-[120px] rounded-xl overflow-hidden bg-[#F4EFEA] border border-[#50322A]/10 relative mb-2 shrink-0">
                 <img
                   src={item.imagenUrl}
                   alt={item.nombre}

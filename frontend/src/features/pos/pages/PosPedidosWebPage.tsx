@@ -11,44 +11,18 @@ import {
   ChevronRight,
   User,
   Phone,
+  Banknote,
 } from 'lucide-react';
-import { DetailDrawer, ActivityTimelineItem } from '../components/DetailDrawer';
-
-export type EstadoPedidoWeb =
-  | 'CONFIRMADO'
-  | 'EN_PREPARACION'
-  | 'LISTO_DESPACHO'
-  | 'DESPACHADO'
-  | 'REASIGNADO'
-  | 'EN_BODEGA_CENTRAL';
-
-export interface PrendaPedidoWeb {
-  sku: string;
-  nombre: string;
-  talla: string;
-  color: string;
-  cantidad: number;
-  precioCop: number;
-  imagenUrl: string;
-}
-
-export interface PedidoWebItem {
-  id: string;
-  codigo: string;
-  fecha: string;
-  cliente: string;
-  telefonoCliente?: string;
-  ciudadDestino: string;
-  codigoDane: string;
-  direccionEntrega?: string;
-  prendas: PrendaPedidoWeb[];
-  totalCop: number;
-  estado: EstadoPedidoWeb;
-  guiaTransportadora: string;
-  empresaTransporte: string;
-  observaciones: string;
-  novedadReasignacion?: string;
-}
+import { DetailDrawer, type ActivityTimelineItem } from '../components/DetailDrawer';
+import {
+  getWebOrdersBySede,
+  transicionarPedidoWeb,
+  updateWebOrder,
+  nuevoEvento,
+  WEB_ORDERS_EVENT,
+  type PedidoWebRecord,
+  type EstadoPedidoWeb,
+} from '../utils/webOrdersStore';
 
 const formatCOP = (valor: number): string => {
   return new Intl.NumberFormat('es-CO', {
@@ -59,202 +33,64 @@ const formatCOP = (valor: number): string => {
   }).format(Math.trunc(valor));
 };
 
-const PEDIDOS_WEB_INICIALES: PedidoWebItem[] = [
-  {
-    id: 'ped-web-01',
-    codigo: 'PED-2026-849201',
-    fecha: 'Hoy · 09:20 a. m.',
-    cliente: 'Camila Soto Peñaranda',
-    telefonoCliente: '312 840 9921',
-    ciudadDestino: 'Cúcuta, Norte de Santander',
-    codigoDane: '54001',
-    direccionEntrega: 'Av. Gran Colombia # 12-40, Apto 402',
-    prendas: [
-      {
-        sku: 'ROP-DNM-001-M',
-        nombre: 'Chaqueta Denim Artesanal',
-        talla: 'M',
-        color: 'Azul Índigo',
-        cantidad: 1,
-        precioCop: 189000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-    totalCop: 189000,
-    estado: 'CONFIRMADO',
-    guiaTransportadora: '',
-    empresaTransporte: 'TCC',
-    observaciones: '',
-  },
-  {
-    id: 'ped-web-02',
-    codigo: 'PED-2026-510394',
-    fecha: 'Hoy · 08:45 a. m.',
-    cliente: 'Santiago Morales Rojas',
-    telefonoCliente: '315 220 8814',
-    ciudadDestino: 'Bucaramanga, Santander',
-    codigoDane: '68001',
-    direccionEntrega: 'Carrera 27 # 45-10, Floridablanca',
-    prendas: [
-      {
-        sku: 'ACC-BOL-003-UNI',
-        nombre: 'Bolso Cuero Graso Unisex',
-        talla: 'Única',
-        color: 'Miel Natural',
-        cantidad: 1,
-        precioCop: 249000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=600&q=80',
-      },
-      {
-        sku: 'COS-KIT-008-SET',
-        nombre: 'Kit Botánico Cuidado Facial',
-        talla: 'Set x3',
-        color: 'Natural',
-        cantidad: 1,
-        precioCop: 98000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-    totalCop: 347000,
-    estado: 'EN_PREPARACION',
-    guiaTransportadora: 'TCC-68001-99214',
-    empresaTransporte: 'TCC',
-    observaciones: 'Prenda envuelta con papel seda aromático y tarjeta de agradecimiento.',
-  },
-  {
-    id: 'ped-web-03',
-    codigo: 'PED-2026-339102',
-    fecha: 'Ayer · 04:10 p. m.',
-    cliente: 'Mariana Duque Gómez',
-    telefonoCliente: '320 541 3300',
-    ciudadDestino: 'Ocaña, Norte de Santander',
-    codigoDane: '54498',
-    direccionEntrega: 'Calle del Embudo # 8-15',
-    prendas: [
-      {
-        sku: 'ROP-CAM-002-S',
-        nombre: 'Camiseta Básica Algodón Pima',
-        talla: 'S',
-        color: 'Blanco Hueso',
-        cantidad: 2,
-        precioCop: 59900,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-    totalCop: 119800,
-    estado: 'LISTO_DESPACHO',
-    guiaTransportadora: 'ENVIA-54498-10023',
-    empresaTransporte: 'Envía',
-    observaciones: 'Caja rotulada lista en zona de recolección.',
-  },
-  {
-    id: 'ped-web-04',
-    codigo: 'PED-2026-210884',
-    fecha: 'Ayer · 11:30 a. m.',
-    cliente: 'Daniel Alberto Gómez',
-    telefonoCliente: '300 981 4422',
-    ciudadDestino: 'Cúcuta, Norte de Santander',
-    codigoDane: '54001',
-    direccionEntrega: 'Barrio Caobos, Calle 15 # 2E-30',
-    prendas: [
-      {
-        sku: 'ART-MOC-005-UNI',
-        nombre: 'Mochila Wayuu Tradicional',
-        talla: 'Única',
-        color: 'Geométrico Tierra',
-        cantidad: 1,
-        precioCop: 175000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-    totalCop: 175000,
-    estado: 'DESPACHADO',
-    guiaTransportadora: 'TCC-54001-88421',
-    empresaTransporte: 'TCC',
-    observaciones: 'Entregado a conductor TCC a las 02:15 p.m.',
-  },
-];
-
 export const PosPedidosWebPage: React.FC = () => {
-  const [pedidos, setPedidos] = useState<PedidoWebItem[]>(PEDIDOS_WEB_INICIALES);
+  const sedeActiva = localStorage.getItem('forma_pos_sede') || 'Punto Centro (Cúcuta)';
+  const rawUser = localStorage.getItem('usuario');
+  const usuarioNombre = useMemo(() => {
+    if (!rawUser) return 'Cajero POS';
+    try {
+      const u = JSON.parse(rawUser);
+      return u.nombreCompleto || u.nombre || 'Cajero POS';
+    } catch {
+      return 'Cajero POS';
+    }
+  }, [rawUser]);
+
+  const [pedidos, setPedidos] = useState<PedidoWebRecord[]>(() => getWebOrdersBySede(sedeActiva));
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
   const [busqueda, setBusqueda] = useState<string>('');
 
-  // Master-Detail: Pedido seleccionado para el Drawer lateral (inicializado con el primero para acceso directo)
-  const [pedidoSeleccionadoId, setPedidoSeleccionadoId] = useState<string | null>(
-    PEDIDOS_WEB_INICIALES[0].id
-  );
+  // Sincronización en tiempo real con webOrdersStore y localStorage
+  useEffect(() => {
+    const sincronizar = () => {
+      setPedidos(getWebOrdersBySede(sedeActiva));
+    };
+    sincronizar();
+    window.addEventListener(WEB_ORDERS_EVENT, sincronizar);
+    window.addEventListener('storage', sincronizar);
+    return () => {
+      window.removeEventListener(WEB_ORDERS_EVENT, sincronizar);
+      window.removeEventListener('storage', sincronizar);
+    };
+  }, [sedeActiva]);
+
+  // Selección de pedido para el DetailDrawer
+  const [pedidoSeleccionadoCodigo, setPedidoSeleccionadoCodigo] = useState<string | null>(null);
   const [drawerTab, setDrawerTab] = useState<string>('detalle');
 
-  // Estado para modal de contingencia
-  const [pedidoContingencia, setPedidoContingencia] = useState<PedidoWebItem | null>(null);
+  // Modal de contingencia (falta de prenda o daño en tienda)
+  const [pedidoContingencia, setPedidoContingencia] = useState<PedidoWebRecord | null>(null);
   const [motivoContingencia, setMotivoContingencia] = useState<string>('');
   const [destinoReasignacion, setDestinoReasignacion] = useState<'OTRA_TIENDA' | 'BODEGA_CENTRAL'>(
     'OTRA_TIENDA'
   );
 
-  // Leer pedidos guardados en localStorage
-  useEffect(() => {
-    try {
-      const rawUltimo = localStorage.getItem('forma_ultimo_pedido');
-      if (!rawUltimo) return;
-      const parsed = JSON.parse(rawUltimo);
-      if (!parsed || !parsed.codigo) return;
-
-      setPedidos((prev) => {
-        if (prev.some((p) => p.codigo === parsed.codigo)) return prev;
-        const nuevo: PedidoWebItem = {
-          id: `ped-local-${Date.now()}`,
-          codigo: parsed.codigo,
-          fecha: 'Hoy · Reciente',
-          cliente: parsed.clienteNombre || 'Cliente Web',
-          telefonoCliente: parsed.clienteTelefono || '300 000 0000',
-          ciudadDestino: `${parsed.ciudadDestino || 'Cúcuta'}, ${parsed.departamento || 'Norte de Santander'}`,
-          codigoDane: '54001',
-          direccionEntrega: parsed.direccionEntrega || 'Dirección no especificada',
-          prendas: Array.isArray(parsed.items)
-            ? parsed.items.map((it: any) => ({
-                sku: it.sku || 'ROP-GEN-001',
-                nombre: it.nombre || 'Prenda Atelier',
-                talla: it.talla || 'Única',
-                color: it.color || 'Estándar',
-                cantidad: it.cantidad || 1,
-                precioCop: it.precioUnitarioCop || it.precioVentaCop || 99000,
-                imagenUrl:
-                  it.imagenUrl ||
-                  'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
-              }))
-            : [],
-          totalCop: parsed.totalCop || 99000,
-          estado: 'CONFIRMADO',
-          guiaTransportadora: '',
-          empresaTransporte: 'TCC',
-          observaciones: '',
-        };
-        return [nuevo, ...prev];
-      });
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // Filtrado de pedidos
+  // Filtrado reactivo de pedidos
   const pedidosFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return pedidos.filter((p) => {
-      if (filtroEstado !== 'TODOS' && p.estado !== filtroEstado) {
-        return false;
+      if (filtroEstado !== 'TODOS') {
+        if (filtroEstado === 'CONFIRMADO') {
+          if (p.estado !== 'CONFIRMADO' && p.estado !== 'RECIBIDO') return false;
+        } else if (p.estado !== filtroEstado) {
+          return false;
+        }
       }
       if (!q) return true;
       const matchCodigo = p.codigo.toLowerCase().includes(q);
       const matchCliente = p.cliente.toLowerCase().includes(q);
       const matchCiudad = p.ciudadDestino.toLowerCase().includes(q);
-      const matchPrenda = p.prendas.some(
+      const matchPrenda = p.productos.some(
         (pr) =>
           pr.nombre.toLowerCase().includes(q) ||
           pr.sku.toLowerCase().includes(q) ||
@@ -265,172 +101,121 @@ export const PosPedidosWebPage: React.FC = () => {
   }, [pedidos, busqueda, filtroEstado]);
 
   const pedidoSeleccionado = useMemo(() => {
-    return pedidos.find((p) => p.id === pedidoSeleccionadoId) || null;
-  }, [pedidos, pedidoSeleccionadoId]);
+    if (pedidoSeleccionadoCodigo) {
+      const encontrado = pedidos.find((p) => p.codigo === pedidoSeleccionadoCodigo);
+      if (encontrado) return encontrado;
+    }
+    return pedidosFiltrados[0] || pedidos[0] || null;
+  }, [pedidos, pedidosFiltrados, pedidoSeleccionadoCodigo]);
 
-  // Acciones de avance de estado
-  const handleAvanzarEstado = (id: string) => {
-    setPedidos((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p;
-        if (p.estado === 'CONFIRMADO') {
-          return {
-            ...p,
-            estado: 'EN_PREPARACION',
-            observaciones: p.observaciones || 'Alistamiento iniciado por el cajero.',
-          };
-        }
-        if (p.estado === 'EN_PREPARACION') {
-          return {
-            ...p,
-            estado: 'LISTO_DESPACHO',
-            guiaTransportadora:
-              p.guiaTransportadora ||
-              `TCC-${p.codigoDane}-00${Math.floor(100 + Math.random() * 900)}`,
-          };
-        }
-        if (p.estado === 'LISTO_DESPACHO') {
-          return {
-            ...p,
-            estado: 'DESPACHADO',
-          };
-        }
-        return p;
-      })
-    );
+  // Acciones de avance de estado persistidas en webOrdersStore
+  const handleAvanzarEstado = (codigo: string) => {
+    const p = pedidos.find((x) => x.codigo === codigo);
+    if (!p) return;
+
+    if (p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO') {
+      transicionarPedidoWeb(
+        codigo,
+        'EN_PREPARACION',
+        usuarioNombre,
+        { observaciones: p.observaciones || 'Alistamiento iniciado por el cajero.' },
+        'Alistamiento iniciado por el cajero (Reserva dura activa).'
+      );
+    } else if (p.estado === 'EN_PREPARACION') {
+      const guiaGenerada =
+        p.guiaTransportadora ||
+        `TCC-${p.codigoDaneDestino || '54001'}-00${Math.floor(100 + Math.random() * 900)}`;
+      transicionarPedidoWeb(
+        codigo,
+        'LISTO_DESPACHO',
+        usuarioNombre,
+        { guiaTransportadora: guiaGenerada, transportadora: p.transportadora || 'Coordinadora / TCC Prioritario' },
+        `Empacado y listo para despacho. Guía: ${guiaGenerada}`
+      );
+    } else if (p.estado === 'LISTO_DESPACHO') {
+      transicionarPedidoWeb(
+        codigo,
+        'DESPACHADO',
+        usuarioNombre,
+        {},
+        'Entregado físicamente al conductor de la transportadora para reparto.'
+      );
+    }
   };
 
-  const handleUpdateObservaciones = (id: string, texto: string) => {
-    setPedidos((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, observaciones: texto } : p))
-    );
+  const handleUpdateObservaciones = (codigo: string, texto: string) => {
+    updateWebOrder(codigo, { observaciones: texto });
   };
 
-  const handleUpdateGuia = (id: string, guia: string) => {
-    setPedidos((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, guiaTransportadora: guia } : p))
-    );
+  const handleUpdateGuia = (codigo: string, guia: string) => {
+    updateWebOrder(codigo, { guiaTransportadora: guia });
   };
 
-  // Confirmar contingencia (sin jerga técnica)
+  // Confirmación de contingencia sin jerga técnica
   const handleConfirmarContingencia = () => {
     if (!pedidoContingencia) return;
     const destinoTexto =
       destinoReasignacion === 'OTRA_TIENDA'
-        ? 'Reasignado a Punto Caobos (Con inventario físico disponible)'
+        ? 'Reasignado a otra Tienda (Con inventario físico verificado)'
         : 'Transferido a Bodega Central para despacho directo';
+    const notaCompleta = `${destinoTexto}. Motivo: "${motivoContingencia.trim() || 'Faltante en inventario físico de tienda'}".`;
 
-    setPedidos((prev) =>
-      prev.map((p) => {
-        if (p.id !== pedidoContingencia.id) return p;
-        return {
-          ...p,
-          estado: destinoReasignacion === 'OTRA_TIENDA' ? 'REASIGNADO' : 'EN_BODEGA_CENTRAL',
-          novedadReasignacion: `${destinoTexto}. Motivo: "${motivoContingencia}".`,
-        };
-      })
+    updateWebOrder(
+      pedidoContingencia.codigo,
+      { observaciones: notaCompleta },
+      nuevoEvento('Novedad de Alistamiento Reportada', usuarioNombre, notaCompleta, pedidoContingencia.estado)
     );
     setPedidoContingencia(null);
+    setMotivoContingencia('');
   };
 
   const pendientesContador = pedidos.filter(
-    (p) => p.estado === 'CONFIRMADO' || p.estado === 'EN_PREPARACION'
+    (p) => p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO' || p.estado === 'EN_PREPARACION'
   ).length;
 
   const getBadgeInfo = (estado: EstadoPedidoWeb) => {
     switch (estado) {
+      case 'RECIBIDO':
       case 'CONFIRMADO':
-        return { label: '1. Confirmado (Por Alistar)', variant: 'warning' as const };
+        return { label: 'Por Alistar (Confirmado)', variant: 'warning' as const };
       case 'EN_PREPARACION':
         return { label: '2. En Preparación', variant: 'info' as const };
       case 'LISTO_DESPACHO':
         return { label: '3. Listo para Despacho', variant: 'success' as const };
       case 'DESPACHADO':
         return { label: '4. Despachado', variant: 'neutral' as const };
-      case 'REASIGNADO':
-        return { label: 'Reasignado a otra Tienda', variant: 'danger' as const };
-      case 'EN_BODEGA_CENTRAL':
-        return { label: 'Enviado a Bodega Central', variant: 'danger' as const };
+      case 'ENTREGADO':
+        return { label: '5. Entregado al Cliente', variant: 'success' as const };
+      case 'NO_ENTREGADO':
+        return { label: 'Retorno Logístico (No Entregado)', variant: 'danger' as const };
+      case 'CANCELADO':
+        return { label: 'Cancelado', variant: 'danger' as const };
     }
   };
 
-  // Generador de actividades para el tab Actividad
+  // Cronología real del pedido para la pestaña Actividad del Drawer
   const actividadPedido: ActivityTimelineItem[] = useMemo(() => {
-    if (!pedidoSeleccionado) return [];
-    const items: ActivityTimelineItem[] = [
-      {
-        id: 'act-1',
-        timestamp: `${pedidoSeleccionado.fecha}`,
-        title: 'Pedido web recibido y confirmado en plataforma',
-        description: `El cliente ${pedidoSeleccionado.cliente} completó la orden. Reserva de inventario blando aplicada (RN-WEB-16).`,
-        user: 'Sistema Ecommerce',
-        type: 'info',
-      },
-      {
-        id: 'act-2',
-        timestamp: `${pedidoSeleccionado.fecha}`,
-        title: 'Asignación automática de despacho a Punto Centro',
-        description:
-          'Se validó la disponibilidad de stock local para alistamiento en tienda física.',
-        user: 'Orquestador Multisede',
-        type: 'info',
-      },
-    ];
+    if (!pedidoSeleccionado || !pedidoSeleccionado.historial) return [];
+    return pedidoSeleccionado.historial.map((ev) => {
+      let variant: 'success' | 'info' | 'warning' | 'neutral' = 'info';
+      if (ev.estado === 'DESPACHADO' || ev.estado === 'ENTREGADO') variant = 'success';
+      else if (ev.estado === 'EN_PREPARACION' || ev.estado === 'LISTO_DESPACHO') variant = 'warning';
 
-    if (
-      pedidoSeleccionado.estado === 'EN_PREPARACION' ||
-      pedidoSeleccionado.estado === 'LISTO_DESPACHO' ||
-      pedidoSeleccionado.estado === 'DESPACHADO'
-    ) {
-      items.push({
-        id: 'act-3',
-        timestamp: 'Hoy · 09:40 a. m.',
-        title: 'Alistamiento de prendas iniciado',
-        description:
-          pedidoSeleccionado.observaciones ||
-          'El personal de tienda recolectó las prendas de mostrador para embalaje.',
-        user: 'Vendedor Centro',
-        type: 'warning',
-      });
-    }
+      const fmtBogota = new Intl.DateTimeFormat('es-CO', {
+        timeZone: 'America/Bogota',
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(ev.fechaIso));
 
-    if (
-      pedidoSeleccionado.estado === 'LISTO_DESPACHO' ||
-      pedidoSeleccionado.estado === 'DESPACHADO'
-    ) {
-      items.push({
-        id: 'act-4',
-        timestamp: 'Hoy · 10:15 a. m.',
-        title: 'Rotulado y paquete listo para transportadora',
-        description: `Guía generada: ${pedidoSeleccionado.guiaTransportadora} (${pedidoSeleccionado.empresaTransporte}). Paquete sellado con cinta de seguridad.`,
-        user: 'Vendedor Centro',
-        type: 'success',
-      });
-    }
-
-    if (pedidoSeleccionado.estado === 'DESPACHADO') {
-      items.push({
-        id: 'act-5',
-        timestamp: 'Hoy · 11:20 a. m.',
-        title: 'Entrega física a transportadora efectuada',
-        description: `Mercancía recolectada por el conductor de ${pedidoSeleccionado.empresaTransporte}. Notificación enviada al cliente.`,
-        user: 'Operador Logístico',
-        type: 'success',
-      });
-    }
-
-    if (pedidoSeleccionado.novedadReasignacion) {
-      items.push({
-        id: 'act-nov',
-        timestamp: 'Hoy · Novedad',
-        title: 'Novedad de Reasignación en Tienda',
-        description: pedidoSeleccionado.novedadReasignacion,
-        user: 'Administrador / Supervisor',
-        type: 'warning',
-      });
-    }
-
-    return items;
+      return {
+        id: ev.id,
+        timestamp: fmtBogota,
+        title: ev.titulo,
+        description: ev.descripcion,
+        user: ev.usuario,
+        type: variant,
+      };
+    });
   }, [pedidoSeleccionado]);
 
   return (
@@ -463,7 +248,7 @@ export const PosPedidosWebPage: React.FC = () => {
             <div className="flex items-center gap-2 text-xs bg-[#FAF7F4] px-3 py-2 rounded-xl border border-[#E5DDD3]">
               <MapPin className="w-4 h-4 text-[#661521]" />
               <span className="font-bold text-[#1C1311]">
-                Punto Físico Asignado: Centro (Cúcuta)
+                Sede Activa: {sedeActiva}
               </span>
             </div>
           </div>
@@ -517,20 +302,31 @@ export const PosPedidosWebPage: React.FC = () => {
         ========================================================================= */}
         <div className="space-y-2">
           {pedidosFiltrados.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#D8CFC6] p-10 text-center text-stone-500 space-y-2">
-              <Package className="w-10 h-10 mx-auto text-stone-300" />
-              <p className="font-bold text-sm">No hay pedidos web en este estado.</p>
+            <div className="bg-white rounded-2xl border border-[#D8CFC6] p-12 text-center text-stone-500 space-y-3">
+              <Package className="w-12 h-12 mx-auto text-stone-300" />
+              <p className="font-bold text-sm text-[#1C1311]">
+                No hay pedidos web asignados a esta sede
+              </p>
+              <p className="text-xs text-stone-500 max-w-md mx-auto">
+                Los pedidos web realizados en la tienda oficial con destino a esta ciudad aparecerán automáticamente aquí para su alistamiento y empaque.
+              </p>
             </div>
           ) : (
             pedidosFiltrados.map((pedido) => {
               const badge = getBadgeInfo(pedido.estado);
-              const isSelected = pedidoSeleccionadoId === pedido.id;
+              const isSelected = pedidoSeleccionado?.codigo === pedido.codigo;
+
+              const fechaBogotaStr = new Intl.DateTimeFormat('es-CO', {
+                timeZone: 'America/Bogota',
+                dateStyle: 'short',
+                timeStyle: 'short',
+              }).format(new Date(pedido.fechaCreacionIso));
 
               return (
                 <div
-                  key={pedido.id}
+                  key={pedido.codigo}
                   onClick={() => {
-                    setPedidoSeleccionadoId(pedido.id);
+                    setPedidoSeleccionadoCodigo(pedido.codigo);
                     setDrawerTab('detalle');
                   }}
                   className={`
@@ -554,8 +350,18 @@ export const PosPedidosWebPage: React.FC = () => {
                           #{pedido.codigo}
                         </span>
                         <span className="text-[11px] text-stone-500 font-medium">
-                          {pedido.fecha}
+                          {fechaBogotaStr}
                         </span>
+                        {/* Badge de Medio de Pago y Recaudo */}
+                        {pedido.metodoPago === 'CONTRAENTREGA' ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                            Contraentrega · Cobra Transportadora
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-900 border border-sky-300">
+                            {pedido.estadoCobro === 'PAGADO' ? 'Transferencia · Pagado' : 'Transferencia · Por Verificar'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-stone-800 font-bold truncate">
                         <span>{pedido.cliente}</span>
@@ -567,26 +373,26 @@ export const PosPedidosWebPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Columna Derecha: Prendas, Total, Badge y Botón */}
+                  {/* Columna Derecha: Total, Badge y Botón */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
                     <div className="text-left sm:text-right">
                       <span className="block font-mono text-xs sm:text-sm font-black text-[#059669]">
-                        Total: {formatCOP(pedido.totalCop)} COP
+                        Total: {formatCOP(pedido.totalCOP)} COP
                       </span>
                       <span className="text-[11px] text-stone-500 font-medium">
-                        {pedido.prendas.length} {pedido.prendas.length === 1 ? 'prenda' : 'prendas'}
+                        {pedido.productos.length} {pedido.productos.length === 1 ? 'prenda' : 'prendas'}
                       </span>
                     </div>
 
                     <span
                       className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase border ${
-                        pedido.estado === 'CONFIRMADO'
+                        pedido.estado === 'RECIBIDO' || pedido.estado === 'CONFIRMADO'
                           ? 'bg-amber-50 text-amber-900 border-amber-300'
                           : pedido.estado === 'EN_PREPARACION'
                           ? 'bg-indigo-50 text-indigo-900 border-indigo-300'
                           : pedido.estado === 'LISTO_DESPACHO'
                           ? 'bg-emerald-50 text-[#059669] border-emerald-300'
-                          : pedido.estado === 'DESPACHADO'
+                          : pedido.estado === 'DESPACHADO' || pedido.estado === 'ENTREGADO'
                           ? 'bg-stone-100 text-stone-700 border-stone-300'
                           : 'bg-rose-50 text-rose-800 border-rose-300'
                       }`}
@@ -598,7 +404,7 @@ export const PosPedidosWebPage: React.FC = () => {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setPedidoSeleccionadoId(pedido.id);
+                        setPedidoSeleccionadoCodigo(pedido.codigo);
                         setDrawerTab('detalle');
                       }}
                       className="px-3 py-1.5 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors flex items-center gap-1 shrink-0"
@@ -620,7 +426,7 @@ export const PosPedidosWebPage: React.FC = () => {
       {pedidoSeleccionado && (
         <DetailDrawer
           isOpen={Boolean(pedidoSeleccionado)}
-          onClose={() => setPedidoSeleccionadoId(null)}
+          onClose={() => setPedidoSeleccionadoCodigo(null)}
           title="Alistamiento de Despacho"
           subtitle={`${pedidoSeleccionado.cliente} · ${pedidoSeleccionado.ciudadDestino}`}
           badge={getBadgeInfo(pedidoSeleccionado.estado)}
@@ -629,10 +435,11 @@ export const PosPedidosWebPage: React.FC = () => {
           activityItems={actividadPedido}
           footerActions={
             <div className="flex flex-col sm:flex-row gap-2">
-              {pedidoSeleccionado.estado === 'CONFIRMADO' && (
+              {(pedidoSeleccionado.estado === 'RECIBIDO' ||
+                pedidoSeleccionado.estado === 'CONFIRMADO') && (
                 <button
                   type="button"
-                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.id)}
+                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.codigo)}
                   className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
                   <Package className="w-4 h-4 text-[#D19650]" />
@@ -643,7 +450,7 @@ export const PosPedidosWebPage: React.FC = () => {
               {pedidoSeleccionado.estado === 'EN_PREPARACION' && (
                 <button
                   type="button"
-                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.id)}
+                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.codigo)}
                   className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#059669] hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
                   <PackageCheck className="w-4 h-4" />
@@ -654,7 +461,7 @@ export const PosPedidosWebPage: React.FC = () => {
               {pedidoSeleccionado.estado === 'LISTO_DESPACHO' && (
                 <button
                   type="button"
-                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.id)}
+                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.codigo)}
                   className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#1C1311] hover:bg-stone-800 text-[#D19650] font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
                   <Truck className="w-4 h-4" />
@@ -669,7 +476,8 @@ export const PosPedidosWebPage: React.FC = () => {
                 </div>
               )}
 
-              {(pedidoSeleccionado.estado === 'CONFIRMADO' ||
+              {(pedidoSeleccionado.estado === 'RECIBIDO' ||
+                pedidoSeleccionado.estado === 'CONFIRMADO' ||
                 pedidoSeleccionado.estado === 'EN_PREPARACION') && (
                 <button
                   type="button"
@@ -685,6 +493,30 @@ export const PosPedidosWebPage: React.FC = () => {
         >
           {/* Contenido de la pestaña Detalle */}
           <div className="space-y-4 text-xs">
+            {/* Aviso informativo de recaudación y cobro (Regla CA-40) */}
+            <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-300 text-amber-950 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Banknote className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  {pedidoSeleccionado.metodoPago === 'CONTRAENTREGA'
+                    ? 'Recaudo por Transportadora (Regla CA-40)'
+                    : 'Transferencia Bancaria Directa'}
+                </span>
+              </div>
+              {pedidoSeleccionado.metodoPago === 'CONTRAENTREGA' ? (
+                <p className="text-[11px] leading-relaxed text-amber-900 font-medium">
+                  Este pedido es <strong>Pago Contraentrega</strong>. El conductor de la transportadora ({pedidoSeleccionado.transportadora || 'TCC'}) cobra el efectivo al cliente en su domicilio. <strong>Este dinero no entra a la gaveta de caja del POS</strong>; la transportadora consigna a la cuenta bancaria de FORMA y Administración concilia el recaudo.
+                </p>
+              ) : (
+                <p className="text-[11px] leading-relaxed text-sky-950 font-medium">
+                  {pedidoSeleccionado.referenciaPago
+                    ? `Transferencia con soporte CUS: ${pedidoSeleccionado.referenciaPago}.`
+                    : 'Transferencia bancaria reportada por el cliente.'}{' '}
+                  El ingreso se valida desde contabilidad central.
+                </p>
+              )}
+            </div>
+
             {/* Destinatario y Dirección */}
             <div className="p-3.5 rounded-2xl bg-[#FAF7F4] border border-[#D8CFC6] space-y-2.5">
               <div className="flex items-start gap-2.5">
@@ -696,10 +528,10 @@ export const PosPedidosWebPage: React.FC = () => {
                   <p className="font-black text-sm text-[#1C1311]">
                     {pedidoSeleccionado.cliente}
                   </p>
-                  {pedidoSeleccionado.telefonoCliente && (
+                  {pedidoSeleccionado.telefono && (
                     <p className="text-stone-600 font-medium mt-0.5 flex items-center gap-1">
                       <Phone className="w-3 h-3 text-stone-400" />
-                      <span>{pedidoSeleccionado.telefonoCliente}</span>
+                      <span>{pedidoSeleccionado.telefono}</span>
                     </p>
                   )}
                 </div>
@@ -709,7 +541,7 @@ export const PosPedidosWebPage: React.FC = () => {
                 <MapPin className="w-4 h-4 text-[#661521] mt-0.5 shrink-0" />
                 <div>
                   <span className="block text-[10px] font-bold uppercase text-stone-400">
-                    Dirección de Entrega (DANE {pedidoSeleccionado.codigoDane})
+                    Dirección de Entrega (DANE {pedidoSeleccionado.codigoDaneDestino})
                   </span>
                   <p className="font-bold text-stone-800 mt-0.5">
                     {pedidoSeleccionado.ciudadDestino}
@@ -727,22 +559,22 @@ export const PosPedidosWebPage: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
-                  Prendas a empacar ({pedidoSeleccionado.prendas.length})
+                  Prendas a empacar ({pedidoSeleccionado.productos.length})
                 </h4>
                 <span className="font-mono font-bold text-xs text-[#059669]">
-                  Total: {formatCOP(pedidoSeleccionado.totalCop)} COP
+                  Total: {formatCOP(pedidoSeleccionado.totalCOP)} COP
                 </span>
               </div>
 
               <div className="space-y-2">
-                {pedidoSeleccionado.prendas.map((prenda, idx) => (
+                {pedidoSeleccionado.productos.map((prenda, idx) => (
                   <div
                     key={`${prenda.sku}-${idx}`}
                     className="p-3 bg-[#FAF7F4] rounded-2xl border border-[#D8CFC6] flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={prenda.imagenUrl}
+                        src={prenda.imagenUrl || '/products/blazer-imperial-vinotinto.png'}
                         alt={prenda.nombre}
                         className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-white"
                       />
@@ -764,33 +596,25 @@ export const PosPedidosWebPage: React.FC = () => {
                     </div>
 
                     <span className="font-mono text-xs sm:text-sm font-black text-[#1C1311] shrink-0">
-                      {formatCOP(prenda.precioCop)}
+                      {formatCOP(prenda.precioUnitarioCOP * prenda.cantidad)}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Novedad de Reasignación si existe */}
-            {pedidoSeleccionado.novedadReasignacion && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-bold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-                <span>{pedidoSeleccionado.novedadReasignacion}</span>
-              </div>
-            )}
-
             {/* Guía Transportadora & Observaciones */}
             <div className="space-y-3 pt-1">
               <div>
                 <label className="block text-xs font-bold uppercase text-stone-600 mb-1">
-                  Número de Guía Transportadora ({pedidoSeleccionado.empresaTransporte}):
+                  Número de Guía Transportadora ({pedidoSeleccionado.transportadora || 'Coordinadora / TCC'}):
                 </label>
                 <input
                   type="text"
-                  disabled={pedidoSeleccionado.estado === 'DESPACHADO'}
-                  value={pedidoSeleccionado.guiaTransportadora}
+                  disabled={pedidoSeleccionado.estado === 'DESPACHADO' || pedidoSeleccionado.estado === 'ENTREGADO'}
+                  value={pedidoSeleccionado.guiaTransportadora || ''}
                   onChange={(e) =>
-                    handleUpdateGuia(pedidoSeleccionado.id, e.target.value)
+                    handleUpdateGuia(pedidoSeleccionado.codigo, e.target.value)
                   }
                   placeholder="Ej. TCC-54001-99412..."
                   className="w-full min-h-[42px] px-3 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] font-mono text-xs font-bold text-[#1C1311] focus:outline-none focus:border-[#661521] disabled:opacity-60"
@@ -803,10 +627,10 @@ export const PosPedidosWebPage: React.FC = () => {
                 </label>
                 <textarea
                   rows={2}
-                  disabled={pedidoSeleccionado.estado === 'DESPACHADO'}
-                  value={pedidoSeleccionado.observaciones}
+                  disabled={pedidoSeleccionado.estado === 'DESPACHADO' || pedidoSeleccionado.estado === 'ENTREGADO'}
+                  value={pedidoSeleccionado.observaciones || ''}
                   onChange={(e) =>
-                    handleUpdateObservaciones(pedidoSeleccionado.id, e.target.value)
+                    handleUpdateObservaciones(pedidoSeleccionado.codigo, e.target.value)
                   }
                   placeholder="Ej. Prenda empacada en caja con lazo de lujo y tarjeta..."
                   className="w-full p-2.5 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] text-xs font-medium text-[#1C1311] focus:outline-none focus:border-[#661521] disabled:opacity-60 resize-none"

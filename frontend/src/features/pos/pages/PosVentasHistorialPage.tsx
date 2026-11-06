@@ -13,11 +13,19 @@ import {
   Sparkles,
   FileSpreadsheet,
   CheckCircle2,
+  Truck,
+  Info,
 } from 'lucide-react';
 import { TicketVentaPOS } from '../components/TicketVentaPOS';
 import { VentaTicketDTO } from '../types/ticket.types';
 import { getPosRegisteredSales } from '../utils/posLedgerSync';
 import { DetailDrawer } from '../components/DetailDrawer';
+import {
+  getWebOrders,
+  WEB_ORDERS_EVENT,
+  mismaSede,
+  type PedidoWebRecord,
+} from '../utils/webOrdersStore';
 
 export interface PrendaVentaHistorial {
   sku: string;
@@ -285,7 +293,12 @@ const VENTAS_INICIALES_MOCK: VentaHistorialItem[] = [
 ];
 
 export const PosVentasHistorialPage: React.FC = () => {
+  const [tabPrincipal, setTabPrincipal] = useState<'MOSTRADOR' | 'WEB'>('MOSTRADOR');
   const [ventas, setVentas] = useState<VentaHistorialItem[]>(VENTAS_INICIALES_MOCK);
+  const [pedidosWeb, setPedidosWeb] = useState<PedidoWebRecord[]>(() => getWebOrders());
+  const [pedidoWebSeleccionado, setPedidoWebSeleccionado] = useState<PedidoWebRecord | null>(null);
+  const [filtroSedeScope, setFiltroSedeScope] = useState<'SEDE_ACTUAL' | 'TODAS_SEDES'>('SEDE_ACTUAL');
+
   const [busqueda, setBusqueda] = useState<string>('');
   const [filtroPago, setFiltroPago] = useState<'TODOS' | 'EFECTIVO' | 'TRANSFERENCIA'>('TODOS');
   const [ventaSeleccionada, setVentaSeleccionada] = useState<VentaHistorialItem | null>(null);
@@ -360,6 +373,20 @@ export const PosVentasHistorialPage: React.FC = () => {
     return () => window.removeEventListener('forma-pos-ledger-update', syncSales);
   }, []);
 
+  // Sincronizar pedidos web despachados en tiempo real
+  useEffect(() => {
+    const syncWeb = () => {
+      setPedidosWeb(getWebOrders());
+    };
+    syncWeb();
+    window.addEventListener(WEB_ORDERS_EVENT, syncWeb);
+    window.addEventListener('storage', syncWeb);
+    return () => {
+      window.removeEventListener(WEB_ORDERS_EVENT, syncWeb);
+      window.removeEventListener('storage', syncWeb);
+    };
+  }, []);
+
   // Filtrado reactivo por turno del vendedor, sede, consecutivo, cliente o fecha
   const ventasFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -389,6 +416,34 @@ export const PosVentasHistorialPage: React.FC = () => {
     });
   }, [ventas, busqueda, filtroPago, filtroSoloMiTurno, vendedorActivo]);
 
+  // Filtrado de pedidos web asignados o despachados
+  const pedidosWebFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return pedidosWeb.filter((p) => {
+      if (filtroSedeScope === 'SEDE_ACTUAL' && !mismaSede(p.sedeAsignada, sedeActiva)) {
+        return false;
+      }
+      if (filtroPago === 'EFECTIVO' && p.metodoPago !== 'CONTRAENTREGA') {
+        return false;
+      }
+      if (filtroPago === 'TRANSFERENCIA' && p.metodoPago !== 'TRANSFERENCIA') {
+        return false;
+      }
+      if (!q) return true;
+      const matchCodigo = p.codigo.toLowerCase().includes(q);
+      const matchCliente = p.cliente.toLowerCase().includes(q);
+      const matchCiudad = p.ciudadDestino.toLowerCase().includes(q);
+      const matchGuia = (p.guiaTransportadora || '').toLowerCase().includes(q);
+      const matchPrenda = p.productos.some(
+        (pr) =>
+          pr.nombre.toLowerCase().includes(q) ||
+          pr.sku.toLowerCase().includes(q) ||
+          pr.talla.toLowerCase().includes(q)
+      );
+      return matchCodigo || matchCliente || matchCiudad || matchGuia || matchPrenda;
+    });
+  }, [pedidosWeb, filtroSedeScope, sedeActiva, filtroPago, busqueda]);
+
   // KPIs agregados sobre las ventas filtradas del turno
   const totalFacturadoCop = useMemo(
     () => ventasFiltradas.reduce((acc, v) => acc + v.totalCop, 0),
@@ -407,6 +462,19 @@ export const PosVentasHistorialPage: React.FC = () => {
         .filter((v) => v.medioPago === 'TRANSFERENCIA')
         .reduce((acc, v) => acc + v.totalCop, 0),
     [ventasFiltradas]
+  );
+
+  // KPIs web
+  const totalWebDespachadoCop = useMemo(
+    () => pedidosWebFiltrados.reduce((acc, p) => acc + p.totalCOP, 0),
+    [pedidosWebFiltrados]
+  );
+  const totalWebContraentregaCop = useMemo(
+    () =>
+      pedidosWebFiltrados
+        .filter((p) => p.metodoPago === 'CONTRAENTREGA')
+        .reduce((acc, p) => acc + p.totalCOP, 0),
+    [pedidosWebFiltrados]
   );
 
   // Exportar ventas a Excel (.xlsx / XML Spreadsheet)
@@ -681,6 +749,41 @@ export const PosVentasHistorialPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Pestañas Principales: Mostrador vs Ventas Web Despachadas */}
+        <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#EFEAE4]">
+          <button
+            type="button"
+            onClick={() => setTabPrincipal('MOSTRADOR')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+              tabPrincipal === 'MOSTRADOR'
+                ? 'bg-[#661521] text-white shadow-sm'
+                : 'bg-[#FAF7F4] text-stone-700 hover:bg-stone-200/60 border border-[#D8CFC6]'
+            }`}
+          >
+            <Receipt className="w-4 h-4 text-[#D19650]" />
+            <span>Ventas de Mostrador (Caja)</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] bg-white/20">
+              {ventasFiltradas.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTabPrincipal('WEB')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+              tabPrincipal === 'WEB'
+                ? 'bg-[#661521] text-white shadow-sm'
+                : 'bg-[#FAF7F4] text-stone-700 hover:bg-stone-200/60 border border-[#D8CFC6]'
+            }`}
+          >
+            <Truck className="w-4 h-4 text-[#D19650]" />
+            <span>Ventas Web Despachadas</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] bg-white/20">
+              {pedidosWebFiltrados.length}
+            </span>
+          </button>
+        </div>
+
         {mensajeExcelExito && (
           <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#059669] text-xs font-bold flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -760,31 +863,59 @@ export const PosVentasHistorialPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Alternador de Turno vs Sede Completa */}
-          <div className="flex items-center gap-1 bg-[#FAF7F4] p-1 rounded-xl border border-[#D8CFC6]">
-            <button
-              type="button"
-              onClick={() => setFiltroSoloMiTurno(true)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtroSoloMiTurno
-                  ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
-                  : 'text-stone-600 hover:text-[#1C1311]'
-              }`}
-            >
-              Mi Turno ({vendedorActivo.split(' ')[0]})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFiltroSoloMiTurno(false)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                !filtroSoloMiTurno
-                  ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
-                  : 'text-stone-600 hover:text-[#1C1311]'
-              }`}
-            >
-              Toda la Sede
-            </button>
-          </div>
+          {tabPrincipal === 'MOSTRADOR' ? (
+            /* Alternador de Turno vs Sede Completa */
+            <div className="flex items-center gap-1 bg-[#FAF7F4] p-1 rounded-xl border border-[#D8CFC6]">
+              <button
+                type="button"
+                onClick={() => setFiltroSoloMiTurno(true)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filtroSoloMiTurno
+                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
+                    : 'text-stone-600 hover:text-[#1C1311]'
+                }`}
+              >
+                Mi Turno ({vendedorActivo.split(' ')[0]})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroSoloMiTurno(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  !filtroSoloMiTurno
+                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
+                    : 'text-stone-600 hover:text-[#1C1311]'
+                }`}
+              >
+                Toda la Sede
+              </button>
+            </div>
+          ) : (
+            /* Alternador de Sede para Pedidos Web */
+            <div className="flex items-center gap-1 bg-[#FAF7F4] p-1 rounded-xl border border-[#D8CFC6]">
+              <button
+                type="button"
+                onClick={() => setFiltroSedeScope('SEDE_ACTUAL')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filtroSedeScope === 'SEDE_ACTUAL'
+                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
+                    : 'text-stone-600 hover:text-[#1C1311]'
+                }`}
+              >
+                Esta Sede ({sedeActiva.replace(/\s*\(.*?\)/, '')})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroSedeScope('TODAS_SEDES')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filtroSedeScope === 'TODAS_SEDES'
+                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
+                    : 'text-stone-600 hover:text-[#1C1311]'
+                }`}
+              >
+                Todas las Sedes
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 overflow-x-auto">
             <span className="text-xs font-bold text-stone-500 mr-1 hidden sm:inline">Medio de Pago:</span>
@@ -799,7 +930,13 @@ export const PosVentasHistorialPage: React.FC = () => {
                     : 'bg-[#FAF7F4] text-[#1C1311] border-[#D8CFC6] hover:bg-stone-200/60'
                 }`}
               >
-                {medio === 'TODOS' ? 'Todos' : medio === 'EFECTIVO' ? 'Efectivo' : 'Transferencia'}
+                {medio === 'TODOS'
+                  ? 'Todos'
+                  : medio === 'EFECTIVO'
+                  ? tabPrincipal === 'WEB'
+                    ? 'Contraentrega'
+                    : 'Efectivo'
+                  : 'Transferencia'}
               </button>
             ))}
           </div>
@@ -809,120 +946,278 @@ export const PosVentasHistorialPage: React.FC = () => {
       {/* =========================================================================
           TABLA / TARJETAS LIMPIAS DEL HISTORIAL DE VENTAS
       ========================================================================= */}
-      <section className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-[#EFEAE4] flex items-center justify-between">
-          <h2 className="text-base font-black text-[#1C1311]">
-            Ventas Registradas en el Punto ({ventasFiltradas.length})
-          </h2>
-          <span className="text-xs text-stone-500 font-medium">
-            Haz clic en cualquier venta para ver el detalle o reimprimir ticket
-          </span>
-        </div>
+      {tabPrincipal === 'MOSTRADOR' ? (
+        <section className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-[#EFEAE4] flex items-center justify-between">
+            <h2 className="text-base font-black text-[#1C1311]">
+              Ventas Registradas en el Mostrador ({ventasFiltradas.length})
+            </h2>
+            <span className="text-xs text-stone-500 font-medium">
+              Haz clic en cualquier venta para ver el detalle o reimprimir ticket
+            </span>
+          </div>
 
-        {ventasFiltradas.length === 0 ? (
-          <div className="p-10 text-center text-stone-500 space-y-2">
-            <ShoppingBag className="w-12 h-12 mx-auto text-stone-300" />
-            <p className="font-bold text-sm">No se encontraron ventas con los criterios de búsqueda.</p>
-            <button
-              type="button"
-              onClick={() => {
-                setBusqueda('');
-                setFiltroPago('TODOS');
-              }}
-              className="text-xs text-[#661521] font-bold underline"
-            >
-              Restablecer filtros
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs sm:text-sm">
-              <thead>
-                <tr className="bg-[#FAF7F4] border-b border-[#E5DDD3] text-stone-600 font-extrabold uppercase text-[11px] tracking-wider">
-                  <th className="py-3 px-4">Consecutivo</th>
-                  <th className="py-3 px-4">Fecha / Hora</th>
-                  <th className="py-3 px-4">Vendedor</th>
-                  <th className="py-3 px-4">Cliente</th>
-                  <th className="py-3 px-4">Medio de Pago</th>
-                  <th className="py-3 px-4 text-right">Total Pagado</th>
-                  <th className="py-3 px-4 text-center">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFEAE4]">
-                {ventasFiltradas.map((v) => (
-                  <tr
-                    key={v.id}
-                    onClick={() => setVentaSeleccionada(v)}
-                    className="hover:bg-[#FAF7F4] cursor-pointer transition-colors group"
-                  >
-                    <td className="py-3.5 px-4 font-mono font-black text-sm text-[#1C1311]">
-                      <span className="px-2 py-0.5 rounded-lg bg-[#1C1311] text-[#D19650]">
-                        {v.consecutivo}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-stone-700 whitespace-nowrap">
-                      {v.fechaHora}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-[#1C1311]">
-                      <div className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-stone-400" />
-                        <span>{v.vendedor}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-stone-800">
-                      <div>
-                        <span>{v.cliente}</span>
-                        {v.documentoCliente && (
-                          <span className="block text-[11px] text-stone-500 font-mono">
-                            {v.documentoCliente}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black ${
-                          v.medioPago === 'EFECTIVO'
-                            ? 'bg-emerald-100 text-[#059669] border border-emerald-300'
-                            : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
-                        }`}
-                      >
-                        {v.medioPago === 'EFECTIVO' ? (
-                          <>
-                            <Banknote className="w-3.5 h-3.5" />
-                            <span>Efectivo</span>
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-3.5 h-3.5" />
-                            <span>Transferencia</span>
-                          </>
-                        )}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-[#1C1311]">
-                      {formatCOP(v.totalCop)}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setVentaSeleccionada(v);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CFC6] text-xs font-extrabold text-[#661521] hover:bg-[#661521] hover:text-white transition-all inline-flex items-center gap-1 shadow-sm"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Ver Detalle</span>
-                      </button>
-                    </td>
+          {ventasFiltradas.length === 0 ? (
+            <div className="p-10 text-center text-stone-500 space-y-2">
+              <ShoppingBag className="w-12 h-12 mx-auto text-stone-300" />
+              <p className="font-bold text-sm">No se encontraron ventas con los criterios de búsqueda.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setBusqueda('');
+                  setFiltroPago('TODOS');
+                }}
+                className="text-xs text-[#661521] font-bold underline"
+              >
+                Restablecer filtros
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr className="bg-[#FAF7F4] border-b border-[#E5DDD3] text-stone-600 font-extrabold uppercase text-[11px] tracking-wider">
+                    <th className="py-3 px-4">Consecutivo</th>
+                    <th className="py-3 px-4">Fecha / Hora</th>
+                    <th className="py-3 px-4">Vendedor</th>
+                    <th className="py-3 px-4">Cliente</th>
+                    <th className="py-3 px-4">Medio de Pago</th>
+                    <th className="py-3 px-4 text-right">Total Pagado</th>
+                    <th className="py-3 px-4 text-center">Acción</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#EFEAE4]">
+                  {ventasFiltradas.map((v) => (
+                    <tr
+                      key={v.id}
+                      onClick={() => setVentaSeleccionada(v)}
+                      className="hover:bg-[#FAF7F4] cursor-pointer transition-colors group"
+                    >
+                      <td className="py-3.5 px-4 font-mono font-black text-sm text-[#1C1311]">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#1C1311] text-[#D19650]">
+                          {v.consecutivo}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-stone-700 whitespace-nowrap">
+                        {v.fechaHora}
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-[#1C1311]">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-stone-400" />
+                          <span>{v.vendedor}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-stone-800">
+                        <div>
+                          <span>{v.cliente}</span>
+                          {v.documentoCliente && (
+                            <span className="block text-[11px] text-stone-500 font-mono">
+                              {v.documentoCliente}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black ${
+                            v.medioPago === 'EFECTIVO'
+                              ? 'bg-emerald-100 text-[#059669] border border-emerald-300'
+                              : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+                          }`}
+                        >
+                          {v.medioPago === 'EFECTIVO' ? (
+                            <>
+                              <Banknote className="w-3.5 h-3.5" />
+                              <span>Efectivo</span>
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span>Transferencia</span>
+                            </>
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-[#1C1311]">
+                        {formatCOP(v.totalCop)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVentaSeleccionada(v);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CFC6] text-xs font-extrabold text-[#661521] hover:bg-[#661521] hover:text-white transition-all inline-flex items-center gap-1 shadow-sm"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver Detalle</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm overflow-hidden">
+          {/* Banner explicativo de CA-40 para ventas web y contraentrega */}
+          <div className="p-4 bg-amber-50/70 border-b border-amber-200 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+              <div>
+                <span className="font-bold block">Trazabilidad y Conciliación Financiera (Regla CA-40)</span>
+                <span className="text-[11px] text-amber-900 leading-relaxed block">
+                  Los pedidos web despachados descuentan inventario físico en Kardex. Si el pedido es <strong>Contraentrega</strong>, la transportadora recauda el dinero al entregar y consigna a FORMA. <strong>Ese dinero no entra a la gaveta de caja física del POS</strong>; su conciliación se efectúa desde Administración.
+                </span>
+              </div>
+            </div>
+            <div className="text-left sm:text-right shrink-0">
+              <span className="font-mono font-bold text-xs text-emerald-700 block">
+                Total Web: {formatCOP(totalWebDespachadoCop)} COP
+              </span>
+              <span className="text-[10px] text-amber-800 block">
+                Contraentrega por recaudar: {formatCOP(totalWebContraentregaCop)} COP
+              </span>
+              <span className="text-[10px] text-stone-500">
+                {pedidosWebFiltrados.length} pedidos listados
+              </span>
+            </div>
           </div>
-        )}
-      </section>
+
+          <div className="p-4 border-b border-[#EFEAE4] flex items-center justify-between">
+            <h2 className="text-base font-black text-[#1C1311]">
+              Ventas Web Asignadas y Despachadas ({pedidosWebFiltrados.length})
+            </h2>
+            <span className="text-xs text-stone-500 font-medium">
+              Haz clic en cualquier pedido para consultar prendas, guía y actividad
+            </span>
+          </div>
+
+          {pedidosWebFiltrados.length === 0 ? (
+            <div className="p-10 text-center text-stone-500 space-y-2">
+              <Truck className="w-12 h-12 mx-auto text-stone-300" />
+              <p className="font-bold text-sm">No se encontraron pedidos web con los criterios de búsqueda.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setBusqueda('');
+                  setFiltroPago('TODOS');
+                  setFiltroSedeScope('TODAS_SEDES');
+                }}
+                className="text-xs text-[#661521] font-bold underline"
+              >
+                Ver pedidos de todas las sedes
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr className="bg-[#FAF7F4] border-b border-[#E5DDD3] text-stone-600 font-extrabold uppercase text-[11px] tracking-wider">
+                    <th className="py-3 px-4">Pedido / Guía</th>
+                    <th className="py-3 px-4">Fecha</th>
+                    <th className="py-3 px-4">Cliente / Ciudad</th>
+                    <th className="py-3 px-4">Sede Despacho</th>
+                    <th className="py-3 px-4">Método de Pago & Recaudo</th>
+                    <th className="py-3 px-4">Estado Pedido</th>
+                    <th className="py-3 px-4 text-right">Total COP</th>
+                    <th className="py-3 px-4 text-center">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFEAE4]">
+                  {pedidosWebFiltrados.map((p) => {
+                    const fechaBogotaStr = new Intl.DateTimeFormat('es-CO', {
+                      timeZone: 'America/Bogota',
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    }).format(new Date(p.fechaCreacionIso));
+
+                    return (
+                      <tr
+                        key={p.codigo}
+                        onClick={() => setPedidoWebSeleccionado(p)}
+                        className="hover:bg-[#FAF7F4] cursor-pointer transition-colors group"
+                      >
+                        <td className="py-3.5 px-4 font-mono font-black text-sm text-[#1C1311]">
+                          <span className="px-2 py-0.5 rounded-lg bg-[#1C1311] text-[#D19650] block w-fit">
+                            #{p.codigo}
+                          </span>
+                          {p.guiaTransportadora && (
+                            <span className="block text-[10px] text-stone-500 font-mono mt-0.5">
+                              Guía: {p.guiaTransportadora}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-stone-700 whitespace-nowrap">
+                          {fechaBogotaStr}
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-stone-800">
+                          <div>
+                            <span className="font-bold">{p.cliente}</span>
+                            <span className="block text-[11px] text-stone-500">
+                              {p.ciudadDestino}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-stone-700">
+                          <span className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200 text-xs">
+                            {p.sedeAsignada}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {p.metodoPago === 'CONTRAENTREGA' ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                                Contraentrega
+                              </span>
+                              <span className="block text-[10px] text-amber-800 font-medium mt-0.5">
+                                {p.estadoCobro === 'PAGADO' ? '✓ Recaudo conciliado Admin' : '• Cobra transportadora'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-900 border border-sky-300">
+                                Transferencia
+                              </span>
+                              <span className="block text-[10px] text-sky-800 font-medium mt-0.5">
+                                {p.estadoCobro === 'PAGADO' ? '✓ Verificado en banco' : '• Pendiente verificación'}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-stone-100 text-stone-700 border border-stone-300">
+                            {p.estado}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-[#059669]">
+                          {formatCOP(p.totalCOP)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPedidoWebSeleccionado(p);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CFC6] text-xs font-extrabold text-[#661521] hover:bg-[#661521] hover:text-white transition-all inline-flex items-center gap-1 shadow-sm"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Ver Detalle</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* =========================================================================
           DRAWER LATERAL DE DETALLE DE VENTA (Master-Detail + Actividad)
@@ -1116,6 +1411,147 @@ export const PosVentasHistorialPage: React.FC = () => {
                       Ref: {ventaSeleccionada.referenciaPago}
                     </span>
                   )}
+              </div>
+            </div>
+          </div>
+        </DetailDrawer>
+      )}
+
+      {/* =========================================================================
+          DRAWER LATERAL DE DETALLE DE PEDIDO WEB DESPACHADO
+      ========================================================================= */}
+      {pedidoWebSeleccionado && (
+        <DetailDrawer
+          isOpen={Boolean(pedidoWebSeleccionado)}
+          onClose={() => setPedidoWebSeleccionado(null)}
+          title={`Pedido Web #${pedidoWebSeleccionado.codigo}`}
+          subtitle={`${pedidoWebSeleccionado.cliente} · ${pedidoWebSeleccionado.ciudadDestino}`}
+          badge={{
+            label: pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA' ? 'Contraentrega' : 'Transferencia',
+            variant: pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA' ? 'warning' : 'info',
+          }}
+          activeTab={drawerTab}
+          onTabChange={setDrawerTab}
+          activityItems={(pedidoWebSeleccionado.historial || []).map((ev) => ({
+            id: ev.id,
+            timestamp: new Intl.DateTimeFormat('es-CO', {
+              timeZone: 'America/Bogota',
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }).format(new Date(ev.fechaIso)),
+            title: ev.titulo,
+            description: ev.descripcion,
+            user: ev.usuario,
+            type: ev.estado === 'DESPACHADO' || ev.estado === 'ENTREGADO' ? 'success' : 'info',
+          }))}
+          footerActions={
+            <button
+              type="button"
+              onClick={() => setPedidoWebSeleccionado(null)}
+              className="w-full min-h-[46px] px-4 rounded-xl bg-white border border-[#D8CFC6] text-stone-800 font-bold text-xs hover:bg-stone-50 cursor-pointer"
+            >
+              Cerrar
+            </button>
+          }
+        >
+          <div className="space-y-4 text-xs">
+            {/* Aviso explicativo CA-40 */}
+            <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-300 text-amber-950 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Banknote className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  {pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA'
+                    ? 'Recaudo por Transportadora (Regla CA-40)'
+                    : 'Transferencia Bancaria'}
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-900">
+                {pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA'
+                  ? 'El dinero de este pedido es cobrado en efectivo por la transportadora al cliente. NUNCA ingresa a la gaveta de caja física del POS. Su recaudo se concilia desde Administración.'
+                  : `Transferencia registrada por el cliente (Ref: ${pedidoWebSeleccionado.referenciaPago || 'CUS'}). Conciliada por contabilidad.`}
+              </p>
+            </div>
+
+            {/* Metadatos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-2xl border border-[#E5DDD3]">
+              <div>
+                <span className="text-[11px] font-bold uppercase text-stone-500 block">Cliente</span>
+                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
+                  {pedidoWebSeleccionado.cliente}
+                </p>
+                <span className="text-[11px] text-stone-600 block">{pedidoWebSeleccionado.ciudadDestino}</span>
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase text-stone-500 block">Sede de Despacho</span>
+                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
+                  {pedidoWebSeleccionado.sedeAsignada}
+                </p>
+                <span className="text-[11px] text-stone-600 block">
+                  Guía: {pedidoWebSeleccionado.guiaTransportadora || 'Pendiente'}
+                </span>
+              </div>
+            </div>
+
+            {/* Prendas */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
+                Prendas en este Pedido ({pedidoWebSeleccionado.productos.length})
+              </h4>
+              <div className="space-y-2">
+                {pedidoWebSeleccionado.productos.map((pr, idx) => (
+                  <div
+                    key={`${pr.sku}-${idx}`}
+                    className="p-2.5 sm:p-3 bg-white rounded-2xl border border-[#E5DDD3] flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={pr.imagenUrl || '/products/blazer-imperial-vinotinto.png'}
+                        alt={pr.nombre}
+                        className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="text-xs sm:text-sm font-bold text-[#1C1311] truncate">{pr.nombre}</h5>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] font-mono text-stone-600">
+                          <span className="px-1.5 py-0.2 rounded bg-stone-100 text-[#1C1311] font-bold">
+                            SKU: {pr.sku}
+                          </span>
+                          <span>Talla: {pr.talla}</span>
+                          <span>Color: {pr.color}</span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          {pr.cantidad} ud(s) × {formatCOP(pr.precioUnitarioCOP)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-mono text-xs sm:text-sm font-black text-[#1C1311]">
+                        {formatCOP(pr.precioUnitarioCOP * pr.cantidad)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total */}
+            <div className="bg-[#FAF7F4] p-3.5 sm:p-4 rounded-2xl border border-[#E5DDD3] space-y-2">
+              <div className="flex justify-between text-xs font-medium text-stone-600">
+                <span>Subtotal:</span>
+                <span className="font-mono">{formatCOP(pedidoWebSeleccionado.subtotalCOP)}</span>
+              </div>
+              <div className="flex justify-between text-xs font-medium text-stone-600">
+                <span>IVA 19% discriminado:</span>
+                <span className="font-mono">{formatCOP(pedidoWebSeleccionado.ivaCOP)}</span>
+              </div>
+              <div className="flex justify-between text-xs font-medium text-stone-600">
+                <span>Flete de envío:</span>
+                <span className="font-mono">{formatCOP(pedidoWebSeleccionado.fleteCOP)}</span>
+              </div>
+              <div className="pt-2 border-t border-[#E5DDD3] flex justify-between items-baseline">
+                <span className="text-xs sm:text-sm font-black text-[#1C1311]">Total Pedido:</span>
+                <span className="text-base sm:text-lg font-black font-mono text-[#059669]">
+                  {formatCOP(pedidoWebSeleccionado.totalCOP)} COP
+                </span>
               </div>
             </div>
           </div>

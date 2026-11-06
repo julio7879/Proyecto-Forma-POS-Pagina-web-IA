@@ -19,10 +19,13 @@ import {
   CreditCard,
   MailCheck,
   ExternalLink,
+  X,
+  Printer,
 } from 'lucide-react';
 import { apiRequest } from '../../../api/apiClient';
 import { useStorefrontCart } from '../context/StorefrontCartContext';
 import { CartItem } from '../types';
+import { createWebOrder } from '../../pos/utils/webOrdersStore';
 
 interface DestinoDANE {
   codigo: string;
@@ -157,6 +160,7 @@ export const CheckoutPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiadoDato, setCopiadoDato] = useState<string | null>(null);
   const [pedidoExitoso, setPedidoExitoso] = useState<ResumenPedidoExitoso | null>(null);
+  const [mostrarModalEmailPreview, setMostrarModalEmailPreview] = useState(false);
 
   // Pre-cargar datos del usuario si ha iniciado sesión en localStorage('usuario')
   useEffect(() => {
@@ -165,7 +169,8 @@ export const CheckoutPage: React.FC = () => {
       if (rawUser) {
         const user = JSON.parse(rawUser);
         if (user.nombreCompleto && !nombre) setNombre(user.nombreCompleto);
-        if (user.email && !email) setEmail(user.email);
+        const userEmail = user.correo || user.email;
+        if (userEmail && !email) setEmail(userEmail);
         if (user.telefono && !telefono) setTelefono(user.telefono);
       }
     } catch {
@@ -350,18 +355,58 @@ export const CheckoutPage: React.FC = () => {
         },
       };
 
-      // 1. Guardar en clave de la cuenta para /soporte
+      // 1. Registrar pedido en el almacén global compartido webOrdersStore (persiste en localStorage y emite evento)
+      try {
+        createWebOrder({
+          codigo: consecutivo,
+          fechaCreacionIso: new Date().toISOString(),
+          cliente: nombre.trim(),
+          emailCliente: emailNormalizado,
+          telefono: telefono.trim(),
+          documento: cedula.trim(),
+          ciudadDestino: `${destinoActual.ciudad} (${destinoActual.departamento})`,
+          codigoDaneDestino: destinoActual.codigo,
+          direccionEntrega: direccion.trim(),
+          sedeAsignada: destinoActual.sedeSugerida,
+          metodoPago: metodoPago as 'TRANSFERENCIA' | 'CONTRAENTREGA',
+          metodoPagoTexto,
+          referenciaPago: metodoPago === 'TRANSFERENCIA' ? comprobanteTransferencia.trim() : undefined,
+          subtotalCOP: Math.round(totalCOP),
+          ivaCOP: Math.round(ivaEstimadoCOP),
+          fleteCOP: Math.round(fleteCOP),
+          totalCOP: Math.round(totalConFleteCOP),
+          guiaTransportadora: `GUIA-TCC-${destinoActual.codigo}-${Math.floor(10000 + Math.random() * 90000)}`,
+          transportadora: 'Coordinadora / TCC Prioritario',
+          productos: items.map((it) => ({
+            id: it.id,
+            nombre: it.nombre,
+            sku: it.sku,
+            talla: it.talla || 'Única',
+            color: it.color || 'Estándar',
+            cantidad: it.cantidad,
+            precioUnitarioCOP: it.precioUnitarioCOP,
+            imagenUrl: it.imagenUrl,
+          })),
+        });
+      } catch (errStore) {
+        console.warn('Error registrando pedido en webOrdersStore:', errStore);
+      }
+
+      // 2. Guardar en clave de la cuenta para /soporte y /cuenta
       const accountKey = `forma_pedidos_${emailNormalizado}`;
       try {
         const existingRaw = localStorage.getItem(accountKey);
         const existing = existingRaw ? JSON.parse(existingRaw) : [];
-        existing.unshift(nuevoPedido);
-        localStorage.setItem(accountKey, JSON.stringify(existing));
+        const yaExiste = existing.some((x: any) => x?.codigo === consecutivo);
+        if (!yaExiste) {
+          existing.unshift(nuevoPedido);
+          localStorage.setItem(accountKey, JSON.stringify(existing));
+        }
       } catch {
         // Fallback localstorage
       }
 
-      // 2. Guardar en clave global de último pedido
+      // 3. Guardar en clave global de último pedido
       try {
         localStorage.setItem('forma_ultimo_pedido', JSON.stringify(nuevoPedido));
       } catch {
@@ -549,17 +594,28 @@ export const CheckoutPage: React.FC = () => {
               </div>
             </div>
 
-            {pedidoExitoso.previewUrl && (
-              <a
-                href={pedidoExitoso.previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#661521] to-[#50101a] text-[#F4EFEA] hover:text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all border border-[#D19650]/40 shrink-0 active:scale-95"
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMostrarModalEmailPreview(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#661521] to-[#50101a] text-[#F4EFEA] hover:text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all border border-[#D19650]/40 active:scale-95"
               >
-                <span>Ver Correo Enviado (Bandeja de Prueba Ethereal) ↗</span>
-                <ExternalLink className="w-3.5 h-3.5 text-[#D19650]" />
-              </a>
-            )}
+                <MailCheck className="w-3.5 h-3.5 text-[#D19650]" />
+                <span>Ver Notificación Digital ✉</span>
+              </button>
+
+              {pedidoExitoso.previewUrl && (
+                <a
+                  href={pedidoExitoso.previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white text-[#661521] hover:bg-stone-50 font-bold text-xs uppercase tracking-wider shadow-xs transition-all border border-stone-300 active:scale-95"
+                >
+                  <span>Bandeja Ethereal ↗</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-[#D19650]" />
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Nota de Reserva Blanda o Contraentrega */}
@@ -606,7 +662,158 @@ export const CheckoutPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Acciones de Navegación */}
+          {/* Modal de Previsualización de la Notificación Oficial por Correo */}
+          {mostrarModalEmailPreview && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
+              <div className="bg-[#F7F4EE] rounded-3xl border-2 border-[#D19650] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col justify-between">
+                {/* Cabecera del Modal */}
+                <div className="p-4 bg-[#661521] text-white rounded-t-3xl flex items-center justify-between border-b border-[#D19650]/40">
+                  <div className="flex items-center gap-3">
+                    <MailCheck className="w-6 h-6 text-[#D19650]" />
+                    <div>
+                      <h3 className="text-base font-black tracking-wide">
+                        Notificación Oficial de Confirmación de Pedido
+                      </h3>
+                      <p className="text-[11px] text-[#D19650]">
+                        Despachada a: <strong>{pedidoExitoso.emailCliente}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModalEmailPreview(false)}
+                    className="p-1.5 rounded-full hover:bg-white/20 text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Contenido Visual del Correo */}
+                <div className="p-5 sm:p-7 space-y-5 text-stone-900 bg-white m-3 sm:m-4 rounded-2xl border border-[#E7DED2] shadow-sm">
+                  {/* Encabezado FORMA */}
+                  <div className="text-center pb-4 border-b border-[#E7DED2]">
+                    <h2 className="text-2xl font-serif-editorial font-bold tracking-[0.25em] text-[#661521] m-0">
+                      F O R M A
+                    </h2>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D19650] block mt-1">
+                      Atelier & Prêt-à-Porter Multisede Colombia
+                    </span>
+                  </div>
+
+                  {/* Franja de Estado */}
+                  <div className="p-3.5 rounded-xl bg-[#FAF6EF] border border-[#E7DED2] text-center space-y-1">
+                    <span className="inline-block px-3 py-1 rounded-full bg-[#661521] text-white font-mono text-[11px] font-black uppercase tracking-wider">
+                      Estado: RECIBIDO · Reserva Blanda
+                    </span>
+                    <p className="text-xs font-bold text-[#661521] m-0">
+                      ¡Tu reserva de inventario ha sido asegurada con éxito en Kardex!
+                    </p>
+                    <p className="text-[11px] text-stone-600 m-0">
+                      Prendas separadas por 24 horas para verificación y alistamiento.
+                    </p>
+                  </div>
+
+                  {/* Saludo y Código */}
+                  <div className="space-y-2 text-xs">
+                    <p className="text-sm font-bold text-stone-900">
+                      Estimado/a {pedidoExitoso.cliente},
+                    </p>
+                    <p className="text-stone-600 leading-relaxed">
+                      Agradecemos tu preferencia por la moda colombiana de autor. Hemos recibido y procesado satisfactoriamente tu pedido en nuestra plataforma omnicanal.
+                    </p>
+                    <div className="p-3 bg-[#FDFBF8] rounded-xl border border-dashed border-[#D19650] text-center my-2">
+                      <span className="text-[10px] font-bold uppercase text-stone-500 block">
+                        Código Único de Pedido
+                      </span>
+                      <strong className="font-mono text-xl font-black text-[#661521]">
+                        {pedidoExitoso.codigo}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Tabla de Artículos Comprados */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#661521] border-b pb-1">
+                      Detalle de Prendas Adquiridas
+                    </h4>
+                    <div className="divide-y divide-stone-100 text-xs">
+                      {pedidoExitoso.items.map((it) => (
+                        <div key={it.id} className="py-2.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={it.imagenUrl}
+                              alt={it.nombre}
+                              className="w-10 h-12 object-cover rounded-lg border border-stone-200 shrink-0"
+                            />
+                            <div>
+                              <p className="font-bold text-stone-900">{it.nombre}</p>
+                              <p className="text-[11px] text-stone-500">
+                                Talla: {it.talla || 'M'} · Color: {it.color || 'Estándar'} · SKU: {it.sku}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-stone-900 block">
+                              {it.cantidad}x {formatCOP(it.precioUnitarioCOP)}
+                            </span>
+                            <span className="font-mono font-black text-[#661521] text-[11px]">
+                              {formatCOP(it.cantidad * it.precioUnitarioCOP)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Resumen Financiero */}
+                  <div className="p-3.5 bg-[#FAF7F4] rounded-xl border border-[#E7DED2] text-xs space-y-1.5">
+                    <div className="flex justify-between text-stone-600">
+                      <span>Subtotal Prendas:</span>
+                      <span className="font-mono font-bold">{formatCOP(totalCOP)}</span>
+                    </div>
+                    <div className="flex justify-between text-stone-600">
+                      <span>IVA 19% Discriminado (Incluido):</span>
+                      <span className="font-mono font-bold">{formatCOP(ivaEstimadoCOP)}</span>
+                    </div>
+                    <div className="flex justify-between text-stone-600">
+                      <span>Flete DANE ({pedidoExitoso.ciudadDestino}):</span>
+                      <span className="font-mono font-bold">{formatCOP(fleteCOP)}</span>
+                    </div>
+                    <div className="pt-2 border-t border-stone-200 flex justify-between items-center text-sm">
+                      <span className="font-black text-stone-900">Total a Pagar en COP Entero:</span>
+                      <span className="font-mono font-black text-lg text-[#661521]">
+                        {pedidoExitoso.totalFormateadoCOP}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Garantía Legal */}
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+                    <strong>Garantía Oficial FORMA:</strong> Cuentas con 5 días hábiles para retracto de compras web conforme a la Ley 1480 de 2011 y 30 días de garantía sastre.
+                  </div>
+                </div>
+
+                {/* Pie del Modal con Acciones */}
+                <div className="p-4 bg-[#F7F4EE] border-t border-[#E7DED2] rounded-b-3xl flex flex-wrap gap-2.5 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-4 py-2.5 rounded-xl bg-[#1C1311] text-[#D19650] font-black text-xs flex items-center gap-2 hover:bg-stone-800 transition-colors"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Imprimir Notificación</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModalEmailPreview(false)}
+                    className="px-5 py-2.5 rounded-xl bg-[#661521] text-white font-bold text-xs hover:bg-[#50101a] transition-colors"
+                  >
+                    Cerrar Vista Previa
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="pt-4 flex flex-col sm:flex-row items-center gap-4">
             <button
               type="button"

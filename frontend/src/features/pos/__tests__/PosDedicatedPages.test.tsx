@@ -5,6 +5,7 @@ import PosPedidosWebPage from '../pages/PosPedidosWebPage';
 import PosCambiosPage from '../pages/PosCambiosPage';
 import PosTrasladosPage from '../pages/PosTrasladosPage';
 import PosArqueoPage from '../pages/PosArqueoPage';
+import { createWebOrder } from '../utils/webOrdersStore';
 
 describe('Portal 2 (Sistema POS) - 5 Vistas Dedicadas', () => {
   beforeEach(() => {
@@ -34,6 +35,39 @@ describe('Portal 2 (Sistema POS) - 5 Vistas Dedicadas', () => {
   });
 
   describe('2. PosPedidosWebPage', () => {
+    beforeEach(() => {
+      localStorage.setItem('forma_pos_sede', 'Punto Centro (Cúcuta)');
+      createWebOrder({
+        codigo: 'PED-2026-849201',
+        fechaCreacionIso: new Date().toISOString(),
+        cliente: 'Camila Soto Peñaranda',
+        emailCliente: 'camila.soto@ejemplo.com',
+        telefono: '312 840 9921',
+        ciudadDestino: 'Cúcuta, Norte de Santander',
+        codigoDaneDestino: '54001',
+        direccionEntrega: 'Av. Gran Colombia # 12-40, Apto 402',
+        sedeAsignada: 'Punto Centro (Cúcuta)',
+        metodoPago: 'CONTRAENTREGA',
+        metodoPagoTexto: 'Pago Contraentrega DANE',
+        subtotalCOP: 189000,
+        ivaCOP: 30176,
+        fleteCOP: 8000,
+        totalCOP: 189000,
+        estado: 'CONFIRMADO',
+        productos: [
+          {
+            id: 'p-1',
+            nombre: 'Chaqueta Denim Artesanal',
+            sku: 'ROP-DNM-001-M',
+            talla: 'M',
+            color: 'Azul Índigo',
+            cantidad: 1,
+            precioUnitarioCOP: 189000,
+            imagenUrl: 'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
+          },
+        ],
+      });
+    });
     it('muestra los pedidos web asignados y permite filtrar por estado', () => {
       render(<PosPedidosWebPage />);
       expect(screen.getByText('Alistamiento y Despacho de Pedidos Web')).toBeInTheDocument();

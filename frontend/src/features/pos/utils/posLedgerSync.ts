@@ -17,6 +17,9 @@ export interface PosSaleRecord {
   id: string;
   consecutivo: string;
   fechaHora: string;
+  /** ISO UTC; usado para cuadrar la venta con la sesión de caja (RN-GEN-05). */
+  fechaIso?: string;
+  sesionCajaId?: string;
   fechaCorta?: string;
   vendedor: string;
   sede?: string;
@@ -51,6 +54,15 @@ export interface PosExchangeRecord {
   medioPagoExcedente?: string;
   observaciones: string;
   impactoKardex: string;
+  fechaIso?: string;
+  sede?: string;
+  vendedor?: string;
+  sesionCajaId?: string;
+  estadoPrendaDevuelta?: 'BUEN_ESTADO' | 'CON_IMPERFECTO';
+  valorDevueltoCop?: number;
+  valorEntregadoCop?: number;
+  prendaDevueltaImg?: string;
+  prendaEntregadaImg?: string;
 }
 
 const STORAGE_KEYS = {

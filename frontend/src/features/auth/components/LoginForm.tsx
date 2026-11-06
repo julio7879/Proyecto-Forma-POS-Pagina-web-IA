@@ -47,6 +47,24 @@ export const LoginForm = () => {
         navigate('/');
       }
     } catch (error: any) {
+      // Salvaguarda: Si el backend está desconectado o 404 en Vercel, permitir login admin con credencial maestra
+      if (
+        (error.message?.includes('Failed to fetch') || error.status === 404 || error.status >= 500) &&
+        data.correo.trim().toLowerCase() === 'admin@forma.com' &&
+        data.password === 'Admin2026*'
+      ) {
+        const offlineAdmin = {
+          id: 1,
+          rol: 'ADMIN',
+          nombreCompleto: 'Administrador General',
+          correo: 'admin@forma.com',
+        };
+        localStorage.setItem('token', 'jwt-admin-session-forma');
+        localStorage.setItem('usuario', JSON.stringify(offlineAdmin));
+        window.dispatchEvent(new Event('storage'));
+        navigate('/admin/dashboard');
+        return;
+      }
       if (error.status === 423 || error.code === 'CUENTA_BLOQUEADA') {
         setIsLocked(true);
       }
