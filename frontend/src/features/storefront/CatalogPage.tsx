@@ -21,14 +21,18 @@ import {
   ShieldCheck,
   Truck,
   Award,
-  Layers,
   ChevronRight,
   CheckCircle2,
-  MapPin,
   SlidersHorizontal,
   X,
   ChevronLeft,
 } from 'lucide-react';
+
+const normalizeText = (text: string): string =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
 const SLUG_TO_CATEGORY: Record<CategoriaSlug | 'todas', CategoryFilterType> = {
   todas: 'Todas',
@@ -277,18 +281,16 @@ export const CatalogPage: React.FC = () => {
       setSelectedCategory(cat);
       setSelectedSubcategory('Todas');
       setCurrentPage(1);
-      scrollToCatalogGridIfNeeded();
     },
-    [scrollToCatalogGridIfNeeded]
+    []
   );
 
   const handleSelectSubcategory = useCallback(
     (sub: string) => {
       setSelectedSubcategory(sub);
       setCurrentPage(1);
-      scrollToCatalogGridIfNeeded();
     },
-    [scrollToCatalogGridIfNeeded]
+    []
   );
 
   const handleQuickAdd = useCallback(
@@ -338,24 +340,6 @@ export const CatalogPage: React.FC = () => {
     );
   }, [selectedCategory]);
 
-  // Contadores reales por categoría para el Sidebar Lateral
-  const conteoPorCategoria = useMemo(() => {
-    const counts: Record<CategoryFilterType, number> = {
-      Todas: productos.length,
-      Ropa: 0,
-      Calzado: 0,
-      Accesorios: 0,
-      Cosméticos: 0,
-      Artesanías: 0,
-    };
-    productos.forEach((p) => {
-      if (counts[p.categoriaNombre] !== undefined) {
-        counts[p.categoriaNombre] += 1;
-      }
-    });
-    return counts;
-  }, [productos]);
-
   // Filtrado reactivo en cliente (Categoría + Subcategoría + Texto + Stock + Rango Precio)
   const productosFiltrados = useMemo(() => {
     return productos.filter((prod) => {
@@ -366,13 +350,13 @@ export const CatalogPage: React.FC = () => {
       // 2. Filtro por subcategoría interactiva
       const coincideSubcat = matchesSubcategory(prod, selectedSubcategory);
 
-      // 3. Buscador de texto libre
-      const q = searchQuery.toLowerCase().trim();
+      // 3. Buscador de texto libre normalizado (sin tildes F-WEB-01)
+      const q = normalizeText(searchQuery.trim());
       const coincideBusqueda =
         !q ||
-        prod.nombre.toLowerCase().includes(q) ||
-        prod.descripcion.toLowerCase().includes(q) ||
-        prod.variantes.some((v) => v.sku.toLowerCase().includes(q));
+        normalizeText(prod.nombre).includes(q) ||
+        normalizeText(prod.descripcion).includes(q) ||
+        prod.variantes.some((v) => normalizeText(v.sku).includes(q));
 
       // 4. Stock disponible
       const stockTotal = prod.variantes.reduce((acc, v) => acc + v.stockDisponible, 0);
@@ -457,123 +441,40 @@ export const CatalogPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Grilla Maestro-Detalle: Sidebar Izquierdo Fijo (3 cols) + Catálogo Limpio (9 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-          {/* SIDEBAR LATERAL IZQUIERDO DE DEPARTAMENTOS Y FILTROS RÁPIDOS */}
-          <aside
-            aria-label="Menú Lateral de Departamentos y Filtros"
-            className="hidden lg:block lg:col-span-3 sticky top-28 self-start space-y-4"
-          >
-            <div className="glass-mirror-card rounded-[2rem] p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#50322A]/10">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#661521]" />
-                  <h2 className="font-display text-base font-bold text-[#50322A]">
-                    Departamentos
-                  </h2>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#661521]">
-                  5 Líneas
+        {/* Contenedor de ancho completo (sin menú duplicado de Departamentos) */}
+        <div className="w-full space-y-5">
+          {/* Barra única de Categorías y Búsqueda (Preserva role="tab" y accesibilidad) */}
+          <CategoryFilters
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleSelectCategory}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => {
+              setSearchQuery(q);
+              setCurrentPage(1);
+            }}
+          />
+
+          {/* BARRA COMPACTA DE FILTRO DE PRECIOS Y DISPONIBILIDAD (COP) */}
+          <div className="glass-mirror-card rounded-2xl p-4 sm:p-5 border border-[#50322A]/15 bg-white/80 backdrop-blur-2xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-[#661521]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
+                  Filtro de Precios (COP)
                 </span>
-              </div>
-
-              {/* Lista de Departamentos */}
-              <div className="space-y-2">
-                {ARBOL_CATEGORIAS.map((rama) => {
-                  const isActive = selectedCategory === rama.id;
-                  const count = conteoPorCategoria[rama.id] ?? 0;
-                  return (
-                    <button
-                      key={rama.id}
-                      type="button"
-                      onClick={() => handleSelectCategory(rama.id)}
-                      className={`w-full p-3 rounded-2xl text-left transition-all flex items-center justify-between ${
-                        isActive
-                          ? 'bg-[#661521] text-white shadow-md scale-[1.01]'
-                          : 'bg-white/80 hover:bg-white text-[#50322A] border border-white/95 shadow-2xs'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">{rama.icono}</span>
-                        <div>
-                          <span className="block text-xs font-bold leading-tight">
-                            {rama.label}
-                          </span>
-                          <span
-                            className={`block text-[11px] font-medium ${
-                              isActive ? 'text-[#E7DED2]' : 'text-[#50322A]/70'
-                            }`}
-                          >
-                            {rama.tagline}
-                          </span>
-                        </div>
-                      </div>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-mono-tabular font-bold ${
-                          isActive
-                            ? 'bg-[#D19650] text-white'
-                            : 'bg-[#E7DED2] text-[#50322A]'
-                        }`}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Filtro Rápido de Precios en Sidebar */}
-              <div className="pt-3 border-t border-[#50322A]/10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#50322A] flex items-center gap-1.5">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-[#661521]" />
-                    <span>Presupuesto</span>
+                {precioMaximo !== null ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#661521] text-white text-[10px] font-extrabold font-mono-tabular shadow-2xs">
+                    Hasta {formatMoneyCOP(precioMaximo)}
                   </span>
-                  {precioMaximo !== null && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPrecioMaximo(null);
-                        setCurrentPage(1);
-                      }}
-                      className="text-[10px] text-[#661521] font-bold hover:underline"
-                    >
-                      Limpiar
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  {RANGOS_PRECIO.map((rango) => {
-                    const isActivo =
-                      (rango.max === null && precioMaximo === null) ||
-                      (rango.max !== null && precioMaximo === rango.max);
-                    return (
-                      <button
-                        key={`side-${rango.label}`}
-                        type="button"
-                        onClick={() => {
-                          setPrecioMaximo(rango.max);
-                          setCurrentPage(1);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between ${
-                          isActivo
-                            ? 'bg-[#661521] text-white font-bold'
-                            : 'hover:bg-white text-[#50322A]'
-                        }`}
-                      >
-                        <span>{rango.label}</span>
-                        {isActivo && <span className="w-1.5 h-1.5 rounded-full bg-[#D19650]" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                ) : (
+                  <span className="text-[11px] text-[#50322A]/60 font-medium">
+                    Todos los rangos
+                  </span>
+                )}
               </div>
 
-              {/* Filtro de Disponibilidad Inmediata */}
-              <div className="pt-3 border-t border-[#50322A]/10 space-y-2">
-                <label className="flex items-center justify-between cursor-pointer text-xs font-bold text-[#50322A]">
-                  <span>Solo con stock inmediato</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[#50322A] bg-white/80 px-3 py-1 rounded-full border border-[#50322A]/15">
                   <input
                     type="checkbox"
                     checked={soloConStock}
@@ -581,54 +482,10 @@ export const CatalogPage: React.FC = () => {
                       setSoloConStock(e.target.checked);
                       setCurrentPage(1);
                     }}
-                    className="w-4 h-4 accent-[#661521] rounded cursor-pointer"
+                    className="w-3.5 h-3.5 accent-[#661521] rounded cursor-pointer"
                   />
+                  <span>Solo con stock inmediato</span>
                 </label>
-
-                <div className="p-3 rounded-2xl bg-[#E7DED2]/70 border border-white/80 text-[11px] text-[#50322A] space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-[#661521]">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Disponibilidad Inmediata</span>
-                  </div>
-                  <p className="text-[#171717]/75 leading-snug">
-                    Inventario sincronizado para despacho seguro a todo el país.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* COLUMNA PRINCIPAL DERECHA (9 cols): Controles + Vista Dedicada + Grilla Paginada */}
-          <div className="lg:col-span-9 space-y-5">
-            {/* Barra de Filtros Espejo y Búsqueda (Preserva role="tab" y accesibilidad) */}
-            <CategoryFilters
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleSelectCategory}
-              searchQuery={searchQuery}
-              onSearchChange={(q) => {
-                setSearchQuery(q);
-                setCurrentPage(1);
-              }}
-            />
-
-            {/* BARRA DE FILTRO DE PRECIOS INTERACTIVO (Rango COP con Botones Rápidos + Slider) */}
-            <div className="glass-mirror-card rounded-2xl p-4 sm:p-5 border border-[#50322A]/15 bg-white/75 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-[#661521]" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
-                    Filtro de Precios (COP)
-                  </span>
-                  {precioMaximo !== null ? (
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#661521] text-white text-[10px] font-extrabold font-mono-tabular shadow-2xs">
-                      Hasta {formatMoneyCOP(precioMaximo)}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-[#50322A]/60 font-medium">
-                      Todos los rangos
-                    </span>
-                  )}
-                </div>
 
                 {precioMaximo !== null && (
                   <button
@@ -637,167 +494,129 @@ export const CatalogPage: React.FC = () => {
                       setPrecioMaximo(null);
                       setCurrentPage(1);
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-[#661521] bg-[#661521]/10 hover:bg-[#661521] hover:text-white transition-colors self-start sm:self-auto"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-[#661521] bg-[#661521]/10 hover:bg-[#661521] hover:text-white transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Restablecer precio</span>
                   </button>
                 )}
               </div>
-
-              {/* Fila de Botones Rápidos + Slider de Precisión */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1 w-full max-w-full">
-                {/* Botones de selección rápida */}
-                <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
-                  {RANGOS_PRECIO.map((rango) => {
-                    const isActivo =
-                      (rango.max === null && precioMaximo === null) ||
-                      (rango.max !== null && precioMaximo === rango.max);
-                    return (
-                      <button
-                        key={rango.label}
-                        type="button"
-                        onClick={() => {
-                          setPrecioMaximo(rango.max);
-                          setCurrentPage(1);
-                        }}
-                        className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
-                          isActivo
-                            ? 'bg-[#661521] text-white shadow-xs'
-                            : 'bg-white hover:bg-[#E7DED2] text-[#50322A] border border-[#50322A]/15'
-                        }`}
-                      >
-                        {rango.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Slider interactivo */}
-                <div className="w-full md:w-64 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#50322A]">
-                    <span>$20.000</span>
-                    <span className="text-[#661521] font-mono-tabular">
-                      {precioMaximo === null ? 'Máx: $1.000.000+' : formatMoneyCOP(precioMaximo)}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={20000}
-                    max={1000000}
-                    step={10000}
-                    value={precioMaximo ?? 1000000}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setPrecioMaximo(val >= 1000000 ? null : val);
-                      setCurrentPage(1);
-                    }}
-                    aria-label="Ajustar precio máximo en COP"
-                    className="w-full accent-[#661521] cursor-pointer h-1.5 bg-[#E7DED2] rounded-lg"
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* VISTA DEDICADA DE CATEGORÍA CON SU ENCABEZADO Y SUBCATEGORÍAS INTERACTIVAS */}
-            {selectedCategory !== 'Todas' ? (
-              <div className="glass-mirror-card rounded-3xl p-5 sm:p-6 border border-[#50322A]/15 bg-gradient-to-br from-white/95 via-white/85 to-[#E7DED2]/50 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#50322A]/10">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#661521] text-white text-[10px] font-bold uppercase tracking-wider">
-                        Categoría
-                      </span>
-                      <span className="text-xs font-bold text-[#D19650]">
-                        {categoriaActualInfo.tagline}
-                      </span>
-                    </div>
-                    <h2 className="font-display text-2xl font-bold text-[#50322A]">
-                      {categoriaActualInfo.label}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-[#171717]/75 mt-1 max-w-xl">
-                      {categoriaActualInfo.descripcion}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCategory('Todas')}
-                    className="self-start sm:self-auto px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-[#661521] hover:text-white text-[#50322A] border border-[#50322A]/20 transition-all flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <span>← Ver todas las colecciones</span>
-                  </button>
-                </div>
-
-                {/* Subcategorías Interactivas de esta Categoría */}
-                {categoriaActualInfo.subcategorias.length > 0 && (
-                  <div className="pt-1">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[#50322A]/70 mb-2">
-                      Subcategorías disponibles:
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {categoriaActualInfo.subcategorias.map((sub) => {
-                        const isSubActive =
-                          selectedSubcategory.toLowerCase() === sub.toLowerCase();
-                        return (
-                          <button
-                            key={sub}
-                            type="button"
-                            onClick={() => handleSelectSubcategory(sub)}
-                            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                              isSubActive
-                                ? 'bg-[#661521] text-white shadow-sm ring-2 ring-[#D19650]'
-                                : 'bg-white hover:bg-[#661521]/10 text-[#50322A] border border-[#50322A]/15 shadow-2xs'
-                            }`}
-                          >
-                            {sub === 'Todas' ? '✦ Todas' : sub}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+            {/* Fila de Botones Rápidos + Slider de Precisión */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1 w-full max-w-full">
+              {/* Botones de selección rápida */}
+              <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
+                {RANGOS_PRECIO.map((rango) => {
+                  const isActivo =
+                    (rango.max === null && precioMaximo === null) ||
+                    (rango.max !== null && precioMaximo === rango.max);
+                  return (
+                    <button
+                      key={rango.label}
+                      type="button"
+                      onClick={() => {
+                        setPrecioMaximo(rango.max);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
+                        isActivo
+                          ? 'bg-[#661521] text-white shadow-xs'
+                          : 'bg-white hover:bg-[#E7DED2] text-[#50322A] border border-[#50322A]/15'
+                      }`}
+                    >
+                      {rango.label}
+                    </button>
+                  );
+                })}
               </div>
-            ) : (
-              /* En 'Todas las Colecciones', mostramos accesos directos por Departamento para evitar listas infinitas */
-              <div className="glass-mirror-card rounded-3xl p-5 border border-[#50322A]/15 bg-white/70 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-[#661521]" />
-                    <h3 className="font-display text-sm font-bold text-[#50322A]">
-                      Explora por Líneas de Diseño
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-[#50322A]/60 font-medium">
-                    Haz clic para abrir la vista dedicada de cada categoría
+
+              {/* Slider interactivo */}
+              <div className="w-full md:w-64 space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-[#50322A]">
+                  <span>$20.000</span>
+                  <span className="text-[#661521] font-mono-tabular">
+                    {precioMaximo === null ? 'Máx: $1.000.000+' : formatMoneyCOP(precioMaximo)}
                   </span>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
-                  {ARBOL_CATEGORIAS.filter((c) => c.id !== 'Todas').map((dep) => (
-                    <button
-                      key={dep.id}
-                      type="button"
-                      onClick={() => handleSelectCategory(dep.id)}
-                      className="p-3 rounded-2xl bg-white hover:bg-[#661521] text-[#50322A] hover:text-white border border-[#50322A]/10 shadow-2xs hover:shadow-md transition-all text-left flex flex-col justify-between group"
-                    >
-                      <span className="text-xl mb-1">{dep.icono}</span>
-                      <div>
-                        <span className="block text-xs font-bold leading-tight group-hover:text-white">
-                          {dep.label}
-                        </span>
-                        <span className="block text-[10px] text-[#50322A]/60 group-hover:text-[#E7DED2] mt-0.5 line-clamp-1">
-                          {dep.tagline}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-bold text-[#D19650] mt-2 group-hover:text-[#E7DED2] flex items-center gap-0.5">
-                        Ver subcategorías →
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="range"
+                  min={20000}
+                  max={1000000}
+                  step={10000}
+                  value={precioMaximo ?? 1000000}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setPrecioMaximo(val >= 1000000 ? null : val);
+                    setCurrentPage(1);
+                  }}
+                  aria-label="Ajustar precio máximo en COP"
+                  className="w-full accent-[#661521] cursor-pointer h-1.5 bg-[#E7DED2] rounded-lg"
+                />
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* VISTA DEDICADA DE CATEGORÍA CON SU ENCABEZADO Y SUBCATEGORÍAS INTERACTIVAS */}
+          {selectedCategory !== 'Todas' && (
+            <div className="glass-mirror-card rounded-3xl p-5 sm:p-6 border border-[#50322A]/15 bg-gradient-to-br from-white/95 via-white/85 to-[#E7DED2]/50 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#50322A]/10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#661521] text-white text-[10px] font-bold uppercase tracking-wider">
+                      Categoría
+                    </span>
+                    <span className="text-xs font-bold text-[#D19650]">
+                      {categoriaActualInfo.tagline}
+                    </span>
+                  </div>
+                  <h2 className="font-display text-2xl font-bold text-[#50322A]">
+                    {categoriaActualInfo.label}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#171717]/75 mt-1 max-w-xl">
+                    {categoriaActualInfo.descripcion}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectCategory('Todas')}
+                  className="self-start sm:self-auto px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-[#661521] hover:text-white text-[#50322A] border border-[#50322A]/20 transition-all flex items-center gap-1.5 shadow-2xs"
+                >
+                  <span>← Ver todas las colecciones</span>
+                </button>
+              </div>
+
+              {/* Subcategorías Interactivas de esta Categoría */}
+              {categoriaActualInfo.subcategorias.length > 0 && (
+                <div className="pt-1">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[#50322A]/70 mb-2">
+                    Subcategorías disponibles:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {categoriaActualInfo.subcategorias.map((sub) => {
+                      const isSubActive =
+                        selectedSubcategory.toLowerCase() === sub.toLowerCase();
+                      return (
+                        <button
+                          key={sub}
+                          type="button"
+                          onClick={() => handleSelectSubcategory(sub)}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                            isSubActive
+                              ? 'bg-[#661521] text-white shadow-sm ring-2 ring-[#D19650]'
+                              : 'bg-white hover:bg-[#661521]/10 text-[#50322A] border border-[#50322A]/15 shadow-2xs'
+                          }`}
+                        >
+                          {sub === 'Todas' ? '✦ Todas' : sub}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
             {/* ESTADO 1: Loading */}
             {isLoading && <ProductGridSkeleton />}
@@ -841,10 +660,10 @@ export const CatalogPage: React.FC = () => {
               </div>
             )}
 
-            {/* ESTADO 4: Success (Grilla de Productos Paginada a 12 items por página) */}
+            {/* ESTADO 4: Success (Grilla de Productos Paginada a 12 items por página - Ancho Completo 4 cols) */}
             {!isLoading && productosFiltrados.length > 0 && (
               <div className="space-y-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-8 pt-2 w-full max-w-full overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-2 w-full max-w-full overflow-hidden">
                   {paginatedProductos.map((prod) => (
                     <ProductCard
                       key={prod.id}
@@ -932,7 +751,6 @@ export const CatalogPage: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
         </div>
       </section>
 

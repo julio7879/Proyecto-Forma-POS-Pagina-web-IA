@@ -1,24 +1,30 @@
 // frontend/src/features/admin/pages/AdminReportesPage.tsx
-import React, { useState, useMemo } from 'react';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  FileSpreadsheet,
   Download,
   DollarSign,
   Users,
   Store,
   Filter,
   Search,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   Shirt,
   ShoppingBag,
   CreditCard,
   Receipt,
   Crown,
-  FileCheck,
+  RotateCcw,
+  BarChart3,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { getPosRegisteredSales } from '../../pos/utils/posLedgerSync';
+import { getWebOrders, mismaSede, WEB_ORDERS_EVENT } from '../../pos/utils/webOrdersStore';
+import { PageHeader } from '../components/PageHeader';
+import {
+  CATALOGO_REPORTES,
+  ReporteItemCatalogo,
+  CategoriaReporte,
+} from '../services/reportCatalogService';
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 
 // Formato COP Entero sin decimales
 const formatCOP = (valor: number): string => {
@@ -30,7 +36,6 @@ const formatCOP = (valor: number): string => {
   }).format(Math.trunc(valor));
 };
 
-// Modelos de datos para el Motor de Analítica
 export type CategoriaPrenda =
   | 'TODAS'
   | 'ROPA'
@@ -49,7 +54,7 @@ export type RangoFecha =
 export interface VentaTransaccion {
   id: string;
   consecutivo: string;
-  fecha: string; // YYYY-MM-DD
+  fecha: string; // YYYY-MM-DD en America/Bogota
   sede: string;
   vendedor: string;
   cliente: string;
@@ -64,531 +69,263 @@ export interface VentaTransaccion {
   medioPago: 'EFECTIVO' | 'BANCOLOMBIA' | 'NEQUI' | 'DAVIPLATA' | 'TARJETA';
 }
 
-// Conjunto maestro de datos de ventas (Noviembre 2026 y periodos históricos)
-const VENTAS_MAESTRAS_DEMO: VentaTransaccion[] = [
-  // --- Ventas de HOY (2026-11-05) ---
-  {
-    id: 'TRX-5001',
-    consecutivo: 'FAC-00840',
-    fecha: '2026-11-05',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Catalina Suárez',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 2,
-    precioUnitarioCop: 185000,
-    subtotalCop: 370000,
-    descuentoCop: 0,
-    totalNetoCop: 370000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-5002',
-    consecutivo: 'FAC-00841',
-    fecha: '2026-11-05',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Marcela Pinzón',
-    prendaNombre: 'Chaqueta Puffer Santuario 3D',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 1,
-    precioUnitarioCop: 320000,
-    subtotalCop: 320000,
-    descuentoCop: 20000,
-    totalNetoCop: 300000,
-    medioPago: 'TARJETA',
-  },
-  {
-    id: 'TRX-5003',
-    consecutivo: 'FAC-00842',
-    fecha: '2026-11-05',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Sebastián Mora',
-    prendaNombre: 'Camisa Lino Cuello Nerú',
-    categoria: 'ROPA',
-    tipoRopa: 'CAMISA',
-    cantidad: 3,
-    precioUnitarioCop: 145000,
-    subtotalCop: 435000,
-    descuentoCop: 35000,
-    totalNetoCop: 400000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-5004',
-    consecutivo: 'FAC-00843',
-    fecha: '2026-11-05',
-    sede: 'Punto Caobos (Cúcuta)',
-    vendedor: 'Valeria Silva',
-    cliente: 'Andrea Rangel',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 1,
-    precioUnitarioCop: 185000,
-    subtotalCop: 185000,
-    descuentoCop: 0,
-    totalNetoCop: 185000,
-    medioPago: 'NEQUI',
-  },
-  {
-    id: 'TRX-5005',
-    consecutivo: 'FAC-00844',
-    fecha: '2026-11-05',
-    sede: 'Punto Ocaña',
-    vendedor: 'Mateo Morales',
-    cliente: 'Jorge Quintero',
-    prendaNombre: 'Ruana Lana Virgen',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 2,
-    precioUnitarioCop: 210000,
-    subtotalCop: 420000,
-    descuentoCop: 20000,
-    totalNetoCop: 400000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-5006',
-    consecutivo: 'FAC-00845',
-    fecha: '2026-11-05',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Felipe Hernández',
-    prendaNombre: 'Botines Cuero Artesanal',
-    categoria: 'CALZADO',
-    cantidad: 1,
-    precioUnitarioCop: 280000,
-    subtotalCop: 280000,
-    descuentoCop: 0,
-    totalNetoCop: 280000,
-    medioPago: 'BANCOLOMBIA',
-  },
+const getHoyBogotaStr = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
 
-  // --- Ventas de los ÚLTIMOS 7 DÍAS (2026-10-30 a 2026-11-04) ---
-  {
-    id: 'TRX-4901',
-    consecutivo: 'FAC-00820',
-    fecha: '2026-11-04',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Patricia Lozano',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 4,
-    precioUnitarioCop: 185000,
-    subtotalCop: 740000,
-    descuentoCop: 50000,
-    totalNetoCop: 690000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4902',
-    consecutivo: 'FAC-00821',
-    fecha: '2026-11-04',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Eduardo Jaimes',
-    prendaNombre: 'Pantalón Chino Drill Clásico',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 3,
-    precioUnitarioCop: 160000,
-    subtotalCop: 480000,
-    descuentoCop: 0,
-    totalNetoCop: 480000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4903',
-    consecutivo: 'FAC-00822',
-    fecha: '2026-11-04',
-    sede: 'Punto Caobos (Cúcuta)',
-    vendedor: 'Valeria Silva',
-    cliente: 'Diana Bautista',
-    prendaNombre: 'Vestido Seda Silvestre',
-    categoria: 'ROPA',
-    tipoRopa: 'VESTIDO',
-    cantidad: 2,
-    precioUnitarioCop: 245000,
-    subtotalCop: 490000,
-    descuentoCop: 40000,
-    totalNetoCop: 450000,
-    medioPago: 'TARJETA',
-  },
-  {
-    id: 'TRX-4904',
-    consecutivo: 'FAC-00823',
-    fecha: '2026-11-03',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Álvaro Duarte',
-    prendaNombre: 'Camisa Lino Cuello Nerú',
-    categoria: 'ROPA',
-    tipoRopa: 'CAMISA',
-    cantidad: 4,
-    precioUnitarioCop: 145000,
-    subtotalCop: 580000,
-    descuentoCop: 30000,
-    totalNetoCop: 550000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4905',
-    consecutivo: 'FAC-00824',
-    fecha: '2026-11-03',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Mariana Galvis',
-    prendaNombre: 'Chaqueta Puffer Santuario 3D',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 2,
-    precioUnitarioCop: 320000,
-    subtotalCop: 640000,
-    descuentoCop: 0,
-    totalNetoCop: 640000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4906',
-    consecutivo: 'FAC-00825',
-    fecha: '2026-11-02',
-    sede: 'Punto Ocaña',
-    vendedor: 'Mateo Morales',
-    cliente: 'Nelson Torrado',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 3,
-    precioUnitarioCop: 185000,
-    subtotalCop: 555000,
-    descuentoCop: 25000,
-    totalNetoCop: 530000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4907',
-    consecutivo: 'FAC-00826',
-    fecha: '2026-11-02',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Tatiana Carvajal',
-    prendaNombre: 'Ruana Lana Virgen',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 2,
-    precioUnitarioCop: 210000,
-    subtotalCop: 420000,
-    descuentoCop: 0,
-    totalNetoCop: 420000,
-    medioPago: 'DAVIPLATA',
-  },
-  {
-    id: 'TRX-4908',
-    consecutivo: 'FAC-00827',
-    fecha: '2026-11-01',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Camilo Pérez',
-    prendaNombre: 'Camisa Oxford Silvestre',
-    categoria: 'ROPA',
-    tipoRopa: 'CAMISA',
-    cantidad: 3,
-    precioUnitarioCop: 135000,
-    subtotalCop: 405000,
-    descuentoCop: 20000,
-    totalNetoCop: 385000,
-    medioPago: 'NEQUI',
-  },
-  {
-    id: 'TRX-4909',
-    consecutivo: 'FAC-00828',
-    fecha: '2026-10-31',
-    sede: 'Punto Caobos (Cúcuta)',
-    vendedor: 'Valeria Silva',
-    cliente: 'Camila Villamizar',
-    prendaNombre: 'Mochila Wayúu Tradicional',
-    categoria: 'ARTESANIAS',
-    cantidad: 2,
-    precioUnitarioCop: 195000,
-    subtotalCop: 390000,
-    descuentoCop: 0,
-    totalNetoCop: 390000,
-    medioPago: 'TARJETA',
-  },
-  {
-    id: 'TRX-4910',
-    consecutivo: 'FAC-00829',
-    fecha: '2026-10-30',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Santiago Cáceres',
-    prendaNombre: 'Perfume Botánico Esencia Andina',
-    categoria: 'COSMETICOS',
-    cantidad: 3,
-    precioUnitarioCop: 115000,
-    subtotalCop: 345000,
-    descuentoCop: 15000,
-    totalNetoCop: 330000,
-    medioPago: 'BANCOLOMBIA',
-  },
+const toBogotaDateStr = (raw?: string): string => {
+  if (!raw) return getHoyBogotaStr();
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = new Date(trimmed);
+  if (isNaN(parsed.getTime())) return getHoyBogotaStr();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(parsed);
+};
 
-  // --- Ventas Históricas Acumuladas de NOVIEMBRE 2026 ---
-  {
-    id: 'TRX-4801',
-    consecutivo: 'FAC-00750',
-    fecha: '2026-11-01',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Gabriel Ortega',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 6,
-    precioUnitarioCop: 185000,
-    subtotalCop: 1110000,
-    descuentoCop: 80000,
-    totalNetoCop: 1030000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4802',
-    consecutivo: 'FAC-00751',
-    fecha: '2026-11-02',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Lucía Santamaría',
-    prendaNombre: 'Chaqueta Puffer Santuario 3D',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 5,
-    precioUnitarioCop: 320000,
-    subtotalCop: 1600000,
-    descuentoCop: 100000,
-    totalNetoCop: 1500000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4803',
-    consecutivo: 'FAC-00752',
-    fecha: '2026-11-03',
-    sede: 'Punto Caobos (Cúcuta)',
-    vendedor: 'Valeria Silva',
-    cliente: 'Mateo Cárdenas',
-    prendaNombre: 'Camisa Lino Cuello Nerú',
-    categoria: 'ROPA',
-    tipoRopa: 'CAMISA',
-    cantidad: 5,
-    precioUnitarioCop: 145000,
-    subtotalCop: 725000,
-    descuentoCop: 45000,
-    totalNetoCop: 680000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4804',
-    consecutivo: 'FAC-00753',
-    fecha: '2026-11-04',
-    sede: 'Punto Ocaña',
-    vendedor: 'Mateo Morales',
-    cliente: 'Karina Bayona',
-    prendaNombre: 'Ruana Lana Virgen',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 4,
-    precioUnitarioCop: 210000,
-    subtotalCop: 840000,
-    descuentoCop: 40000,
-    totalNetoCop: 800000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4805',
-    consecutivo: 'FAC-00754',
-    fecha: '2026-11-01',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Ricardo Mantilla',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 7,
-    precioUnitarioCop: 185000,
-    subtotalCop: 1295000,
-    descuentoCop: 95000,
-    totalNetoCop: 1200000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4806',
-    consecutivo: 'FAC-00755',
-    fecha: '2026-11-02',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Valentina Rey',
-    prendaNombre: 'Camisa Lino Cuello Nerú',
-    categoria: 'ROPA',
-    tipoRopa: 'CAMISA',
-    cantidad: 6,
-    precioUnitarioCop: 145000,
-    subtotalCop: 870000,
-    descuentoCop: 50000,
-    totalNetoCop: 820000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4807',
-    consecutivo: 'FAC-00756',
-    fecha: '2026-11-03',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Germán Albarracín',
-    prendaNombre: 'Botines Cuero Artesanal',
-    categoria: 'CALZADO',
-    cantidad: 4,
-    precioUnitarioCop: 280000,
-    subtotalCop: 1120000,
-    descuentoCop: 60000,
-    totalNetoCop: 1060000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4808',
-    consecutivo: 'FAC-00757',
-    fecha: '2026-11-04',
-    sede: 'Punto Caobos (Cúcuta)',
-    vendedor: 'Valeria Silva',
-    cliente: 'Estefanía Osorio',
-    prendaNombre: 'Cinturón Cuero Grano Entero',
-    categoria: 'ACCESORIOS',
-    cantidad: 5,
-    precioUnitarioCop: 85000,
-    subtotalCop: 425000,
-    descuentoCop: 25000,
-    totalNetoCop: 400000,
-    medioPago: 'NEQUI',
-  },
+const restarDiasBogota = (yyyyMmDd: string, dias: number): string => {
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+  dt.setUTCDate(dt.getUTCDate() - dias);
+  return dt.toISOString().slice(0, 10);
+};
 
-  // --- Ventas Históricas de Octubre 2026 (para consolidado de Trimestre) ---
-  {
-    id: 'TRX-4001',
-    consecutivo: 'FAC-00510',
-    fecha: '2026-10-15',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Juliana Flórez',
-    prendaNombre: 'Pantalón Lino Sartorial',
-    categoria: 'ROPA',
-    tipoRopa: 'PANTALON',
-    cantidad: 15,
-    precioUnitarioCop: 185000,
-    subtotalCop: 2775000,
-    descuentoCop: 175000,
-    totalNetoCop: 2600000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4002',
-    consecutivo: 'FAC-00511',
-    fecha: '2026-10-20',
-    sede: 'Punto Bucaramanga',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Rodrigo Celis',
-    prendaNombre: 'Chaqueta Puffer Santuario 3D',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 12,
-    precioUnitarioCop: 320000,
-    subtotalCop: 3840000,
-    descuentoCop: 240000,
-    totalNetoCop: 3600000,
-    medioPago: 'BANCOLOMBIA',
-  },
-  {
-    id: 'TRX-4003',
-    consecutivo: 'FAC-00512',
-    fecha: '2026-10-18',
-    sede: 'Punto Centro (Cúcuta)',
-    vendedor: 'Camilo Torres',
-    cliente: 'Héctor Moncada',
-    prendaNombre: 'Camisa Lino Cuello Nerú',
-    categoria: 'ROPA',
-    tipoRopa: 'CAMISA',
-    cantidad: 14,
-    precioUnitarioCop: 145000,
-    subtotalCop: 2030000,
-    descuentoCop: 130000,
-    totalNetoCop: 1900000,
-    medioPago: 'EFECTIVO',
-  },
-  {
-    id: 'TRX-4004',
-    consecutivo: 'FAC-00513',
-    fecha: '2026-10-22',
-    sede: 'Punto Caobos (Cúcuta)',
-    vendedor: 'Valeria Silva',
-    cliente: 'Laura Rivas',
-    prendaNombre: 'Vestido Seda Silvestre',
-    categoria: 'ROPA',
-    tipoRopa: 'VESTIDO',
-    cantidad: 10,
-    precioUnitarioCop: 245000,
-    subtotalCop: 2450000,
-    descuentoCop: 150000,
-    totalNetoCop: 2300000,
-    medioPago: 'TARJETA',
-  },
-  {
-    id: 'TRX-4005',
-    consecutivo: 'FAC-00514',
-    fecha: '2026-10-25',
-    sede: 'Punto Ocaña',
-    vendedor: 'Mateo Morales',
-    cliente: 'Gladys Navarro',
-    prendaNombre: 'Ruana Lana Virgen',
-    categoria: 'ROPA',
-    tipoRopa: 'CHAQUETA',
-    cantidad: 9,
-    precioUnitarioCop: 210000,
-    subtotalCop: 1890000,
-    descuentoCop: 90000,
-    totalNetoCop: 1800000,
-    medioPago: 'EFECTIVO',
-  },
-];
+const normalizarCategoria = (catRaw?: string, nombrePrenda = ''): CategoriaPrenda => {
+  const limpio = (catRaw || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+
+  if (
+    limpio === 'ROPA' ||
+    limpio === 'CALZADO' ||
+    limpio === 'ACCESORIOS' ||
+    limpio === 'COSMETICOS' ||
+    limpio === 'ARTESANIAS'
+  ) {
+    return limpio;
+  }
+
+  const nombreLower = nombrePrenda.toLowerCase();
+  if (
+    nombreLower.includes('botin') ||
+    nombreLower.includes('botín') ||
+    nombreLower.includes('mocas') ||
+    nombreLower.includes('sandalia') ||
+    nombreLower.includes('zapato')
+  ) {
+    return 'CALZADO';
+  }
+  if (
+    nombreLower.includes('bolso') ||
+    nombreLower.includes('gafas') ||
+    nombreLower.includes('cinturon') ||
+    nombreLower.includes('cinturón') ||
+    nombreLower.includes('gorra') ||
+    nombreLower.includes('billetera') ||
+    nombreLower.includes('tarjetero') ||
+    nombreLower.includes('pañoleta')
+  ) {
+    return 'ACCESORIOS';
+  }
+  if (
+    nombreLower.includes('serum') ||
+    nombreLower.includes('sérum') ||
+    nombreLower.includes('crema') ||
+    nombreLower.includes('perfume') ||
+    nombreLower.includes('labial') ||
+    nombreLower.includes('balsamo') ||
+    nombreLower.includes('bálsamo') ||
+    nombreLower.includes('mascarilla') ||
+    nombreLower.includes('tonico') ||
+    nombreLower.includes('tónico')
+  ) {
+    return 'COSMETICOS';
+  }
+  if (
+    nombreLower.includes('sombrero') ||
+    nombreLower.includes('mochila') ||
+    nombreLower.includes('artesani')
+  ) {
+    return 'ARTESANIAS';
+  }
+  return 'ROPA';
+};
+
+const inferirTipoRopa = (
+  categoria: CategoriaPrenda,
+  nombrePrenda: string
+): VentaTransaccion['tipoRopa'] => {
+  if (categoria !== 'ROPA') return undefined;
+  const nombreLower = nombrePrenda.toLowerCase();
+  if (
+    nombreLower.includes('pantalon') ||
+    nombreLower.includes('pantalón') ||
+    nombreLower.includes('bermuda') ||
+    nombreLower.includes('jean')
+  ) {
+    return 'PANTALON';
+  }
+  if (nombreLower.includes('camisa') || nombreLower.includes('camiseta')) {
+    return 'CAMISA';
+  }
+  if (
+    nombreLower.includes('chaqueta') ||
+    nombreLower.includes('blazer') ||
+    nombreLower.includes('gabardina') ||
+    nombreLower.includes('ruana') ||
+    nombreLower.includes('cardigan')
+  ) {
+    return 'CHAQUETA';
+  }
+  if (nombreLower.includes('vestido') || nombreLower.includes('falda')) {
+    return 'VESTIDO';
+  }
+  return 'OTRO';
+};
+
+const normalizarMedioPago = (raw?: string): VentaTransaccion['medioPago'] => {
+  const m = (raw || 'EFECTIVO').toUpperCase();
+  if (m === 'TRANSFERENCIA' || m === 'BANCOLOMBIA') return 'BANCOLOMBIA';
+  if (m === 'NEQUI') return 'NEQUI';
+  if (m === 'DAVIPLATA') return 'DAVIPLATA';
+  if (m === 'TARJETA') return 'TARJETA';
+  return 'EFECTIVO';
+};
 
 export const AdminReportesPage: React.FC = () => {
+  const hoyBogotaStr = getHoyBogotaStr();
+
   // Filtros dinámicos
   const [rangoFecha, setRangoFecha] = useState<RangoFecha>('ESTE_MES');
-  const [fechaInicio, setFechaInicio] = useState<string>('2026-11-01');
-  const [fechaFin, setFechaFin] = useState<string>('2026-11-30');
+  const [fechaInicio, setFechaInicio] = useState<string>(() => `${hoyBogotaStr.slice(0, 7)}-01`);
+  const [fechaFin, setFechaFin] = useState<string>(() => hoyBogotaStr);
   const [filtroSede, setFiltroSede] = useState<string>('TODAS');
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaPrenda>('TODAS');
   const [busquedaPrenda, setBusquedaPrenda] = useState<string>('');
   const [subfiltroRopa, setSubfiltroRopa] = useState<string>('TODOS');
 
-  // Pestaña activa del generador
+  // Pestaña Principal: Tablero Analítico en Vivo vs Centro de Reportes (BI Hub)
+  const [pestanaPrincipal, setPestanaPrincipal] = useState<'tablero' | 'centro_reportes'>('tablero');
+  const [reporteModal, setReporteModal] = useState<ReporteItemCatalogo | null>(null);
+
+  // Filtros del Centro de Reportes
+  const [hubBusqueda, setHubBusqueda] = useState<string>('');
+  const [hubArea, setHubArea] = useState<CategoriaReporte>('TODAS');
+  const [hubOrden, setHubOrden] = useState<'A_Z' | 'Z_A' | 'CATEGORIA'>('A_Z');
+
+  // Pestaña activa del generador analítico
   const [tabActiva, setTabActiva] = useState<'PRENDAS' | 'VENDEDORES' | 'FINANCIERO'>('PRENDAS');
 
-  // Estado de exportación Excel
-  const [isExporting, setIsExporting] = useState<boolean>(false);
-  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  // Tick de reactividad en vivo
+  const [liveTick, setLiveTick] = useState<number>(0);
 
-  // Descarga secundaria de libros contables base
-  const [descargandoLibro, setDescargandoLibro] = useState<string | null>(null);
-  const [errorDescarga, setErrorDescarga] = useState<string | null>(null);
+  useEffect(() => {
+    const syncLive = () => setLiveTick((t) => t + 1);
+    window.addEventListener('forma-pos-ledger-update', syncLive);
+    window.addEventListener(WEB_ORDERS_EVENT, syncLive);
+    window.addEventListener('storage', syncLive);
+    return () => {
+      window.removeEventListener('forma-pos-ledger-update', syncLive);
+      window.removeEventListener(WEB_ORDERS_EVENT, syncLive);
+      window.removeEventListener('storage', syncLive);
+    };
+  }, []);
 
-  // Filtrado reactivo de transacciones
+  // Construcción 100% real a partir de ventas POS y pedidos Web activos/entregados
+  const todasLasTransacciones = useMemo<VentaTransaccion[]>(() => {
+    const realSales = typeof window !== 'undefined' ? getPosRegisteredSales() : [];
+    const realOrders = typeof window !== 'undefined' ? getWebOrders() : [];
+
+    const convertedSales: VentaTransaccion[] = [];
+    realSales.forEach((s, sIdx) => {
+      const lineas = s.prendas || s.items || [];
+      const fechaVenta = toBogotaDateStr(
+        (s as any).fecha || (s as any).fechaBogota || s.fechaIso
+      );
+      const medio = normalizarMedioPago(s.medioPago || s.metodoPago);
+
+      lineas.forEach((p, pIdx) => {
+        const cant = Math.max(1, Math.trunc(p.cantidad || 1));
+        const precio = Math.trunc(
+          p.precioUnitarioCop ??
+            p.precioUnitarioCOP ??
+            (p.totalCop ? Math.round(p.totalCop / cant) : 0)
+        );
+        const subtotal = precio * cant;
+        const descuento = Math.trunc((p as any).descuentoCop || 0);
+        const totalNeto = Math.trunc(p.totalCop ?? Math.max(0, subtotal - descuento));
+        const cat = normalizarCategoria(p.categoria, p.nombre);
+        const tipoRopa = inferirTipoRopa(cat, p.nombre);
+
+        convertedSales.push({
+          id: `POS-${s.consecutivo}-${sIdx}-${pIdx}`,
+          consecutivo: s.consecutivo,
+          fecha: fechaVenta,
+          sede: s.sede || 'Punto Centro (Cúcuta)',
+          vendedor: s.vendedor || 'Vendedor POS',
+          cliente: s.cliente || 'Consumidor Final',
+          prendaNombre: p.nombre,
+          categoria: cat,
+          tipoRopa,
+          cantidad: cant,
+          precioUnitarioCop: precio,
+          subtotalCop: subtotal,
+          descuentoCop: descuento,
+          totalNetoCop: totalNeto,
+          medioPago: medio,
+        });
+      });
+    });
+
+    const convertedOrders: VentaTransaccion[] = [];
+    realOrders.forEach((o, oIdx) => {
+      const estado = o.estado || (o as any).estadoActual || 'RECIBIDO';
+      if (estado === 'CANCELADO' || estado === 'NO_ENTREGADO') {
+        return;
+      }
+
+      const fechaOrden = toBogotaDateStr(o.fechaCreacionIso);
+      const medio = normalizarMedioPago(o.metodoPago);
+
+      (o.productos || []).forEach((p, pIdx) => {
+        const cant = Math.max(1, Math.trunc(p.cantidad || 1));
+        const precio = Math.trunc(p.precioUnitarioCOP || 0);
+        const subtotal = precio * cant;
+        const cat = normalizarCategoria(undefined, p.nombre);
+        const tipoRopa = inferirTipoRopa(cat, p.nombre);
+
+        convertedOrders.push({
+          id: `WEB-${o.codigo}-${oIdx}-${pIdx}`,
+          consecutivo: o.codigo,
+          fecha: fechaOrden,
+          sede: o.sedeAsignada || 'Bodega Central',
+          vendedor: 'Tienda Web Omnicanal',
+          cliente: o.cliente || 'Cliente Web',
+          prendaNombre: p.nombre,
+          categoria: cat,
+          tipoRopa,
+          cantidad: cant,
+          precioUnitarioCop: precio,
+          subtotalCop: subtotal,
+          descuentoCop: 0,
+          totalNetoCop: subtotal,
+          medioPago: medio,
+        });
+      });
+    });
+
+    return [...convertedSales, ...convertedOrders];
+  }, [liveTick]);
+
+  // Filtrado reactivo de transacciones con hora oficial de Colombia y comparación de sede
   const transaccionesFiltradas = useMemo(() => {
-    return VENTAS_MAESTRAS_DEMO.filter((t) => {
-      // 1. Filtro de Sede
-      if (filtroSede !== 'TODAS' && t.sede !== filtroSede) {
+    const hace7Dias = restarDiasBogota(hoyBogotaStr, 7);
+    const hace90Dias = restarDiasBogota(hoyBogotaStr, 90);
+    const prefijoMesActual = hoyBogotaStr.slice(0, 7);
+
+    return todasLasTransacciones.filter((t) => {
+      // 1. Filtro de Sede tolerante a variantes de nombre
+      if (filtroSede !== 'TODAS' && !mismaSede(t.sede, filtroSede)) {
         return false;
       }
 
@@ -602,9 +339,9 @@ export const AdminReportesPage: React.FC = () => {
         return false;
       }
 
-      // 4. Búsqueda de Texto en Prenda
+      // 4. Búsqueda de Texto en Prenda o Vendedor
       if (busquedaPrenda.trim()) {
-        const query = busquedaPrenda.toLowerCase();
+        const query = busquedaPrenda.toLowerCase().trim();
         const coincidePrenda = t.prendaNombre.toLowerCase().includes(query);
         const coincideVendedor = t.vendedor.toLowerCase().includes(query);
         if (!coincidePrenda && !coincideVendedor) {
@@ -612,18 +349,18 @@ export const AdminReportesPage: React.FC = () => {
         }
       }
 
-      // 5. Filtro de Fecha
+      // 5. Filtro de Fecha en America/Bogota
       if (rangoFecha === 'HOY') {
-        return t.fecha === '2026-11-05';
+        return t.fecha === hoyBogotaStr;
       }
       if (rangoFecha === '7DIAS') {
-        return t.fecha >= '2026-10-30' && t.fecha <= '2026-11-05';
+        return t.fecha >= hace7Dias && t.fecha <= hoyBogotaStr;
       }
       if (rangoFecha === 'ESTE_MES') {
-        return t.fecha.startsWith('2026-11');
+        return t.fecha.startsWith(prefijoMesActual);
       }
       if (rangoFecha === 'TRIMESTRE') {
-        return t.fecha >= '2026-09-01' && t.fecha <= '2026-11-30';
+        return t.fecha >= hace90Dias && t.fecha <= hoyBogotaStr;
       }
       if (rangoFecha === 'PERSONALIZADO') {
         return t.fecha >= fechaInicio && t.fecha <= fechaFin;
@@ -632,6 +369,8 @@ export const AdminReportesPage: React.FC = () => {
       return true;
     });
   }, [
+    todasLasTransacciones,
+    hoyBogotaStr,
     rangoFecha,
     fechaInicio,
     fechaFin,
@@ -641,7 +380,7 @@ export const AdminReportesPage: React.FC = () => {
     busquedaPrenda,
   ]);
 
-  // Cálculos Consolidados (Ventas Netas, Totales, Unidades)
+  // Cálculos Consolidados con Fórmula Legal de IVA 19% en Colombia
   const metricasGenerales = useMemo(() => {
     const totalVentasBrutas = transaccionesFiltradas.reduce((acc, t) => acc + t.subtotalCop, 0);
     const totalDescuentos = transaccionesFiltradas.reduce((acc, t) => acc + t.descuentoCop, 0);
@@ -649,7 +388,8 @@ export const AdminReportesPage: React.FC = () => {
     const totalUnidades = transaccionesFiltradas.reduce((acc, t) => acc + t.cantidad, 0);
     const totalTickets = transaccionesFiltradas.length;
     const ticketPromedio = totalTickets > 0 ? Math.round(totalVentasNetas / totalTickets) : 0;
-    const iva19Cop = Math.round(totalVentasNetas * 0.19);
+    const baseGravableCop = Math.round(totalVentasNetas / 1.19);
+    const iva19Cop = totalVentasNetas - baseGravableCop;
 
     return {
       totalVentasBrutas,
@@ -658,6 +398,7 @@ export const AdminReportesPage: React.FC = () => {
       totalUnidades,
       totalTickets,
       ticketPromedio,
+      baseGravableCop,
       iva19Cop,
     };
   }, [transaccionesFiltradas]);
@@ -778,251 +519,131 @@ export const AdminReportesPage: React.FC = () => {
     }));
   }, [transaccionesFiltradas, metricasGenerales.totalVentasNetas]);
 
-  // Función Principal: Exportar Reporte Personalizado a Excel (.xlsx) Multi-Hoja
-  const handleExportarExcelPersonalizado = () => {
-    setIsExporting(true);
-    setMensajeExito(null);
+  // Catálogo de reportes filtrado para el BI Hub
+  const reportesHubFiltrados = useMemo(() => {
+    return CATALOGO_REPORTES.filter((r) => {
+      if (hubArea !== 'TODAS' && r.categoria !== hubArea) return false;
+      if (!hubBusqueda.trim()) return true;
+      const q = hubBusqueda.toLowerCase().trim();
+      return (
+        r.titulo.toLowerCase().includes(q) ||
+        r.codigo.toLowerCase().includes(q) ||
+        r.descripcion.toLowerCase().includes(q) ||
+        r.areaTrabajo.toLowerCase().includes(q)
+      );
+    }).sort((a, b) => {
+      if (hubOrden === 'A_Z') return a.titulo.localeCompare(b.titulo);
+      if (hubOrden === 'Z_A') return b.titulo.localeCompare(a.titulo);
+      return a.categoriaNombre.localeCompare(b.categoriaNombre);
+    });
+  }, [hubBusqueda, hubArea, hubOrden]);
 
-    try {
-      const wb = XLSX.utils.book_new();
-
-      const sedeEtiqueta =
-        filtroSede === 'TODAS' ? 'Consolidado Todas las Sedes' : filtroSede;
-      const categoriaEtiqueta =
-        filtroCategoria === 'TODAS'
-          ? 'Todas las Categorías'
-          : filtroCategoria === 'ROPA'
-          ? `Ropa (${subfiltroRopa === 'TODOS' ? 'Pantalones, Chaquetas, Camisas, Vestidos' : subfiltroRopa})`
-          : filtroCategoria;
-      const periodoEtiqueta =
-        rangoFecha === 'HOY'
-          ? 'Hoy (05 de Noviembre de 2026)'
-          : rangoFecha === '7DIAS'
-          ? 'Últimos 7 días'
-          : rangoFecha === 'ESTE_MES'
-          ? 'Mes en Curso (Noviembre 2026)'
-          : rangoFecha === 'TRIMESTRE'
-          ? 'Trimestre Consolidado'
-          : `Del ${fechaInicio} al ${fechaFin}`;
-
-      // 1. Hoja: Resumen Ejecutivo
-      const resumenData = [
-        ['FORMA STORE - REPORTE GERENCIAL EJECUTIVO'],
-        ['Fecha de Generación:', new Date().toLocaleString('es-CO')],
-        ['Sede Evaluada:', sedeEtiqueta],
-        ['Periodo Seleccionado:', periodoEtiqueta],
-        ['Filtro de Categoría:', categoriaEtiqueta],
-        ['Búsqueda Aplicada:', busquedaPrenda || 'Ninguna (Todos los registros)'],
-        [],
-        ['CONSOLIDADO FINANCIERO Y OPERATIVO'],
-        ['Concepto', 'Valor'],
-        ['Ventas Brutas', formatCOP(metricasGenerales.totalVentasBrutas)],
-        ['Descuentos Totales Aplicados', formatCOP(metricasGenerales.totalDescuentos)],
-        ['VENTAS NETAS TOTALES', formatCOP(metricasGenerales.totalVentasNetas)],
-        ['IVA 19% Discriminado', formatCOP(metricasGenerales.iva19Cop)],
-        ['Total Unidades Físicas Vendidas', metricasGenerales.totalUnidades],
-        ['Total Transacciones / Comprobantes', metricasGenerales.totalTickets],
-        ['Ticket Promedio por Venta', formatCOP(metricasGenerales.ticketPromedio)],
-        [],
-        ['DESTACADOS DEL PERIODO'],
-        ['Vendedor Estrella:', rankingVendedores[0]?.vendedor || 'N/A'],
-        ['Monto Vendedor Estrella:', formatCOP(rankingVendedores[0]?.montoFacturadoCop || 0)],
-        ['Prenda Más Vendida:', prendasAgrupadas[0]?.nombre || 'N/A'],
-        ['Unidades Prenda Más Vendida:', `${prendasAgrupadas[0]?.unidadesVendidas || 0} unidades`],
-      ];
-      const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
-      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen Ejecutivo');
-
-      // 2. Hoja: Prendas Vendidas
-      const prendasData = [
-        ['Posición', 'Prenda / Producto', 'Categoría', 'Unidades Vendidas', 'Precio Promedio COP', 'Total Facturado COP', '% Volumen del Periodo'],
-        ...prendasAgrupadas.map((p, idx) => [
-          idx + 1,
-          p.nombre,
-          p.categoria,
-          p.unidadesVendidas,
-          p.precioPromedioCop,
-          p.totalFacturadoCop,
-          `${p.porcentajeVolumen}%`,
-        ]),
-        [],
-        ['TOTAL CONSOLIDADO', '', '', metricasGenerales.totalUnidades, '', metricasGenerales.totalVentasNetas, '100%'],
-      ];
-      const wsPrendas = XLSX.utils.aoa_to_sheet(prendasData);
-      XLSX.utils.book_append_sheet(wb, wsPrendas, 'Prendas Vendidas');
-
-      // 3. Hoja: Ranking Vendedores
-      const vendedoresData = [
-        ['Ranking', 'Vendedor', 'Sede Asignada', 'Unidades Vendidas', 'Total Facturado COP', 'Cantidad Tickets', 'Ticket Promedio COP'],
-        ...rankingVendedores.map((v) => [
-          v.posicion,
-          v.vendedor,
-          v.sede,
-          v.unidadesVendidas,
-          v.montoFacturadoCop,
-          v.cantidadTickets,
-          v.ticketPromedioCop,
-        ]),
-      ];
-      const wsVendedores = XLSX.utils.aoa_to_sheet(vendedoresData);
-      XLSX.utils.book_append_sheet(wb, wsVendedores, 'Ranking Vendedores');
-
-      // 4. Hoja: Desglose Financiero
-      const financieroData = [
-        ['Medio de Pago / Canal', 'Monto Facturado COP', 'Participación %', 'Cantidad Transacciones'],
-        ...desgloseMediosPago.map((dp) => [
-          dp.medio,
-          dp.totalCop,
-          `${dp.porcentaje}%`,
-          dp.transacciones,
-        ]),
-        [],
-        ['TOTAL MEDIOS DE PAGO', metricasGenerales.totalVentasNetas, '100%', metricasGenerales.totalTickets],
-      ];
-      const wsFinanciero = XLSX.utils.aoa_to_sheet(financieroData);
-      XLSX.utils.book_append_sheet(wb, wsFinanciero, 'Desglose Financiero');
-
-      // Nombre del archivo solicitado: Reporte_Gerencial_FORMA_{Sede}_{Fecha}.xlsx
-      const fechaArchivo = new Date().toISOString().slice(0, 10);
-      const sedeNombreSanitizada = (filtroSede === 'TODAS' ? 'Consolidado' : filtroSede)
-        .replace(/[^a-zA-Z0-9]/g, '_')
-        .replace(/_+/g, '_');
-      const nombreArchivo = `Reporte_Gerencial_FORMA_${sedeNombreSanitizada}_${fechaArchivo}.xlsx`;
-
-      XLSX.writeFile(wb, nombreArchivo);
-      setMensajeExito(`Reporte personalizado "${nombreArchivo}" generado con éxito.`);
-    } catch (err: any) {
-      setErrorDescarga('Error al generar el archivo Excel: ' + (err.message || 'Error desconocido'));
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  // Descarga secundaria de libros base desde backend
-  const descargarLibroOficial = async (endpoint: string, nombreArchivo: string) => {
-    setDescargandoLibro(endpoint);
-    setMensajeExito(null);
-    setErrorDescarga(null);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api${endpoint}`, {
-        method: 'GET',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al generar el libro desde el servidor');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombreArchivo;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      setMensajeExito(`Libro oficial "${nombreArchivo}" descargado con éxito.`);
-    } catch (err: any) {
-      setErrorDescarga(err.message || 'No se pudo descargar el reporte');
-    } finally {
-      setDescargandoLibro(null);
-    }
+  const limpiarFiltros = () => {
+    setRangoFecha('ESTE_MES');
+    setFiltroSede('TODAS');
+    setFiltroCategoria('TODAS');
+    setSubfiltroRopa('TODOS');
+    setBusquedaPrenda('');
   };
 
   return (
-    <div className="space-y-6">
-      {/* Encabezado Editorial Apple Liquid Glass */}
-      <div className="glass-mirror-card p-6 sm:p-7 rounded-3xl flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-        <div>
-          <span className="glass-mirror-pill inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest text-[#661521] border border-[#D19650]/40 mb-2">
-            Centro de Analítica Personalizada y Exportación
-          </span>
-          <div className="flex items-center gap-3.5">
-            <span className="p-3 bg-[#661521] text-[#D19650] border border-[#D19650] rounded-2xl shadow-md">
-              <FileSpreadsheet className="w-6 h-6" />
-            </span>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-black text-[#171717] font-display tracking-tight">
-                Reportes Gerenciales y Ventas por Prenda
-              </h1>
-              <p className="text-sm sm:text-base font-medium text-[#50322A] mt-1">
-                Filtre por periodo, sede, vendedor o prenda específica (pantalones, camisetas, calzado) y exporte a Excel (.xlsx).
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6 pb-8">
+      {/* =========================================================================
+          1. ENCABEZADO EJECUTIVO ESTÁNDAR (PageHeader)
+          ========================================================================= */}
+      <PageHeader
+        title="Reportes Gerenciales y Ventas por Prenda"
+        subtitle="Filtre por periodo, sede, vendedor o prenda específica y analice el rendimiento comercial."
+        badge="Analítica e Inteligencia de Negocio"
+      />
 
-        {/* Botón Dominante: Exportar Reporte Personalizado a Excel */}
-        <div className="shrink-0">
-          <button
-            onClick={handleExportarExcelPersonalizado}
-            disabled={isExporting}
-            className="w-full sm:w-auto px-6 py-4 bg-[#661521] hover:bg-[#4A0E17] text-white border-2 border-[#D19650] text-sm font-black rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin text-[#D19650]" />
-                <span>Generando Libro Excel...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5 text-[#D19650]" />
-                <span>Exportar Reporte Personalizado a Excel (.xlsx)</span>
-              </>
-            )}
-          </button>
-        </div>
+      {/* Selector de Pestañas Superiores (Tablero Analítico vs Centro de Reportes BI Hub) */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#E7E0D8] pb-1 select-none">
+        <button
+          type="button"
+          onClick={() => setPestanaPrincipal('tablero')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
+            pestanaPrincipal === 'tablero'
+              ? 'bg-[#741C2B] text-white shadow-2xs'
+              : 'text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF]'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Tablero Analítico en Vivo</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPestanaPrincipal('centro_reportes')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
+            pestanaPrincipal === 'centro_reportes'
+              ? 'bg-[#741C2B] text-white shadow-2xs'
+              : 'text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF]'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-[#C49A68]" />
+          <span>Centro de Reportes y Descargas (BI Hub)</span>
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-[#C49A68] text-white">
+            10 Libros
+          </span>
+        </button>
       </div>
 
-      {/* Alertas de Éxito / Error */}
-      {mensajeExito && (
-        <div className="p-4 bg-[#D19650]/20 border border-[#D19650] text-[#351912] rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-sm">
-          <CheckCircle2 className="w-5 h-5 text-[#661521] shrink-0" />
-          <span>{mensajeExito}</span>
-        </div>
-      )}
-
-      {errorDescarga && (
-        <div className="p-4 bg-[#661521]/10 border border-[#661521]/40 text-[#661521] rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-sm">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{errorDescarga}</span>
-        </div>
-      )}
-
-      {/* BARRA DE FILTROS DINÁMICOS */}
-      <div className="glass-mirror-card p-6 rounded-3xl space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#50322A]/15">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#351912]">
-            <Filter className="w-4 h-4 text-[#661521]" />
+      {pestanaPrincipal === 'tablero' && (
+        <div className="space-y-6">
+          {/* =========================================================================
+              2. BARRA DE FILTROS LIMPIA Y COMPACTA EN SUPERFICIE BLANCA (#FFFFFF)
+              ========================================================================= */}
+      <section
+        aria-label="Filtros Dinámicos del Reporte"
+        className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs space-y-4"
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D8]">
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#292827]">
+            <Filter className="w-4 h-4 text-[#741C2B]" />
             <span>Filtros Dinámicos del Reporte</span>
           </div>
-          <span className="text-xs font-bold text-[#50322A]">
-            {transaccionesFiltradas.length} transacciones encontradas
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#77736E] tabular-nums">
+              {transaccionesFiltradas.length} registros encontrados
+            </span>
+            {(filtroSede !== 'TODAS' ||
+              filtroCategoria !== 'TODAS' ||
+              subfiltroRopa !== 'TODOS' ||
+              busquedaPrenda.trim() !== '') && (
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#741C2B] hover:underline cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Limpiar filtros</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Fila 1: Botones Rápidos de Fecha */}
+        {/* Fila 1: Botones Rápidos de Fecha Oficial de Colombia */}
         <div className="space-y-2">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A] block">
-            Rango de Fechas
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] block">
+            Periodo de Evaluación (Hora Oficial Colombia)
           </span>
           <div className="flex flex-wrap gap-2">
             {[
-              { key: 'HOY', label: 'Hoy (05 Nov 2026)' },
+              { key: 'HOY', label: `Hoy (${hoyBogotaStr})` },
               { key: '7DIAS', label: 'Últimos 7 días' },
-              { key: 'ESTE_MES', label: 'Este Mes (Noviembre 2026)' },
+              { key: 'ESTE_MES', label: `Este Mes (${hoyBogotaStr.slice(0, 7)})` },
               { key: 'TRIMESTRE', label: 'Trimestre Consolidado' },
               { key: 'PERSONALIZADO', label: 'Rango Personalizado' },
             ].map(({ key, label }) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => setRangoFecha(key as RangoFecha)}
-                className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   rangoFecha === key
-                    ? 'bg-[#661521] text-white border border-[#D19650] shadow-md scale-105'
-                    : 'glass-mirror-pill text-[#351912] border border-[#50322A]/20 hover:border-[#661521]'
+                    ? 'bg-[#741C2B] text-white border-[#741C2B] shadow-2xs'
+                    : 'bg-[#F5F3EF] text-[#292827] border-[#E7E0D8] hover:border-[#C49A68]/60'
                 }`}
               >
                 {label}
@@ -1030,25 +651,24 @@ export const AdminReportesPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Selectores de fecha para Rango Personalizado */}
           {rangoFecha === 'PERSONALIZADO' && (
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#50322A]">Desde:</span>
+                <span className="text-xs font-bold text-[#77736E]">Desde:</span>
                 <input
                   type="date"
                   value={fechaInicio}
                   onChange={(e) => setFechaInicio(e.target.value)}
-                  className="capsule-mirror-input px-3 py-1.5 rounded-xl text-xs font-bold text-[#171717]"
+                  className="px-3 py-1.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827]"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#50322A]">Hasta:</span>
+                <span className="text-xs font-bold text-[#77736E]">Hasta:</span>
                 <input
                   type="date"
                   value={fechaFin}
                   onChange={(e) => setFechaFin(e.target.value)}
-                  className="capsule-mirror-input px-3 py-1.5 rounded-xl text-xs font-bold text-[#171717]"
+                  className="px-3 py-1.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827]"
                 />
               </div>
             </div>
@@ -1056,31 +676,32 @@ export const AdminReportesPage: React.FC = () => {
         </div>
 
         {/* Fila 2: Selectores de Sede, Categoría y Búsqueda */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
           {/* Selector de Sede */}
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#50322A] mb-1.5">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] mb-1.5">
               Punto de Venta / Sede
             </label>
             <div className="relative">
               <select
                 value={filtroSede}
                 onChange={(e) => setFiltroSede(e.target.value)}
-                className="capsule-mirror-input w-full pl-9 pr-4 py-2.5 rounded-2xl text-xs font-bold text-[#171717] cursor-pointer"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] cursor-pointer focus:outline-none focus:border-[#741C2B]"
               >
                 <option value="TODAS">Todas las Sedes (Consolidado)</option>
                 <option value="Punto Centro (Cúcuta)">Punto Centro (Cúcuta)</option>
                 <option value="Punto Caobos (Cúcuta)">Punto Caobos (Cúcuta)</option>
                 <option value="Punto Ocaña">Punto Ocaña</option>
                 <option value="Punto Bucaramanga">Punto Bucaramanga</option>
+                <option value="Bodega Central">Bodega Central</option>
               </select>
-              <Store className="w-4 h-4 text-[#661521] absolute left-3 top-3 pointer-events-none" />
+              <Store className="w-4 h-4 text-[#741C2B] absolute left-3 top-2.5 pointer-events-none" />
             </div>
           </div>
 
-          {/* Selector de Categoría / Tipo de Prenda */}
+          {/* Selector de Categoría */}
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#50322A] mb-1.5">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] mb-1.5">
               Categoría de Producto
             </label>
             <div className="relative">
@@ -1092,7 +713,7 @@ export const AdminReportesPage: React.FC = () => {
                     setSubfiltroRopa('TODOS');
                   }
                 }}
-                className="capsule-mirror-input w-full pl-9 pr-4 py-2.5 rounded-2xl text-xs font-bold text-[#171717] cursor-pointer"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] cursor-pointer focus:outline-none focus:border-[#741C2B]"
               >
                 <option value="TODAS">Todas las Categorías</option>
                 <option value="ROPA">Ropa (Pantalones, Chaquetas, Camisas, Vestidos)</option>
@@ -1101,13 +722,13 @@ export const AdminReportesPage: React.FC = () => {
                 <option value="COSMETICOS">Cosméticos</option>
                 <option value="ARTESANIAS">Artesanías</option>
               </select>
-              <Shirt className="w-4 h-4 text-[#661521] absolute left-3 top-3 pointer-events-none" />
+              <Shirt className="w-4 h-4 text-[#741C2B] absolute left-3 top-2.5 pointer-events-none" />
             </div>
           </div>
 
-          {/* Buscador de Prenda Específica */}
+          {/* Buscador de Prenda o Vendedor */}
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#50322A] mb-1.5">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] mb-1.5">
               Buscar Prenda o Vendedor
             </label>
             <div className="relative">
@@ -1116,17 +737,17 @@ export const AdminReportesPage: React.FC = () => {
                 value={busquedaPrenda}
                 onChange={(e) => setBusquedaPrenda(e.target.value)}
                 placeholder="Ej. Pantalón, Camisa, Daniela..."
-                className="capsule-mirror-input w-full pl-9 pr-4 py-2.5 rounded-2xl text-xs font-bold text-[#171717] placeholder-[#50322A]/60"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] placeholder-[#77736E] focus:outline-none focus:border-[#741C2B]"
               />
-              <Search className="w-4 h-4 text-[#661521] absolute left-3 top-3 pointer-events-none" />
+              <Search className="w-4 h-4 text-[#741C2B] absolute left-3 top-2.5 pointer-events-none" />
             </div>
           </div>
         </div>
 
-        {/* Subfiltro específico de Ropa cuando la categoría es ROPA o TODAS */}
+        {/* Subfiltro de Ropa */}
         {(filtroCategoria === 'ROPA' || filtroCategoria === 'TODAS') && (
-          <div className="pt-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-[#50322A]">Filtrar prenda específica:</span>
+          <div className="pt-1 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-[#77736E]">Filtrar prenda específica:</span>
             {[
               { key: 'TODOS', label: 'Todas las Prendas' },
               { key: 'PANTALON', label: 'Pantalones' },
@@ -1136,11 +757,12 @@ export const AdminReportesPage: React.FC = () => {
             ].map(({ key, label }) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => setSubfiltroRopa(key)}
-                className={`px-3 py-1 rounded-xl text-[11px] font-extrabold transition-all ${
+                className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all border cursor-pointer ${
                   subfiltroRopa === key
-                    ? 'bg-[#D19650] text-[#171717] border border-[#661521] shadow-sm'
-                    : 'bg-[#E7DED2] text-[#351912] hover:bg-white'
+                    ? 'bg-[#C49A68]/25 text-[#741C2B] border-[#C49A68]'
+                    : 'bg-[#F5F3EF] text-[#292827] border-[#E7E0D8] hover:border-[#C49A68]/50'
                 }`}
               >
                 {label}
@@ -1148,96 +770,106 @@ export const AdminReportesPage: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* TARJETAS KPI RESUMEN DE VENTAS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A] flex items-center justify-between">
+      {/* =========================================================================
+          3. 4 TARJETAS KPI EJECUTIVAS CLARAS
+          ========================================================================= */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] flex items-center justify-between">
             <span>Ventas Netas</span>
-            <DollarSign className="w-4 h-4 text-[#661521]" />
+            <DollarSign className="w-4 h-4 text-[#741C2B]" />
           </span>
-          <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#171717] mt-1">
+          <div className="text-2xl font-extrabold font-mono-tabular tabular-nums text-[#292827] mt-1.5">
             {formatCOP(metricasGenerales.totalVentasNetas)}
           </div>
-          <span className="text-[11px] text-[#661521] font-bold">
-            IVA 19% incluido ({formatCOP(metricasGenerales.iva19Cop)})
+          <span className="text-[11px] text-[#741C2B] font-bold block mt-1 tabular-nums">
+            Base: {formatCOP(metricasGenerales.baseGravableCop)} • IVA 19%: {formatCOP(metricasGenerales.iva19Cop)}
           </span>
         </div>
 
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A] flex items-center justify-between">
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] flex items-center justify-between">
             <span>Unidades Vendidas</span>
-            <ShoppingBag className="w-4 h-4 text-[#661521]" />
+            <ShoppingBag className="w-4 h-4 text-[#741C2B]" />
           </span>
-          <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#661521] mt-1">
+          <div className="text-2xl font-extrabold font-mono-tabular tabular-nums text-[#741C2B] mt-1.5">
             {metricasGenerales.totalUnidades}
           </div>
-          <span className="text-[11px] text-[#50322A] font-medium">Prendas y productos físicos</span>
+          <span className="text-[11px] text-[#77736E] font-medium block mt-1">
+            Prendas y artículos facturados
+          </span>
         </div>
 
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A] flex items-center justify-between">
-            <span>Tickets / Ventas</span>
-            <Receipt className="w-4 h-4 text-[#661521]" />
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] flex items-center justify-between">
+            <span>Líneas / Transacciones</span>
+            <Receipt className="w-4 h-4 text-[#741C2B]" />
           </span>
-          <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-[#171717] mt-1">
+          <div className="text-2xl font-extrabold font-mono-tabular tabular-nums text-[#292827] mt-1.5">
             {metricasGenerales.totalTickets}
           </div>
-          <span className="text-[11px] text-[#50322A] font-medium">
+          <span className="text-[11px] text-[#77736E] font-medium block mt-1 tabular-nums">
             Promedio: {formatCOP(metricasGenerales.ticketPromedio)}
           </span>
         </div>
 
-        <div className="glass-mirror-card p-5 rounded-3xl border border-[#D19650]/40">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A] flex items-center justify-between">
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] flex items-center justify-between">
             <span>Vendedor Líder</span>
-            <Crown className="w-4 h-4 text-[#D19650]" />
+            <Crown className="w-4 h-4 text-[#C49A68]" />
           </span>
-          <div className="text-xl sm:text-2xl font-black text-[#661521] truncate mt-1">
-            {rankingVendedores[0]?.vendedor || 'Sin datos'}
+          <div className="text-xl font-extrabold text-[#741C2B] truncate mt-1.5">
+            {rankingVendedores[0]?.vendedor || 'Sin ventas en periodo'}
           </div>
-          <span className="text-[11px] text-[#351912] font-bold">
-            {rankingVendedores[0]?.unidadesVendidas || 0} prendas · {formatCOP(rankingVendedores[0]?.montoFacturadoCop || 0)}
+          <span className="text-[11px] text-[#292827] font-bold block mt-1 tabular-nums">
+            {rankingVendedores[0]?.unidadesVendidas || 0} prendas ·{' '}
+            {formatCOP(rankingVendedores[0]?.montoFacturadoCop || 0)}
           </span>
         </div>
-      </div>
+      </section>
 
-      {/* PESTAÑAS ANALÍTICAS INTERACTIVAS */}
-      <div className="flex items-center gap-2 border-b border-[#50322A]/20 pb-1">
+      {/* =========================================================================
+          4. PESTAÑAS ANALÍTICAS LIMPIAS
+          ========================================================================= */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#E7E0D8] pb-2">
         <button
+          type="button"
           onClick={() => setTabActiva('PRENDAS')}
-          className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all border cursor-pointer ${
             tabActiva === 'PRENDAS'
-              ? 'bg-[#661521] text-white border border-[#D19650] shadow-md'
-              : 'text-[#50322A] hover:bg-white/60'
+              ? 'bg-[#741C2B] text-white border-[#741C2B] shadow-2xs'
+              : 'bg-white text-[#292827] border-[#E7E0D8] hover:bg-[#F5F3EF]'
           }`}
         >
           <Shirt className="w-4 h-4" />
-          <span>Prendas y Productos más Vendidos</span>
+          <span>Prendas más Vendidas</span>
           <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-white/20">
             {prendasAgrupadas.length}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setTabActiva('VENDEDORES')}
-          className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all border cursor-pointer ${
             tabActiva === 'VENDEDORES'
-              ? 'bg-[#661521] text-white border border-[#D19650] shadow-md'
-              : 'text-[#50322A] hover:bg-white/60'
+              ? 'bg-[#741C2B] text-white border-[#741C2B] shadow-2xs'
+              : 'bg-white text-[#292827] border-[#E7E0D8] hover:bg-[#F5F3EF]'
           }`}
         >
-          <Crown className="w-4 h-4 text-[#D19650]" />
+          <Crown className="w-4 h-4 text-[#C49A68]" />
           <span>Ranking de Mejores Vendedores</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setTabActiva('FINANCIERO')}
-          className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all border cursor-pointer ${
             tabActiva === 'FINANCIERO'
-              ? 'bg-[#661521] text-white border border-[#D19650] shadow-md'
-              : 'text-[#50322A] hover:bg-white/60'
+              ? 'bg-[#741C2B] text-white border-[#741C2B] shadow-2xs'
+              : 'bg-white text-[#292827] border-[#E7E0D8] hover:bg-[#F5F3EF]'
           }`}
         >
           <DollarSign className="w-4 h-4" />
@@ -1245,82 +877,87 @@ export const AdminReportesPage: React.FC = () => {
         </button>
       </div>
 
-      {/* VISTA 1: PRENDAS Y PRODUCTOS MÁS VENDIDOS */}
+      {/* VISTA 1: VOLUMEN DE VENTAS POR PRENDA */}
       {tabActiva === 'PRENDAS' && (
-        <div className="glass-mirror-card rounded-3xl overflow-hidden shadow-xl border border-[#D19650]/30">
-          <div className="p-5 bg-[#E7DED2]/50 border-b border-[#50322A]/15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] overflow-hidden shadow-2xs">
+          <div className="p-5 bg-[#F5F3EF] border-b border-[#E7E0D8] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h3 className="text-lg font-black text-[#171717] font-display flex items-center gap-2">
-                <Shirt className="w-5 h-5 text-[#661521]" />
+              <h3 className="text-base font-extrabold text-[#292827] font-display flex items-center gap-2">
+                <Shirt className="w-4 h-4 text-[#741C2B]" />
                 <span>Volumen de Ventas por Prenda</span>
               </h3>
-              <p className="text-xs text-[#50322A] font-medium mt-0.5">
-                Cantidad exacta de pantalones, camisas, chaquetas y accesorios comercializados en el periodo.
+              <p className="text-xs text-[#77736E] font-medium mt-0.5">
+                Unidades reales comercializadas en mostrador POS y órdenes de Tienda Web.
               </p>
             </div>
-            <div className="text-xs font-extrabold text-[#661521] bg-[#D19650]/20 px-3 py-1.5 rounded-xl border border-[#D19650]/40 self-start sm:self-auto">
+            <div className="text-xs font-extrabold text-[#741C2B] bg-white px-3 py-1.5 rounded-xl border border-[#E7E0D8] self-start sm:self-auto tabular-nums">
               Total {metricasGenerales.totalUnidades} unidades vendidas
             </div>
           </div>
 
           {prendasAgrupadas.length === 0 ? (
-            <div className="p-12 text-center text-[#50322A]">
-              <Shirt className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p className="font-bold text-sm">No hay prendas vendidas que coincidan con los filtros aplicados.</p>
+            <div className="p-12 text-center space-y-2">
+              <Shirt className="w-8 h-8 text-[#77736E] mx-auto" />
+              <p className="font-extrabold text-sm text-[#292827]">
+                No hay ventas registradas para los filtros seleccionados
+              </p>
+              <p className="text-xs text-[#77736E] max-w-md mx-auto">
+                Registre una venta en la Terminal POS o ajuste el rango de fechas, sede o categoría para visualizar el movimiento de prendas.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#50322A]/20 bg-[#E7DED2]/85 text-xs font-extrabold text-[#351912] uppercase tracking-wider">
-                    <th className="px-5 py-4 w-12 text-center">#</th>
-                    <th className="px-5 py-4">Prenda / Producto</th>
-                    <th className="px-5 py-4">Categoría</th>
-                    <th className="px-5 py-4 text-center">Unidades Vendidas</th>
-                    <th className="px-5 py-4">Volumen Relativo</th>
-                    <th className="px-5 py-4 text-right">Precio Promedio</th>
-                    <th className="px-5 py-4 text-right">Total Facturado</th>
+                  <tr className="border-b border-[#E7E0D8] bg-[#F5F3EF] text-[11px] font-extrabold text-[#77736E] uppercase tracking-wider">
+                    <th className="px-5 py-3.5 w-12 text-center">#</th>
+                    <th className="px-5 py-3.5">Prenda / Producto</th>
+                    <th className="px-5 py-3.5">Categoría</th>
+                    <th className="px-5 py-3.5 text-center">Unidades Vendidas</th>
+                    <th className="px-5 py-3.5">Volumen Relativo</th>
+                    <th className="px-5 py-3.5 text-right">Precio Promedio</th>
+                    <th className="px-5 py-3.5 text-right">Total Facturado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#50322A]/10 text-sm">
+                <tbody className="divide-y divide-[#E7E0D8] text-sm">
                   {prendasAgrupadas.map((p, idx) => (
-                    <tr key={p.nombre} className="hover:bg-white/80 transition-colors">
-                      <td className="px-5 py-4 text-center font-black font-mono text-xs text-[#50322A]">
+                    <tr key={p.nombre} className="hover:bg-[#F5F3EF]/60 transition-colors">
+                      <td className="px-5 py-3.5 text-center font-extrabold font-mono-tabular text-xs text-[#77736E]">
                         {idx + 1}
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="font-extrabold text-[#171717] text-sm">{p.nombre}</div>
-                        <div className="text-xs text-[#50322A] font-medium">
-                          {p.transacciones} venta(s) registradas
+                      <td className="px-5 py-3.5">
+                        <div className="font-extrabold text-[#292827] text-sm">{p.nombre}</div>
+                        <div className="text-xs text-[#77736E] font-medium">
+                          {p.transacciones} venta(s) registrada(s)
                         </div>
                       </td>
-                      <td className="px-5 py-4">
-                        <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-[#E7DED2] text-[#351912] border border-[#50322A]/20">
+                      <td className="px-5 py-3.5">
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#F5F3EF] text-[#292827] border border-[#E7E0D8]">
                           {p.categoria}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-center">
-                        <span className="font-black font-mono text-base text-[#661521] bg-[#661521]/10 px-3 py-1 rounded-xl border border-[#661521]/20">
+                      <td className="px-5 py-3.5 text-center">
+                        <span className="font-extrabold font-mono-tabular text-sm text-[#741C2B] bg-[#741C2B]/10 px-3 py-1 rounded-lg border border-[#741C2B]/20 tabular-nums">
                           {p.unidadesVendidas} uds
                         </span>
                       </td>
-                      <td className="px-5 py-4 min-w-[160px]">
+                      <td className="px-5 py-3.5 min-w-[160px]">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-[#50322A]/15 h-2.5 rounded-full overflow-hidden">
+                          <div className="flex-1 bg-[#E7E0D8] h-2 rounded-full overflow-hidden">
                             <div
-                              className="bg-[#661521] h-full rounded-full transition-all"
-                              style={{ width: `${Math.min(100, p.porcentajeVolumen * 2)}%` }}
+                              className="bg-[#741C2B] h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(100, p.porcentajeVolumen)}%` }}
                             />
                           </div>
-                          <span className="text-xs font-mono font-bold text-[#351912] tabular-nums">
+                          <span className="text-xs font-mono-tabular font-bold text-[#292827] tabular-nums">
                             {p.porcentajeVolumen}%
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-right font-mono font-bold text-xs text-[#50322A] tabular-nums">
+                      <td className="px-5 py-3.5 text-right font-mono-tabular font-bold text-xs text-[#77736E] tabular-nums">
                         {formatCOP(p.precioPromedioCop)}
                       </td>
-                      <td className="px-5 py-4 text-right font-mono font-black text-sm text-[#171717] tabular-nums">
+                      <td className="px-5 py-3.5 text-right font-mono-tabular font-extrabold text-sm text-[#292827] tabular-nums">
                         {formatCOP(p.totalFacturadoCop)}
                       </td>
                     </tr>
@@ -1332,294 +969,353 @@ export const AdminReportesPage: React.FC = () => {
         </div>
       )}
 
-      {/* VISTA 2: RANKING DE MEJORES VENDEDORES (TOP SELLERS) */}
+      {/* VISTA 2: RANKING DE MEJORES VENDEDORES */}
       {tabActiva === 'VENDEDORES' && (
-        <div className="space-y-6">
-          {/* Podio Visual 1°, 2° y 3° Lugar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {rankingVendedores.slice(0, 3).map((v, i) => {
-              const medallas = ['🥇 Oro', '🥈 Plata', '🥉 Bronce'];
-              const coloresCard = [
-                'border-[#D19650] bg-gradient-to-b from-[#D19650]/20 to-white/70 shadow-xl',
-                'border-[#50322A]/30 bg-white/60 shadow-md',
-                'border-[#50322A]/20 bg-white/50 shadow-sm',
-              ];
-
-              return (
-                <div
-                  key={v.vendedor}
-                  className={`glass-mirror-card p-6 rounded-3xl relative flex flex-col justify-between ${coloresCard[i]}`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="px-3 py-1 rounded-full text-xs font-black bg-[#661521] text-white border border-[#D19650]">
-                        {medallas[i]}
-                      </span>
-                      <span className="text-xs font-bold text-[#50322A] font-mono">
-                        Puesto #{v.posicion}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#661521] text-[#D19650] flex items-center justify-center font-black text-lg border border-[#D19650] shadow-md">
-                        {v.vendedor.charAt(0)}
+        <div className="space-y-5">
+          {rankingVendedores.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {rankingVendedores.slice(0, 3).map((v, i) => {
+                const medallas = ['🥇 Oro', '🥈 Plata', '🥉 Bronce'];
+                return (
+                  <div
+                    key={v.vendedor}
+                    className={`rounded-2xl bg-white p-5 border flex flex-col justify-between shadow-2xs ${
+                      i === 0 ? 'border-[#C49A68] ring-1 ring-[#C49A68]/30' : 'border-[#E7E0D8]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#741C2B] text-white">
+                          {medallas[i]}
+                        </span>
+                        <span className="text-xs font-bold text-[#77736E] font-mono-tabular">
+                          Puesto #{v.posicion}
+                        </span>
                       </div>
-                      <div>
-                        <h4 className="text-lg font-black text-[#171717]">{v.vendedor}</h4>
-                        <div className="text-xs font-bold text-[#50322A] flex items-center gap-1">
-                          <Store className="w-3.5 h-3.5 text-[#661521]" />
-                          <span>{v.sede}</span>
+
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-11 h-11 rounded-xl bg-[#741C2B] text-[#C49A68] flex items-center justify-center font-extrabold text-base">
+                          {v.vendedor.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-[#292827]">{v.vendedor}</h4>
+                          <div className="text-xs font-medium text-[#77736E] flex items-center gap-1">
+                            <Store className="w-3.5 h-3.5 text-[#741C2B]" />
+                            <span>{v.sede}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="pt-4 border-t border-[#50322A]/15 grid grid-cols-2 gap-2 text-center">
-                    <div className="p-2.5 rounded-2xl bg-white/60">
-                      <span className="text-[10px] font-extrabold uppercase text-[#50322A] block">
-                        Facturado
-                      </span>
-                      <span className="text-sm font-black font-mono text-[#661521] tabular-nums">
-                        {formatCOP(v.montoFacturadoCop)}
-                      </span>
-                    </div>
-                    <div className="p-2.5 rounded-2xl bg-white/60">
-                      <span className="text-[10px] font-extrabold uppercase text-[#50322A] block">
-                        Prendas
-                      </span>
-                      <span className="text-sm font-black font-mono text-[#171717] tabular-nums">
-                        {v.unidadesVendidas} uds
-                      </span>
+                    <div className="pt-3 border-t border-[#E7E0D8] grid grid-cols-2 gap-2 text-center">
+                      <div className="p-2 rounded-xl bg-[#F5F3EF]">
+                        <span className="text-[10px] font-extrabold uppercase text-[#77736E] block">
+                          Facturado
+                        </span>
+                        <span className="text-xs font-extrabold font-mono-tabular text-[#741C2B] tabular-nums">
+                          {formatCOP(v.montoFacturadoCop)}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-[#F5F3EF]">
+                        <span className="text-[10px] font-extrabold uppercase text-[#77736E] block">
+                          Prendas
+                        </span>
+                        <span className="text-xs font-extrabold font-mono-tabular text-[#292827] tabular-nums">
+                          {v.unidadesVendidas} uds
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Tabla de Nómina Completa de Vendedores */}
-          <div className="glass-mirror-card rounded-3xl overflow-hidden shadow-xl border border-[#D19650]/30">
-            <div className="p-5 bg-[#E7DED2]/50 border-b border-[#50322A]/15">
-              <h3 className="text-lg font-black text-[#171717] font-display flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#661521]" />
+          <div className="rounded-2xl bg-white border border-[#E7E0D8] overflow-hidden shadow-2xs">
+            <div className="p-5 bg-[#F5F3EF] border-b border-[#E7E0D8]">
+              <h3 className="text-base font-extrabold text-[#292827] font-display flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#741C2B]" />
                 <span>Rendimiento Global de Vendedores en Mostrador</span>
               </h3>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#50322A]/20 bg-[#E7DED2]/85 text-xs font-extrabold text-[#351912] uppercase tracking-wider">
-                    <th className="px-5 py-4 w-14 text-center">Puesto</th>
-                    <th className="px-5 py-4">Vendedor</th>
-                    <th className="px-5 py-4">Sede Asignada</th>
-                    <th className="px-5 py-4 text-center">Unidades</th>
-                    <th className="px-5 py-4 text-center">Tickets</th>
-                    <th className="px-5 py-4 text-right">Ticket Promedio</th>
-                    <th className="px-5 py-4 text-right">Total Facturado COP</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#50322A]/10 text-sm">
-                  {rankingVendedores.map((v) => (
-                    <tr key={v.vendedor} className="hover:bg-white/80 transition-colors">
-                      <td className="px-5 py-4 text-center font-black font-mono text-sm text-[#50322A]">
-                        #{v.posicion}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="font-extrabold text-[#171717]">{v.vendedor}</div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="glass-mirror-pill inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-[#351912] border border-[#D19650]/40">
-                          <Store className="w-3.5 h-3.5 text-[#661521]" />
-                          <span>{v.sede}</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-center font-mono font-black text-sm text-[#661521]">
-                        {v.unidadesVendidas}
-                      </td>
-                      <td className="px-5 py-4 text-center font-mono font-bold text-xs text-[#50322A]">
-                        {v.cantidadTickets}
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono font-bold text-xs text-[#50322A] tabular-nums">
-                        {formatCOP(v.ticketPromedioCop)}
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono font-black text-sm text-[#171717] tabular-nums">
-                        {formatCOP(v.montoFacturadoCop)}
-                      </td>
+            {rankingVendedores.length === 0 ? (
+              <div className="p-12 text-center space-y-2">
+                <Users className="w-8 h-8 text-[#77736E] mx-auto" />
+                <p className="font-extrabold text-sm text-[#292827]">
+                  Sin ventas registradas por vendedores en este periodo
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#E7E0D8] bg-[#F5F3EF] text-[11px] font-extrabold text-[#77736E] uppercase tracking-wider">
+                      <th className="px-5 py-3.5 w-14 text-center">Puesto</th>
+                      <th className="px-5 py-3.5">Vendedor</th>
+                      <th className="px-5 py-3.5">Sede Asignada</th>
+                      <th className="px-5 py-3.5 text-center">Unidades</th>
+                      <th className="px-5 py-3.5 text-center">Tickets</th>
+                      <th className="px-5 py-3.5 text-right">Ticket Promedio</th>
+                      <th className="px-5 py-3.5 text-right">Total Facturado COP</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[#E7E0D8] text-sm">
+                    {rankingVendedores.map((v) => (
+                      <tr key={v.vendedor} className="hover:bg-[#F5F3EF]/60 transition-colors">
+                        <td className="px-5 py-3.5 text-center font-extrabold font-mono-tabular text-xs text-[#77736E]">
+                          #{v.posicion}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="font-extrabold text-[#292827]">{v.vendedor}</div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#F5F3EF] text-[#292827] border border-[#E7E0D8]">
+                            <Store className="w-3.5 h-3.5 text-[#741C2B]" />
+                            <span>{v.sede}</span>
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-center font-mono-tabular font-extrabold text-sm text-[#741C2B] tabular-nums">
+                          {v.unidadesVendidas}
+                        </td>
+                        <td className="px-5 py-3.5 text-center font-mono-tabular font-bold text-xs text-[#77736E] tabular-nums">
+                          {v.cantidadTickets}
+                        </td>
+                        <td className="px-5 py-3.5 text-right font-mono-tabular font-bold text-xs text-[#77736E] tabular-nums">
+                          {formatCOP(v.ticketPromedioCop)}
+                        </td>
+                        <td className="px-5 py-3.5 text-right font-mono-tabular font-extrabold text-sm text-[#292827] tabular-nums">
+                          {formatCOP(v.montoFacturadoCop)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* VISTA 3: DESGLOSE FINANCIERO Y MEDIOS DE PAGO */}
+      {/* VISTA 3: DESGLOSE POR MEDIOS DE PAGO Y CONCILIACIÓN */}
       {tabActiva === 'FINANCIERO' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Tarjeta de Medios de Pago */}
-          <div className="glass-mirror-card p-6 rounded-3xl space-y-4">
-            <h3 className="text-lg font-black text-[#171717] font-display flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-[#661521]" />
-              <span>Participación por Método de Pago</span>
-            </h3>
-            <p className="text-xs text-[#50322A]">
-              Recaudación discriminada entre efectivo en caja y transferencias electrónicas inmediatas.
-            </p>
-
-            <div className="space-y-3 pt-2">
-              {desgloseMediosPago.map((mp) => (
-                <div
-                  key={mp.medio}
-                  className="p-4 rounded-2xl bg-white/70 border border-[#50322A]/15 space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-[#171717]">{mp.medio}</span>
-                    <span className="font-mono text-[#661521]">{formatCOP(mp.totalCop)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-[#50322A]/10 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-[#661521] h-full rounded-full"
-                        style={{ width: `${mp.porcentaje}%` }}
-                      />
-                    </div>
-                    <span className="text-[11px] font-mono font-bold text-[#50322A]">
-                      {mp.porcentaje}% ({mp.transacciones} ops)
-                    </span>
-                  </div>
-                </div>
-              ))}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs space-y-4">
+            <div>
+              <h3 className="text-base font-extrabold text-[#292827] font-display flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-[#741C2B]" />
+                <span>Participación por Método de Pago</span>
+              </h3>
+              <p className="text-xs text-[#77736E] mt-0.5">
+                Recaudación discriminada entre efectivo en caja y transferencias verificadas.
+              </p>
             </div>
+
+            {desgloseMediosPago.length === 0 ? (
+              <div className="p-8 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-center text-xs font-bold text-[#77736E]">
+                Sin movimientos de pago registrados en este periodo.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {desgloseMediosPago.map((mp) => (
+                  <div
+                    key={mp.medio}
+                    className="p-3.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-[#292827]">{mp.medio}</span>
+                      <span className="font-mono-tabular text-[#741C2B] tabular-nums">
+                        {formatCOP(mp.totalCop)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-[#E7E0D8] h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#741C2B] h-full rounded-full"
+                          style={{ width: `${mp.porcentaje}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-mono-tabular font-bold text-[#77736E] tabular-nums">
+                        {mp.porcentaje}% ({mp.transacciones} ops)
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Tarjeta de Conciliación y Liquidación Contable */}
-          <div className="glass-mirror-card p-6 rounded-3xl space-y-4">
-            <h3 className="text-lg font-black text-[#171717] font-display flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-[#661521]" />
-              <span>Conciliación Financiera del Periodo</span>
-            </h3>
-            <p className="text-xs text-[#50322A]">
-              Estructura contable formal con descuentos e impuestos liquidados.
-            </p>
+          <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs space-y-4">
+            <div>
+              <h3 className="text-base font-extrabold text-[#292827] font-display flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-[#741C2B]" />
+                <span>Conciliación Financiera del Periodo</span>
+              </h3>
+              <p className="text-xs text-[#77736E] mt-0.5">
+                Liquidación contable con Base Gravable e IVA 19% discriminado sobre el valor total.
+              </p>
+            </div>
 
-            <div className="divide-y divide-[#50322A]/10 text-xs pt-2">
+            <div className="divide-y divide-[#E7E0D8] text-xs">
               <div className="py-3 flex justify-between items-center">
-                <span className="font-semibold text-[#50322A]">Ventas Brutas Totales (Lista):</span>
-                <span className="font-mono font-bold text-[#171717]">
+                <span className="font-semibold text-[#77736E]">Ventas Brutas Totales (Lista):</span>
+                <span className="font-mono-tabular font-bold text-[#292827] tabular-nums">
                   {formatCOP(metricasGenerales.totalVentasBrutas)}
                 </span>
               </div>
               <div className="py-3 flex justify-between items-center">
-                <span className="font-semibold text-[#50322A]">Descuentos Comerciales Otorgados:</span>
-                <span className="font-mono font-bold text-[#661521]">
+                <span className="font-semibold text-[#77736E]">Descuentos Comerciales Otorgados:</span>
+                <span className="font-mono-tabular font-bold text-[#741C2B] tabular-nums">
                   - {formatCOP(metricasGenerales.totalDescuentos)}
                 </span>
               </div>
-              <div className="py-3 flex justify-between items-center bg-[#D19650]/15 px-3 rounded-xl">
-                <span className="font-extrabold text-[#351912] text-sm">Ventas Netas Realizadas:</span>
-                <span className="font-mono font-black text-base text-[#171717]">
+              <div className="py-3 flex justify-between items-center bg-[#F5F3EF] px-3 rounded-xl">
+                <span className="font-extrabold text-[#292827] text-sm">Ventas Netas Realizadas:</span>
+                <span className="font-mono-tabular font-extrabold text-base text-[#292827] tabular-nums">
                   {formatCOP(metricasGenerales.totalVentasNetas)}
                 </span>
               </div>
               <div className="py-3 flex justify-between items-center">
-                <span className="font-semibold text-[#50322A]">IVA Tarifa General 19% Discriminado:</span>
-                <span className="font-mono font-bold text-[#50322A]">
-                  {formatCOP(metricasGenerales.iva19Cop)}
+                <span className="font-semibold text-[#77736E]">
+                  Base Gravable Neta (Subtotal sin IVA):
+                </span>
+                <span className="font-mono-tabular font-bold text-[#292827] tabular-nums">
+                  {formatCOP(metricasGenerales.baseGravableCop)}
                 </span>
               </div>
               <div className="py-3 flex justify-between items-center">
-                <span className="font-semibold text-[#50322A]">Base Gravable Neta (Subtotal sin IVA):</span>
-                <span className="font-mono font-bold text-[#171717]">
-                  {formatCOP(metricasGenerales.totalVentasNetas - metricasGenerales.iva19Cop)}
+                <span className="font-semibold text-[#77736E]">
+                  IVA Tarifa General 19% Discriminado:
+                </span>
+                <span className="font-mono-tabular font-bold text-[#741C2B] tabular-nums">
+                  {formatCOP(metricasGenerales.iva19Cop)}
                 </span>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* SECCIÓN COMPLEMENTARIA: LIBROS CONTABLES BASE DE AUDITORÍA */}
-      <div className="glass-mirror-card p-6 rounded-3xl space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#50322A]/15">
-          <div className="flex items-center gap-2">
-            <FileCheck className="w-5 h-5 text-[#661521]" />
-            <h3 className="text-base font-black text-[#171717] font-display">
-              Descarga Adicional de Libros Contables Multi-Hoja
-            </h3>
-          </div>
-          <span className="text-xs font-bold text-[#50322A]">Libros del Servidor</span>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Libro 1: Ventas Netas */}
-          <div className="glass-mirror-pill p-4 rounded-2xl border border-[#D19650]/40 flex flex-col justify-between">
-            <div>
-              <div className="text-sm font-black text-[#171717] mb-1">
-                Libro de Ventas Netas y NC
-              </div>
-              <p className="text-xs text-[#50322A] mb-3">
-                Libro con facturas de venta, prorrateo de descuentos y notas de crédito.
-              </p>
+      {/* =========================================================================
+          VISTA 2: CENTRO DE REPORTES Y DESCARGAS (BI HUB) ESTILO MI VISUALIZATION
+          ========================================================================= */}
+      {pestanaPrincipal === 'centro_reportes' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Barra de Filtros y Búsqueda del Hub */}
+          <div className="rounded-2xl bg-white border border-[#E7E0D8] p-4 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Buscador predictivo */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#77736E]" />
+              <input
+                type="text"
+                value={hubBusqueda}
+                onChange={(e) => setHubBusqueda(e.target.value)}
+                placeholder="Buscar reporte por nombre, código o área..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] placeholder:text-[#77736E]"
+              />
             </div>
-            <button
-              onClick={() =>
-                descargarLibroOficial('/reportes/excel/ventas', `Libro_Ventas_Netas_${new Date().toISOString().slice(0, 10)}.xlsx`)
-              }
-              disabled={Boolean(descargandoLibro)}
-              className="w-full py-2 px-3 bg-[#661521] hover:bg-[#4A0E17] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5 text-[#D19650]" />
-              <span>Descargar Ventas (.xlsx)</span>
-            </button>
+
+            {/* Filtros Dropdowns */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Filtro Área de Trabajo */}
+              <div className="relative">
+                <select
+                  value={hubArea}
+                  onChange={(e) => setHubArea(e.target.value as any)}
+                  className="px-3 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
+                >
+                  <option value="TODAS">Todas las Áreas de Trabajo</option>
+                  <option value="VENTAS">Ventas y Facturación</option>
+                  <option value="INVENTARIO">Inventario y Kardex</option>
+                  <option value="CAJA">Caja y Tesorería</option>
+                  <option value="OMNICANAL">Omnicanal y Web</option>
+                  <option value="ABASTECIMIENTO">Compras y Proveedores</option>
+                  <option value="CALIDAD">Garantías y Operaciones</option>
+                </select>
+              </div>
+
+              {/* Ordenamiento */}
+              <div className="relative">
+                <select
+                  value={hubOrden}
+                  onChange={(e) => setHubOrden(e.target.value as any)}
+                  className="px-3 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
+                >
+                  <option value="A_Z">Orden: A → Z</option>
+                  <option value="Z_A">Orden: Z → A</option>
+                  <option value="CATEGORIA">Agrupar por Área</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          {/* Libro 2: Auditoría de Cajas */}
-          <div className="glass-mirror-pill p-4 rounded-2xl border border-[#D19650]/40 flex flex-col justify-between">
-            <div>
-              <div className="text-sm font-black text-[#171717] mb-1">
-                Auditoría de Cajas Ciegas
-              </div>
-              <p className="text-xs text-[#50322A] mb-3">
-                Arqueos de efectivo, bases iniciales y comparativo del dinero esperado en punto.
-              </p>
-            </div>
-            <button
-              onClick={() =>
-                descargarLibroOficial('/reportes/excel/cajas', `Libro_Auditoria_Cajas_${new Date().toISOString().slice(0, 10)}.xlsx`)
-              }
-              disabled={Boolean(descargandoLibro)}
-              className="w-full py-2 px-3 bg-[#661521] hover:bg-[#4A0E17] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5 text-[#D19650]" />
-              <span>Descargar Cajas (.xlsx)</span>
-            </button>
-          </div>
+          {/* Cuadrícula de Tarjetas de Reportes Oficiales FORMA (10 Reportes Estratégicos) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {reportesHubFiltrados.map((rep) => (
+              <div
+                key={rep.id}
+                className="rounded-2xl bg-white border border-[#E7E0D8] hover:border-[#741C2B]/40 hover:shadow-md transition-all p-5 flex flex-col justify-between group"
+              >
+                <div>
+                  {/* Fila Superior con Icono y Badge */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#27845C]/10 border border-[#27845C]/20 flex items-center justify-center text-[#27845C] group-hover:scale-105 transition-transform shadow-2xs">
+                      <FileSpreadsheet className="w-6 h-6" />
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-[#F5F3EF] border border-[#E7E0D8] text-[10px] font-black uppercase tracking-wider text-[#741C2B]">
+                      {rep.codigo}
+                    </span>
+                  </div>
 
-          {/* Libro 3: Inventario Valorizado */}
-          <div className="glass-mirror-pill p-4 rounded-2xl border border-[#D19650]/40 flex flex-col justify-between">
-            <div>
-              <div className="text-sm font-black text-[#171717] mb-1">
-                Inventario Valorizado Multisede
+                  {/* Título y Descripción */}
+                  <h3 className="text-sm font-extrabold text-[#292827] font-display line-clamp-1 mb-1 group-hover:text-[#741C2B] transition-colors">
+                    {rep.titulo}
+                  </h3>
+                  <p className="text-[11px] text-[#77736E] leading-relaxed line-clamp-2 mb-4">
+                    {rep.descripcion}
+                  </p>
+
+                  {/* Metadatos */}
+                  <div className="space-y-1.5 p-3 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8]/60 text-[11px] mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-[#77736E]">Área:</span>
+                      <strong className="text-[#292827]">{rep.areaTrabajo}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#77736E]">Autor:</span>
+                      <span className="text-[#292827] font-medium">{rep.autor}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#77736E]">Frecuencia:</span>
+                      <span className="text-[#741C2B] font-bold">{rep.frecuencia}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botón de Acción Principal */}
+                <button
+                  type="button"
+                  onClick={() => setReporteModal(rep)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#741C2B] hover:bg-[#5A1420] text-white text-xs font-bold shadow-2xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-[#C49A68]" />
+                  <span>Configurar y Descargar</span>
+                </button>
               </div>
-              <p className="text-xs text-[#50322A] mb-3">
-                Saldos físicos valorizados al costo en Bodega Central y los 4 Puntos de Venta.
-              </p>
-            </div>
-            <button
-              onClick={() =>
-                descargarLibroOficial('/reportes/excel/inventario', `Libro_Inventario_Valorizado_${new Date().toISOString().slice(0, 10)}.xlsx`)
-              }
-              disabled={Boolean(descargandoLibro)}
-              className="w-full py-2 px-3 bg-[#661521] hover:bg-[#4A0E17] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5 text-[#D19650]" />
-              <span>Descargar Inventario (.xlsx)</span>
-            </button>
+            ))}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Modal de Configuración y Previsualización de Reporte Excel */}
+      <ReportPreviewModal
+        isOpen={Boolean(reporteModal)}
+        reporte={reporteModal}
+        onClose={() => setReporteModal(null)}
+        sedeDefecto={filtroSede === 'TODAS' ? 'Todas las Sedes (Consolidado)' : filtroSede}
+      />
     </div>
   );
 };

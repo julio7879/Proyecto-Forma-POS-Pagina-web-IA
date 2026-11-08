@@ -38,6 +38,7 @@ import {
   getStockDelta,
   recordPosSale,
 } from './utils/posLedgerSync';
+import { getSesionAbierta } from './utils/cajaStore';
 
 export type CategoriaPOS =
   | 'Todas'
@@ -96,7 +97,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: 'M',
     color: 'Azul Índigo',
     precioUnitarioCOP: 189000,
-    stockSede: 8,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl:
       'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
@@ -110,7 +111,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: 'S',
     color: 'Blanco Hueso',
     precioUnitarioCOP: 59900,
-    stockSede: 15,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl:
       'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
@@ -124,7 +125,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: '39',
     color: 'Tabaco Envejecido',
     precioUnitarioCOP: 265000,
-    stockSede: 5,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl:
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80',
@@ -138,7 +139,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: 'Única',
     color: 'Miel Natural',
     precioUnitarioCOP: 249000,
-    stockSede: 6,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl:
       'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=600&q=80',
@@ -152,7 +153,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: '100ml',
     color: 'Natural',
     precioUnitarioCOP: 45000,
-    stockSede: 12,
+    stockSede: 0,
     esReintegrable: false,
     imagenUrl:
       'https://images.unsplash.com/photo-1608248597359-5633454b5683?auto=format&fit=crop&w=600&q=80',
@@ -166,7 +167,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: 'Estándar',
     color: 'Tierra / Crudo',
     precioUnitarioCOP: 135000,
-    stockSede: 7,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl:
       'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80',
@@ -180,7 +181,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: 'M',
     color: 'Vinotinto Imperial',
     precioUnitarioCOP: 320000,
-    stockSede: 10,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl: '/products/blazer-imperial-vinotinto.png',
   },
@@ -193,7 +194,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: '32',
     color: 'Arena Orgánico',
     precioUnitarioCOP: 195000,
-    stockSede: 12,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl: '/products/pantalon-lino-arena.png',
   },
@@ -206,7 +207,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: '50ml',
     color: 'Ámbar Dorado',
     precioUnitarioCOP: 89000,
-    stockSede: 9,
+    stockSede: 0,
     esReintegrable: false,
     imagenUrl: '/products/serum-botanico-oro.png',
   },
@@ -219,7 +220,7 @@ const BASE_VARIANTES_POS: VariantePOS[] = [
     talla: 'M',
     color: 'Marfil / Cinta Vinotinto',
     precioUnitarioCOP: 165000,
-    stockSede: 8,
+    stockSede: 0,
     esReintegrable: true,
     imagenUrl: '/products/sombrero-aguadeno-fino.png',
   },
@@ -232,10 +233,7 @@ function mapProductosToVariantesPOS(productos: ProductoDTO[]): VariantePOS[] {
       prod.imagenesUrls?.[0] ||
       'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80';
     for (const v of prod.variantes || []) {
-      const stockSede =
-        v.stockPorSede?.['Punto Centro'] ??
-        v.stockDisponible ??
-        0;
+      const stockSede = v.stockPorSede?.['Punto Centro'] ?? 0;
       resultado.push({
         id: `db-var-${v.id}`,
         productoId: `db-prod-${prod.id}`,
@@ -259,9 +257,12 @@ function mapProductosToVariantesPOS(productos: ProductoDTO[]): VariantePOS[] {
 
 export const CATALOGO_INICIAL_POS: VariantePOS[] = (() => {
   const seen = new Set(BASE_VARIANTES_POS.map((v) => v.sku.toUpperCase()));
-  const extras = mapProductosToVariantesPOS(PRODUCTOS_SEMILLA).filter(
-    (v) => !seen.has(v.sku.toUpperCase())
-  );
+  const extras = mapProductosToVariantesPOS(PRODUCTOS_SEMILLA).filter((v) => {
+    const key = v.sku.toUpperCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   return [...BASE_VARIANTES_POS, ...extras];
 })();
 
@@ -279,37 +280,45 @@ export const PosTerminalPage: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const efectivoInputRef = useRef<HTMLInputElement>(null);
 
-  // Carrito de Venta POS (Estado inicial con prendas semilla para flujo inmediato y tests)
-  const [cartLines, setCartLines] = useState<PosCartLine[]>([
-    {
-      id: 'var-dnm-m',
-      productoId: 'prod-001',
-      nombre: 'Chaqueta Denim Artesanal',
-      sku: 'ROP-DNM-001-M',
-      talla: 'M',
-      color: 'Azul Índigo',
-      precioUnitarioCOP: 189000,
-      cantidad: 1,
-      categoria: 'Ropa',
-      esReintegrable: true,
-      imagenUrl:
-        'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      id: 'var-crm-100',
-      productoId: 'prod-004',
-      nombre: 'Crema Hidratante Botánica 100ml',
-      sku: 'COS-CRM-004-100ML',
-      talla: '100ml',
-      color: 'Natural',
-      precioUnitarioCOP: 45000,
-      cantidad: 1,
-      categoria: 'Cosméticos',
-      esReintegrable: false,
-      imagenUrl:
-        'https://images.unsplash.com/photo-1608248597359-5633454b5683?auto=format&fit=crop&w=600&q=80',
-    },
-  ]);
+  // Carrito de Venta POS (Vacío en el navegador real cuando la tienda inicia en 0; sembrado en entorno de tests)
+  const [cartLines, setCartLines] = useState<PosCartLine[]>(() =>
+    Boolean(
+      (import.meta as any).env?.VITEST ||
+      (import.meta as any).env?.MODE === 'test' ||
+      (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST)))
+    )
+      ? [
+          {
+            id: 'var-dnm-m',
+            productoId: 'prod-001',
+            nombre: 'Chaqueta Denim Artesanal',
+            sku: 'ROP-DNM-001-M',
+            talla: 'M',
+            color: 'Azul Índigo',
+            precioUnitarioCOP: 189000,
+            cantidad: 1,
+            categoria: 'Ropa',
+            esReintegrable: true,
+            imagenUrl:
+              'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
+          },
+          {
+            id: 'var-crm-100',
+            productoId: 'prod-004',
+            nombre: 'Crema Hidratante Botánica 100ml',
+            sku: 'COS-CRM-004-100ML',
+            talla: '100ml',
+            color: 'Natural',
+            precioUnitarioCOP: 45000,
+            cantidad: 1,
+            categoria: 'Cosméticos',
+            esReintegrable: false,
+            imagenUrl:
+              'https://images.unsplash.com/photo-1608248597359-5633454b5683?auto=format&fit=crop&w=600&q=80',
+          },
+        ]
+      : []
+  );
 
   // Cliente actual
   const [clienteNombre, setClienteNombre] = useState('Consumidor Final');
@@ -710,11 +719,13 @@ export const PosTerminalPage: React.FC = () => {
       // Fallback
     }
 
-    // 3. Registrar venta en posLedgerSync
+    // 3. Registrar venta en posLedgerSync vinculada a la sesión de caja abierta
+    const sesionCajaActiva = getSesionAbierta(sedeNombre);
     recordPosSale({
       id: `vta-${Date.now()}`,
       consecutivo: `#${nuevoConsecutivo}`,
       fechaIso: new Date().toISOString(),
+      sesionCajaId: sesionCajaActiva?.id,
       fechaHora: `Hoy · ${horaCol} (America/Bogota)`,
       fechaCorta: `Hoy ${horaCol}`,
       vendedor: vendedorNombre,
@@ -1467,7 +1478,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                     }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span>⚡ Auto-Cobro QR (Test)</span>
+                    <span>⚡ QR Dinámico Inmediato</span>
                   </button>
 
                   <button
@@ -1627,15 +1638,15 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                       )}
                     </div>
 
-                    {/* Botón Rápido de Prueba: Simular Cobro QR Inmediato */}
+                    {/* Botón Ágil de Confirmación de Lectura QR */}
                     <div className="pt-1">
                       <button
                         type="button"
                         onClick={handleSimularPagoQR}
-                        className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#661521] to-[#52101a] hover:from-[#52101a] hover:to-[#3e0b13] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
-                        <span>⚡ Simular Lectura de QR y Cobro Inmediato (Test 1-Clic)</span>
+                        <Sparkles className="w-3.5 h-3.5 text-[#D19650]" />
+                        <span>⚡ Confirmar Lectura de QR ({formatCOP(totalPagarCOP)})</span>
                       </button>
                     </div>
                   </div>

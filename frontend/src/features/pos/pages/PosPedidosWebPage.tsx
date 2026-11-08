@@ -16,6 +16,7 @@ import {
 import { DetailDrawer, type ActivityTimelineItem } from '../components/DetailDrawer';
 import {
   getWebOrdersBySede,
+  tomarPedidoWebEnSede,
   transicionarPedidoWeb,
   updateWebOrder,
   nuevoEvento,
@@ -67,6 +68,7 @@ export const PosPedidosWebPage: React.FC = () => {
   // Selección de pedido para el DetailDrawer
   const [pedidoSeleccionadoCodigo, setPedidoSeleccionadoCodigo] = useState<string | null>(null);
   const [drawerTab, setDrawerTab] = useState<string>('detalle');
+  const [alertaBloqueo, setAlertaBloqueo] = useState<string | null>(null);
 
   // Modal de contingencia (falta de prenda o daño en tienda)
   const [pedidoContingencia, setPedidoContingencia] = useState<PedidoWebRecord | null>(null);
@@ -101,12 +103,9 @@ export const PosPedidosWebPage: React.FC = () => {
   }, [pedidos, busqueda, filtroEstado]);
 
   const pedidoSeleccionado = useMemo(() => {
-    if (pedidoSeleccionadoCodigo) {
-      const encontrado = pedidos.find((p) => p.codigo === pedidoSeleccionadoCodigo);
-      if (encontrado) return encontrado;
-    }
-    return pedidosFiltrados[0] || pedidos[0] || null;
-  }, [pedidos, pedidosFiltrados, pedidoSeleccionadoCodigo]);
+    if (!pedidoSeleccionadoCodigo) return null;
+    return pedidos.find((p) => p.codigo === pedidoSeleccionadoCodigo) || null;
+  }, [pedidos, pedidoSeleccionadoCodigo]);
 
   // Acciones de avance de estado persistidas en webOrdersStore
   const handleAvanzarEstado = (codigo: string) => {
@@ -114,13 +113,14 @@ export const PosPedidosWebPage: React.FC = () => {
     if (!p) return;
 
     if (p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO') {
-      transicionarPedidoWeb(
-        codigo,
-        'EN_PREPARACION',
-        usuarioNombre,
-        { observaciones: p.observaciones || 'Alistamiento iniciado por el cajero.' },
-        'Alistamiento iniciado por el cajero (Reserva dura activa).'
-      );
+      setAlertaBloqueo(null);
+      const res = tomarPedidoWebEnSede(codigo, sedeActiva, usuarioNombre);
+      if (!res.ok) {
+        setAlertaBloqueo(
+          res.error || 'Este pedido ya fue tomado para alistamiento por otra sede.'
+        );
+        return;
+      }
     } else if (p.estado === 'EN_PREPARACION') {
       const guiaGenerada =
         p.guiaTransportadora ||
@@ -219,12 +219,12 @@ export const PosPedidosWebPage: React.FC = () => {
   }, [pedidoSeleccionado]);
 
   return (
-    <div className="min-h-full lg:h-full w-full overflow-y-auto bg-[#F4EFEA] text-[#1C1311] rounded-2xl border border-[#D8CFC6] shadow-2xs p-2.5 sm:p-5 select-none font-sans flex flex-col justify-between">
+    <div className="min-h-full lg:h-full w-full overflow-y-auto bg-[#F4EFEA] text-[#1C1311] rounded-2xl border border-[#D8CFC6] shadow-2xs p-3 sm:p-5 select-none font-sans space-y-4">
       <div>
         {/* =========================================================================
             CABECERA EDITORIAL Y KPIS DE DESPACHO WEB
         ========================================================================= */}
-        <header className="bg-white rounded-2xl border border-[#D8CFC6] shadow-2xs p-4 sm:p-5 mb-4">
+        <header className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 sm:p-5 mb-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE4]">
             <div className="flex items-start sm:items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-[#661521] text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -281,6 +281,23 @@ export const PosPedidosWebPage: React.FC = () => {
           </div>
         </header>
 
+        {/* Alerta de Bloqueo de Bandeja Compartida */}
+        {alertaBloqueo && (
+          <div className="bg-red-50 border-2 border-[#661521] text-[#661521] rounded-2xl p-3.5 mb-4 flex items-center justify-between gap-3 shadow-xs text-xs font-bold">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{alertaBloqueo}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAlertaBloqueo(null)}
+              className="px-2.5 py-1 rounded-lg bg-[#661521] text-white text-xs font-bold cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        )}
+
         {/* =========================================================================
             BARRA DE BÚSQUEDA RÁPIDA
         ========================================================================= */}
@@ -330,75 +347,161 @@ export const PosPedidosWebPage: React.FC = () => {
                     setDrawerTab('detalle');
                   }}
                   className={`
-                    w-full min-h-[64px] p-3 sm:p-3.5 rounded-2xl bg-white border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs
+                    w-full p-4 rounded-2xl bg-white border transition-all cursor-pointer flex flex-col gap-3 shadow-2xs
                     ${
                       isSelected
                         ? 'border-[#661521] ring-2 ring-[#661521]/15 bg-white'
-                        : 'border-[#D8CFC6] hover:border-[#661521]/50 hover:bg-[#FAF7F4]'
+                        : 'border-[#E2D9CE] hover:border-[#661521]/50 hover:bg-[#FAF7F4]'
                     }
                   `}
                 >
-                  {/* Columna Izquierda: Código, Fecha, Cliente y Destino */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 text-[#661521] flex items-center justify-center shrink-0 font-bold">
-                      <Package className="w-5 h-5" />
+                  {/* Nivel Superior: Información Principal y Precio */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Izquierda: Ícono + Código, Fecha, Badges, Cliente y Destino */}
+                    <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-[#F4EFEA] border border-[#50322A]/15 text-[#661521] flex items-center justify-center shrink-0 font-bold">
+                        <Package className="w-5 h-5" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-mono text-sm font-black text-[#1C1311] whitespace-nowrap shrink-0">
+                            #{pedido.codigo}
+                          </span>
+                          <span className="whitespace-nowrap text-xs text-stone-500 font-medium">
+                            {fechaBogotaStr}
+                          </span>
+                          {/* Badge de Bandeja Compartida o Bloqueo por Sede */}
+                          {pedido.estado === 'RECIBIDO' || pedido.estado === 'CONFIRMADO' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-950 border border-amber-300 whitespace-nowrap">
+                              Bandeja Compartida · Disponible para Tomar
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 text-indigo-900 border border-indigo-200 whitespace-nowrap">
+                              Bloqueado por {pedido.sedeAsignada}
+                            </span>
+                          )}
+                          {/* Badge de Medio de Pago y Recaudo */}
+                          {pedido.metodoPago === 'CONTRAENTREGA' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 whitespace-nowrap">
+                              Contraentrega · Cobra Transportadora
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-900 border border-sky-300 whitespace-nowrap">
+                              {pedido.estadoCobro === 'PAGADO' ? 'Transferencia · Pagado' : 'Transferencia · Por Verificar'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-800 font-bold">
+                          <span className="whitespace-nowrap">{pedido.cliente}</span>
+                          <span className="text-stone-400">•</span>
+                          <span className="text-stone-600 font-medium">
+                            {pedido.ciudadDestino}
+                          </span>
+                          {pedido.direccionEntrega && (
+                            <>
+                              <span className="text-stone-400">•</span>
+                              <span className="text-stone-500 font-normal truncate max-w-xs">
+                                {pedido.direccionEntrega}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                        <span className="font-mono text-xs font-black text-[#1C1311]">
-                          #{pedido.codigo}
+                    {/* Derecha: Total y Badge de Estado */}
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                      <div className="text-left sm:text-right">
+                        <span className="block font-mono text-xs sm:text-sm font-black text-[#059669] whitespace-nowrap">
+                          Total: {formatCOP(pedido.totalCOP)} COP
                         </span>
-                        <span className="text-[11px] text-stone-500 font-medium">
-                          {fechaBogotaStr}
-                        </span>
-                        {/* Badge de Medio de Pago y Recaudo */}
-                        {pedido.metodoPago === 'CONTRAENTREGA' ? (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
-                            Contraentrega · Cobra Transportadora
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-900 border border-sky-300">
-                            {pedido.estadoCobro === 'PAGADO' ? 'Transferencia · Pagado' : 'Transferencia · Por Verificar'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-stone-800 font-bold truncate">
-                        <span>{pedido.cliente}</span>
-                        <span className="text-stone-400">•</span>
-                        <span className="text-stone-500 font-normal truncate">
-                          {pedido.ciudadDestino}
+                        <span className="text-[11px] text-stone-500 font-medium whitespace-nowrap">
+                          {pedido.productos.length} {pedido.productos.length === 1 ? 'prenda' : 'prendas'}
                         </span>
                       </div>
+
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase border whitespace-nowrap ${
+                          pedido.estado === 'RECIBIDO' || pedido.estado === 'CONFIRMADO'
+                            ? 'bg-amber-50 text-amber-900 border-amber-300'
+                            : pedido.estado === 'EN_PREPARACION'
+                            ? 'bg-indigo-50 text-indigo-900 border-indigo-300'
+                            : pedido.estado === 'LISTO_DESPACHO'
+                            ? 'bg-emerald-50 text-[#059669] border-emerald-300'
+                            : pedido.estado === 'DESPACHADO' || pedido.estado === 'EN_ENTREGA' || pedido.estado === 'ENTREGADO'
+                            ? 'bg-stone-100 text-stone-700 border-stone-300'
+                            : 'bg-rose-50 text-rose-800 border-rose-300'
+                        }`}
+                      >
+                        {badge?.label ?? pedido.estado}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Columna Derecha: Total, Badge y Botón */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
-                    <div className="text-left sm:text-right">
-                      <span className="block font-mono text-xs sm:text-sm font-black text-[#059669]">
-                        Total: {formatCOP(pedido.totalCOP)} COP
-                      </span>
-                      <span className="text-[11px] text-stone-500 font-medium">
-                        {pedido.productos.length} {pedido.productos.length === 1 ? 'prenda' : 'prendas'}
-                      </span>
-                    </div>
+                  {/* Nivel Inferior: Barra de Acciones Operativas */}
+                  <div className="border-t border-[#EFEAE4] pt-2.5 flex flex-wrap items-center justify-end gap-2">
+                    {!pedidoSeleccionado && (
+                      <>
+                        {(pedido.estado === 'RECIBIDO' || pedido.estado === 'CONFIRMADO') && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAvanzarEstado(pedido.codigo);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white text-xs font-black flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          >
+                            <Package className="w-3.5 h-3.5 text-[#D19650]" />
+                            <span>Iniciar Alistamiento / En Preparación</span>
+                          </button>
+                        )}
 
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase border ${
-                        pedido.estado === 'RECIBIDO' || pedido.estado === 'CONFIRMADO'
-                          ? 'bg-amber-50 text-amber-900 border-amber-300'
-                          : pedido.estado === 'EN_PREPARACION'
-                          ? 'bg-indigo-50 text-indigo-900 border-indigo-300'
-                          : pedido.estado === 'LISTO_DESPACHO'
-                          ? 'bg-emerald-50 text-[#059669] border-emerald-300'
-                          : pedido.estado === 'DESPACHADO' || pedido.estado === 'ENTREGADO'
-                          ? 'bg-stone-100 text-stone-700 border-stone-300'
-                          : 'bg-rose-50 text-rose-800 border-rose-300'
-                      }`}
-                    >
-                      {badge.label}
-                    </span>
+                        {pedido.estado === 'EN_PREPARACION' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAvanzarEstado(pedido.codigo);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#059669] hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          >
+                            <PackageCheck className="w-3.5 h-3.5" />
+                            <span>Marcar como Listo para Despacho</span>
+                          </button>
+                        )}
+
+                        {pedido.estado === 'LISTO_DESPACHO' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAvanzarEstado(pedido.codigo);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#1C1311] hover:bg-stone-800 text-[#D19650] text-xs font-black flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>Registrar Despacho a Transportadora</span>
+                          </button>
+                        )}
+
+                        {(pedido.estado === 'RECIBIDO' ||
+                          pedido.estado === 'CONFIRMADO' ||
+                          pedido.estado === 'EN_PREPARACION') && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPedidoContingencia(pedido);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-[#FAF7F4] hover:bg-red-50 text-[#661521] border border-[#661521]/30 text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>¿No tienes la prenda? Reportar y reasignar</span>
+                          </button>
+                        )}
+                      </>
+                    )}
 
                     <button
                       type="button"
@@ -407,7 +510,7 @@ export const PosPedidosWebPage: React.FC = () => {
                         setPedidoSeleccionadoCodigo(pedido.codigo);
                         setDrawerTab('detalle');
                       }}
-                      className="px-3 py-1.5 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors flex items-center gap-1 shrink-0"
+                      className="px-3 py-1.5 rounded-xl border border-[#50322A]/20 text-xs font-bold text-[#351912] bg-[#F4EFEA] hover:bg-[#E7DED2] transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
                     >
                       <span>Ver Detalle</span>
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -493,13 +596,29 @@ export const PosPedidosWebPage: React.FC = () => {
         >
           {/* Contenido de la pestaña Detalle */}
           <div className="space-y-4 text-xs">
-            {/* Aviso informativo de recaudación y cobro (Regla CA-40) */}
+            {/* Estado de Bandeja Compartida o Bloqueo por Sede */}
+            {pedidoSeleccionado.estado === 'RECIBIDO' ||
+            pedidoSeleccionado.estado === 'CONFIRMADO' ? (
+              <div className="p-2.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 font-bold flex items-center justify-between gap-2">
+                <span>Bandeja Compartida · Disponible para Tomar</span>
+                <span className="text-[11px] font-medium">
+                  Se bloqueará al iniciar alistamiento
+                </span>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-950 font-bold flex items-center justify-between gap-2">
+                <span>Bloqueado por {pedidoSeleccionado.sedeAsignada}</span>
+                <span className="text-[11px] font-medium">Asignación exclusiva</span>
+              </div>
+            )}
+
+            {/* Aviso informativo de recaudación y cobro */}
             <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-300 text-amber-950 space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
                 <Banknote className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>
                   {pedidoSeleccionado.metodoPago === 'CONTRAENTREGA'
-                    ? 'Recaudo por Transportadora (Regla CA-40)'
+                    ? 'Recaudo por Transportadora'
                     : 'Transferencia Bancaria Directa'}
                 </span>
               </div>

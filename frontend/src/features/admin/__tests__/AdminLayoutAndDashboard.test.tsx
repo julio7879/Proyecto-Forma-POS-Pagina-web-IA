@@ -4,6 +4,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AdminLayout } from '../../../layouts/AdminLayout';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
+import { recordPosSale } from '../../pos/utils/posLedgerSync';
+import { createWebOrder } from '../../pos/utils/webOrdersStore';
+import { abrirSesionCaja } from '../../pos/utils/cajaStore';
 
 describe('AdminLayout & AdminDashboardPage Redesign', () => {
   beforeEach(() => {
@@ -137,76 +140,166 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
     });
   });
 
-  describe('AdminDashboardPage - KPIs, Filtro Reactivo y Cero Slop', () => {
-    it('renderiza las 4 tarjetas KPI ejecutivas en consolidado por defecto', () => {
+  describe('AdminDashboardPage - KPIs 100% Reales, Filtro Reactivo y Cero Slop', () => {
+    it('renderiza las 4 tarjetas KPI ejecutivas en estado inicial real limpio ($0, 0 Pedidos Activos, 0/4 Sedes Abiertas) cuando localStorage está vacío', () => {
       render(
         <MemoryRouter>
           <AdminDashboardPage />
         </MemoryRouter>
       );
 
-      // 4 KPIs presentes
+      // 4 KPIs presentes con datos reales en 0 cuando no hay ventas ni sesiones abiertas
       expect(screen.getByText('Ventas Netas')).toBeInTheDocument();
-      expect(screen.getByText('$48.920.000 COP')).toBeInTheDocument();
+      expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$0 COP');
       expect(screen.getByText('Inventario Físico')).toBeInTheDocument();
-      expect(screen.getByText('3.140 Unidades')).toBeInTheDocument();
+      expect(screen.getByTestId('kpi-inventario-unidades')).toHaveTextContent(/Unidades/i);
       expect(screen.getByText('Pedidos Web Activos')).toBeInTheDocument();
-      expect(screen.getByText('18 Pedidos Activos')).toBeInTheDocument();
+      expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('0 Pedidos Activos');
       expect(screen.getByText('Estado de Caja')).toBeInTheDocument();
-      expect(screen.getByText('4/4 Sedes Abiertas')).toBeInTheDocument();
+      expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent('0/4 Sedes Abiertas');
+
+      // Verificar que NO existan los datos falsos antiguos
+      expect(screen.queryByText('$48.920.000 COP')).not.toBeInTheDocument();
+      expect(screen.queryByText('18 Pedidos Activos')).not.toBeInTheDocument();
+      expect(screen.queryByText('4/4 Sedes Abiertas')).not.toBeInTheDocument();
     });
 
-    it('filtra reactivamente todos los datos al seleccionar una sede en las píldoras', async () => {
+    it('calcula los totales reales y los filtra reactivamente al seleccionar una sede en las píldoras', async () => {
+      // Sembrar venta real en Punto Centro
+      recordPosSale({
+        id: 'vta-test-1',
+        consecutivo: 'POS-1001',
+        fechaHora: 'Hoy 10:00 a. m.',
+        fechaIso: new Date().toISOString(),
+        vendedor: 'Camilo Mendoza',
+        sede: 'Punto Centro (Cúcuta)',
+        cliente: 'Cliente Centro',
+        medioPago: 'EFECTIVO',
+        subtotalCop: 150000,
+        totalCop: 180000,
+        prendas: [
+          {
+            sku: 'ROP-CAM-NEG-S',
+            nombre: 'Camiseta Básica de Algodón',
+            cantidad: 4,
+            precioUnitarioCop: 45000,
+            totalCop: 180000,
+          },
+        ],
+      });
+
+      // Sembrar pedido web activo asignado a Punto Centro
+      createWebOrder({
+        codigo: 'WEB-9001',
+        fechaCreacionIso: new Date().toISOString(),
+        cliente: 'Laura Gómez',
+        emailCliente: 'laura@test.com',
+        ciudadDestino: 'Cúcuta',
+        codigoDaneDestino: '54001',
+        direccionEntrega: 'Av 0 #10-20',
+        sedeAsignada: 'Punto Centro (Cúcuta)',
+        metodoPago: 'TRANSFERENCIA',
+        metodoPagoTexto: 'Transferencia Bancolombia',
+        subtotalCOP: 100000,
+        ivaCOP: 19000,
+        fleteCOP: 0,
+        totalCOP: 120000,
+        estado: 'EN_PREPARACION',
+        estadoCobro: 'PAGADO',
+        productos: [
+          {
+            id: 'p-1',
+            nombre: 'Blazer Sastrería Imperial Vinotinto',
+            sku: 'ROP-BLZ-VIN-S',
+            talla: 'S',
+            color: 'Vinotinto',
+            cantidad: 1,
+            precioUnitarioCOP: 120000,
+          },
+        ],
+      });
+
+      // Abrir sesión de caja en Punto Centro
+      const sesion = abrirSesionCaja('Punto Centro (Cúcuta)', 'Camilo Mendoza', 200000);
+
       render(
         <MemoryRouter>
           <AdminDashboardPage />
         </MemoryRouter>
       );
 
-      // Clic en la píldora de "Punto Centro (Cúcuta)"
+      // En consolidado: 180.000 POS + 120.000 Web Pagado = $300.000 COP, 1/4 Sedes Abiertas
+      expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$300.000 COP');
+      expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('1 Pedidos Activos');
+      expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent('1/4 Sedes Abiertas');
+
+      // Clic en la píldora de "Punto Centro"
       const puntoCentroBtn = screen.getByTestId('pildora-sede-Punto Centro');
       fireEvent.click(puntoCentroBtn);
 
       await waitFor(() => {
-        // Los KPIs deben reflejar los datos de Punto Centro
-        const ventasNetasMatches = screen.getAllByText('$16.450.000 COP');
-        expect(ventasNetasMatches.length).toBeGreaterThanOrEqual(1);
-
-        const unidadesMatches = screen.getAllByText('740 Unidades');
-        expect(unidadesMatches.length).toBeGreaterThanOrEqual(1);
-
-        const pedidosMatches = screen.getAllByText('6 Pedidos Asignados');
-        expect(pedidosMatches.length).toBeGreaterThanOrEqual(1);
-
-        expect(screen.getByText('Caja Abierta (CAJ-401)')).toBeInTheDocument();
+        expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$300.000 COP');
+        expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('1 Pedidos Activos');
+        expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent(`Caja Abierta (${sesion.id})`);
       });
     });
 
-    it('permite filtrar la sede al hacer clic en las tarjetas de rendimiento comercial', async () => {
+    it('permite filtrar la sede al hacer clic en las tarjetas de comparación comercial', async () => {
+      // Sembrar venta real en Punto Caobos
+      recordPosSale({
+        id: 'vta-test-2',
+        consecutivo: 'POS-2001',
+        fechaHora: 'Hoy 11:30 a. m.',
+        fechaIso: new Date().toISOString(),
+        vendedor: 'Valeria Restrepo',
+        sede: 'Punto Caobos (Cúcuta)',
+        cliente: 'Cliente Caobos',
+        medioPago: 'TRANSFERENCIA',
+        subtotalCop: 200000,
+        totalCop: 245000,
+        prendas: [
+          {
+            sku: 'ROP-VES-ESM-S',
+            nombre: 'Vestido Midi Seda Andina Esmeralda',
+            cantidad: 1,
+            precioUnitarioCop: 245000,
+            totalCop: 245000,
+          },
+        ],
+      });
+
       render(
         <MemoryRouter>
           <AdminDashboardPage />
         </MemoryRouter>
       );
 
-      // Buscar la tarjeta comercial de Punto Caobos (Cúcuta)
+      // Buscar la tarjeta comercial de Punto Caobos
       const tarjetaCaobos = screen.getByTestId('tarjeta-sede-Punto Caobos');
       fireEvent.click(tarjetaCaobos);
 
       await waitFor(() => {
-        // KPI de ventas netas de Punto Caobos
-        const ventasCaobos = screen.getAllByText('$14.180.000 COP');
-        expect(ventasCaobos.length).toBeGreaterThanOrEqual(1);
-
-        const unidadesCaobos = screen.getAllByText('685 Unidades');
-        expect(unidadesCaobos.length).toBeGreaterThanOrEqual(1);
-
-        const pedidosCaobos = screen.getAllByText('5 Pedidos Asignados');
-        expect(pedidosCaobos.length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$245.000 COP');
+        expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('0 Pedidos Activos');
+        expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent('Caja Cerrada');
       });
     });
 
-    it('muestra el monitor de alertas ejecutivas (stock bajo y traslados)', () => {
+    it('muestra el monitor de alertas de inventario real y actividad reciente en vivo', () => {
+      recordPosSale({
+        id: 'vta-test-3',
+        consecutivo: 'POS-3009',
+        fechaHora: 'Hoy 02:15 p. m.',
+        fechaIso: new Date().toISOString(),
+        vendedor: 'Daniela Gómez',
+        sede: 'Punto Bucaramanga',
+        cliente: 'Cliente Test',
+        medioPago: 'EFECTIVO',
+        subtotalCop: 80000,
+        totalCop: 95000,
+        prendas: [],
+      });
+
       render(
         <MemoryRouter>
           <AdminDashboardPage />
@@ -214,13 +307,12 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
       );
 
       expect(screen.getByText('Alertas de Inventario Bajo')).toBeInTheDocument();
-      expect(screen.getByText('Chaqueta Denim Artesanal')).toBeInTheDocument();
-      expect(screen.getByText('Traslados y Despachos')).toBeInTheDocument();
-      expect(screen.getByText('#TRL-0084')).toBeInTheDocument();
+      expect(screen.getByText('Actividad y Movimientos en Vivo')).toBeInTheDocument();
+      expect(screen.getByText('#POS-3009')).toBeInTheDocument();
     });
 
     it('no contiene la bitácora inmutable de 200 filas ni códigos de documentación (RN-* o CA-*)', () => {
-      render(
+      const { container } = render(
         <MemoryRouter>
           <AdminDashboardPage />
         </MemoryRouter>
@@ -232,9 +324,9 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
       ).not.toBeInTheDocument();
 
       // No debe haber referencias a códigos de reglas
-      expect(screen.queryByText(/RN-GEN-02/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/RN-REP-01/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/CA-65/i)).not.toBeInTheDocument();
+      const text = container.textContent || '';
+      expect(text).not.toMatch(/RN-[A-Z]+-[0-9]+/);
+      expect(text).not.toMatch(/CA-[0-9]+/);
     });
   });
 });

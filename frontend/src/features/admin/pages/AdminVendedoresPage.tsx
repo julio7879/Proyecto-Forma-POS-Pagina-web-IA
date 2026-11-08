@@ -1,5 +1,5 @@
 // frontend/src/features/admin/pages/AdminVendedoresPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   fetchVendedores,
   fetchUbicaciones,
@@ -26,6 +26,11 @@ import {
   Phone,
   Mail,
 } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
+import { KPIStatCard } from '../components/KPIStatCard';
+import { DetailDrawer, ActivityTimelineItem } from '../../pos/components/DetailDrawer';
+
+const STORAGE_KEY_VENDEDORES = 'forma_admin_vendedores';
 
 const PERMISOS_CONFIG = [
   { key: 'permVender', label: 'Operar Terminal POS', desc: 'Permite registrar ventas y cobrar en mostrador' },
@@ -50,7 +55,7 @@ const SEDES_PREDETERMINADAS: UbicacionDTO[] = [
   { id: 1, nombre: 'Bodega Central (Cúcuta)', codigo: 'BOD-CEN', tipo: 'BODEGA_CENTRAL', esBodegaCentral: true, activo: true, ciudad: 'Cúcuta' },
 ];
 
-const VENDEDORES_INICIALES_DEMO: VendedorDTO[] = [
+const VENDEDORES_OFICIALES_SEDES: VendedorDTO[] = [
   {
     id: 101,
     nombreCompleto: 'Daniela Gómez',
@@ -99,17 +104,17 @@ const VENDEDORES_INICIALES_DEMO: VendedorDTO[] = [
     id: 103,
     nombreCompleto: 'Valeria Silva',
     correo: 'vendedor.caobos@forma.com',
-    telefono: '310 987 6543',
+    telefono: '318 765 4321',
     activo: true,
     rol: 'VENDEDOR',
     ubicacionId: 8,
     ubicacion: { id: 8, nombre: 'Punto Caobos (Cúcuta)', codigo: 'CUC-CAO', tipo: 'TIENDA_FISICA' },
-    creadoEn: '2026-10-14T09:30:00Z',
+    creadoEn: '2026-10-05T08:00:00Z',
     permVender: true,
     permCaja: true,
-    permDescuentoManual: true,
+    permDescuentoManual: false,
     permAnularVentas: false,
-    permDevoluciones: false,
+    permDevoluciones: true,
     permVerInventario: true,
     permSolicitarTraslado: true,
     permRecibirTraslado: true,
@@ -119,17 +124,17 @@ const VENDEDORES_INICIALES_DEMO: VendedorDTO[] = [
   },
   {
     id: 104,
-    nombreCompleto: 'Mateo Morales',
+    nombreCompleto: 'Mateo Ortiz',
     correo: 'vendedor.ocana@forma.com',
-    telefono: '318 654 3210',
+    telefono: '310 987 6543',
     activo: true,
     rol: 'VENDEDOR',
     ubicacionId: 3,
     ubicacion: { id: 3, nombre: 'Punto Ocaña', codigo: 'OCA-POS', tipo: 'TIENDA_FISICA' },
-    creadoEn: '2026-10-18T10:00:00Z',
+    creadoEn: '2026-10-01T08:00:00Z',
     permVender: true,
     permCaja: true,
-    permDescuentoManual: false,
+    permDescuentoManual: true,
     permAnularVentas: false,
     permDevoluciones: true,
     permVerInventario: true,
@@ -141,14 +146,44 @@ const VENDEDORES_INICIALES_DEMO: VendedorDTO[] = [
   },
 ];
 
+const getStoredVendedores = (): VendedorDTO[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_VENDEDORES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    localStorage.setItem(STORAGE_KEY_VENDEDORES, JSON.stringify(VENDEDORES_OFICIALES_SEDES));
+    return VENDEDORES_OFICIALES_SEDES;
+  } catch {
+    return VENDEDORES_OFICIALES_SEDES;
+  }
+};
+
+const saveStoredVendedores = (lista: VendedorDTO[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY_VENDEDORES, JSON.stringify(lista));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 export const AdminVendedoresPage: React.FC = () => {
   const [vendedores, setVendedores] = useState<VendedorDTO[]>([]);
   const [ubicaciones, setUbicaciones] = useState<UbicacionDTO[]>(SEDES_PREDETERMINADAS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mensajeNotificacion, setMensajeNotificacion] = useState<string | null>(null);
+
+  // Filtros
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroSede, setFiltroSede] = useState<string>('todas');
+
+  // DetailDrawer
+  const [selectedVendedor, setSelectedVendedor] = useState<VendedorDTO | null>(null);
+  const [drawerTab, setDrawerTab] = useState<'detalle' | 'actividad'>('detalle');
 
   // Modales
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -198,17 +233,20 @@ export const AdminVendedoresPage: React.FC = () => {
 
       if (vends && vends.length > 0) {
         setVendedores(vends);
+        saveStoredVendedores(vends);
       } else {
-        setVendedores(VENDEDORES_INICIALES_DEMO);
+        const persistidos = getStoredVendedores();
+        setVendedores(persistidos);
       }
 
       if (listaUbicaciones.length > 0 && formNuevo.ubicacionId === 0) {
-        const primerTienda = listaUbicaciones.find((u) => u.tipo === 'TIENDA_FISICA') || listaUbicaciones[0];
+        const primerTienda =
+          listaUbicaciones.find((u) => u.tipo === 'TIENDA_FISICA') || listaUbicaciones[0];
         setFormNuevo((prev) => ({ ...prev, ubicacionId: primerTienda.id }));
       }
     } catch (err: any) {
       setError(err.message || 'Error al sincronizar vendedores y sedes');
-      setVendedores(VENDEDORES_INICIALES_DEMO);
+      setVendedores(getStoredVendedores());
     } finally {
       setIsLoading(false);
     }
@@ -233,33 +271,54 @@ export const AdminVendedoresPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       const nuevo = await crearVendedor(formNuevo).catch(() => null);
-      if (nuevo) {
-        setVendedores((prev) => [nuevo, ...prev]);
-      } else {
-        const ubiAsignada = ubicaciones.find((u) => u.id === formNuevo.ubicacionId);
-        const vendedorLocal: VendedorDTO = {
-          ...formNuevo,
-          id: Date.now(),
-          telefono: formNuevo.telefono || null,
-          activo: true,
-          rol: 'VENDEDOR',
-          ubicacion: ubiAsignada ? { id: ubiAsignada.id, nombre: ubiAsignada.nombre, codigo: ubiAsignada.codigo, tipo: ubiAsignada.tipo } : null,
-          creadoEn: new Date().toISOString(),
-        };
-        setVendedores((prev) => [vendedorLocal, ...prev]);
-      }
+      const ubiAsignada = ubicaciones.find((u) => u.id === formNuevo.ubicacionId);
+      const vendedorFinal: VendedorDTO = nuevo || {
+        ...formNuevo,
+        id: Date.now(),
+        telefono: formNuevo.telefono || null,
+        activo: true,
+        rol: 'VENDEDOR',
+        ubicacion: ubiAsignada
+          ? {
+              id: ubiAsignada.id,
+              nombre: ubiAsignada.nombre,
+              codigo: ubiAsignada.codigo,
+              tipo: ubiAsignada.tipo,
+            }
+          : null,
+        creadoEn: new Date().toISOString(),
+      };
+
+      setVendedores((prev) => {
+        const actualizados = [vendedorFinal, ...prev];
+        saveStoredVendedores(actualizados);
+        return actualizados;
+      });
 
       setIsCreateOpen(false);
-      setFormNuevo((prev) => ({
-        ...prev,
+      mostrarExito(
+        `Vendedor "${formNuevo.nombreCompleto}" registrado exitosamente con sede asignada`
+      );
+      setFormNuevo({
         nombreCompleto: '',
         correo: '',
         password: '',
+        ubicacionId: ubicaciones[0]?.id || 2,
         telefono: '',
-      }));
-      mostrarExito(`Vendedor "${formNuevo.nombreCompleto}" registrado exitosamente.`);
+        permVender: true,
+        permCaja: true,
+        permDescuentoManual: true,
+        permAnularVentas: false,
+        permDevoluciones: false,
+        permVerInventario: true,
+        permSolicitarTraslado: true,
+        permRecibirTraslado: true,
+        permVerOtrosPuntos: false,
+        permPedidosWeb: false,
+        permVerVentasPunto: true,
+      });
     } catch (err: any) {
-      setModalError(err.message || 'No se pudo crear el vendedor');
+      setModalError(err.message || 'Error al registrar vendedor');
     } finally {
       setIsSubmitting(false);
     }
@@ -270,76 +329,84 @@ export const AdminVendedoresPage: React.FC = () => {
     if (!editingVendedor) return;
     setModalError(null);
     setIsSubmitting(true);
+
     try {
-      await actualizarVendedor(editingVendedor.id, {
-        nombreCompleto: editingVendedor.nombreCompleto,
+      const res = await actualizarVendedor(editingVendedor.id, {
+        ...editingVendedor,
         ubicacionId: editingVendedor.ubicacionId ?? undefined,
-        telefono: editingVendedor.telefono ?? undefined,
-        activo: editingVendedor.activo,
-        permVender: editingVendedor.permVender,
-        permCaja: editingVendedor.permCaja,
-        permDescuentoManual: editingVendedor.permDescuentoManual,
-        permAnularVentas: editingVendedor.permAnularVentas,
-        permDevoluciones: editingVendedor.permDevoluciones,
-        permVerInventario: editingVendedor.permVerInventario,
-        permSolicitarTraslado: editingVendedor.permSolicitarTraslado,
-        permRecibirTraslado: editingVendedor.permRecibirTraslado,
-        permVerOtrosPuntos: editingVendedor.permVerOtrosPuntos,
-        permPedidosWeb: editingVendedor.permPedidosWeb,
-        permVerVentasPunto: editingVendedor.permVerVentasPunto,
-      }).catch(() => null);
+        telefono: editingVendedor.telefono || undefined,
+      } as any).catch(() => null);
+      const ubiAsignada = ubicaciones.find((u) => u.id === editingVendedor.ubicacionId);
+      const vendedorActualizado: VendedorDTO = {
+        ...editingVendedor,
+        ...(res || {}),
+        ubicacionId: editingVendedor.ubicacionId,
+        ubicacion: ubiAsignada
+          ? {
+              id: ubiAsignada.id,
+              nombre: ubiAsignada.nombre,
+              codigo: ubiAsignada.codigo,
+              tipo: ubiAsignada.tipo,
+            }
+          : editingVendedor.ubicacion || null,
+      };
 
-      const ubiActualizada = ubicaciones.find((u) => u.id === editingVendedor.ubicacionId);
-      setVendedores((prev) =>
-        prev.map((v) =>
-          v.id === editingVendedor.id
-            ? {
-                ...editingVendedor,
-                ubicacion: ubiActualizada
-                  ? { id: ubiActualizada.id, nombre: ubiActualizada.nombre, codigo: ubiActualizada.codigo, tipo: ubiActualizada.tipo }
-                  : v.ubicacion,
-              }
-            : v
-        )
-      );
-
-      mostrarExito(`Información y permisos actualizados para "${editingVendedor.nombreCompleto}".`);
+      setVendedores((prev) => {
+        const actualizados = prev.map((v) =>
+          v.id === editingVendedor.id ? vendedorActualizado : v
+        );
+        saveStoredVendedores(actualizados);
+        return actualizados;
+      });
+      if (selectedVendedor?.id === editingVendedor.id) {
+        setSelectedVendedor(vendedorActualizado);
+      }
       setEditingVendedor(null);
+      mostrarExito(`Vendedor "${editingVendedor.nombreCompleto}" actualizado correctamente`);
     } catch (err: any) {
-      setModalError(err.message || 'No se pudo actualizar el vendedor');
+      setModalError(err.message || 'Error al actualizar vendedor');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Reasignación rápida de sede directamente desde la tabla
   const handleCambioRapidoSede = async (vendedorId: number, nuevaUbicacionId: number) => {
     setReasignandoId(vendedorId);
     try {
       await actualizarVendedor(vendedorId, { ubicacionId: nuevaUbicacionId }).catch(() => null);
+      const ubiAsignada = ubicaciones.find((u) => u.id === nuevaUbicacionId);
 
-      const nuevaSedeObj = ubicaciones.find((u) => u.id === nuevaUbicacionId);
-      setVendedores((prev) =>
-        prev.map((v) => {
+      setVendedores((prev) => {
+        const actualizados = prev.map((v) => {
           if (v.id === vendedorId) {
-            return {
+            const actualizado: VendedorDTO = {
               ...v,
               ubicacionId: nuevaUbicacionId,
-              ubicacion: nuevaSedeObj
-                ? { id: nuevaSedeObj.id, nombre: nuevaSedeObj.nombre, codigo: nuevaSedeObj.codigo, tipo: nuevaSedeObj.tipo }
-                : v.ubicacion,
+              ubicacion: ubiAsignada
+                ? {
+                    id: ubiAsignada.id,
+                    nombre: ubiAsignada.nombre,
+                    codigo: ubiAsignada.codigo,
+                    tipo: ubiAsignada.tipo,
+                  }
+                : null,
             };
+            if (selectedVendedor?.id === vendedorId) {
+              setSelectedVendedor(actualizado);
+            }
+            return actualizado;
           }
           return v;
-        })
-      );
+        });
+        saveStoredVendedores(actualizados);
+        return actualizados;
+      });
 
-      const vend = vendedores.find((v) => v.id === vendedorId);
-      mostrarExito(
-        `Sede autorizada actualizada para ${vend?.nombreCompleto || 'el vendedor'}: ahora asignado a "${nuevaSedeObj?.nombre}".`
-      );
+      const vendNombre =
+        vendedores.find((v) => v.id === vendedorId)?.nombreCompleto || 'Vendedor';
+      mostrarExito(`Sede autorizada actualizada para ${vendNombre} (${ubiAsignada?.nombre})`);
     } catch (err: any) {
-      setError('Error al actualizar la sede asignada: ' + (err.message || 'Error'));
+      setError(err.message || 'No se pudo reasignar la sede del vendedor');
     } finally {
       setReasignandoId(null);
     }
@@ -347,6 +414,7 @@ export const AdminVendedoresPage: React.FC = () => {
 
   const vendedoresFiltrados = vendedores.filter((v) => {
     const coincideTexto =
+      !filtroTexto.trim() ||
       v.nombreCompleto.toLowerCase().includes(filtroTexto.toLowerCase()) ||
       v.correo.toLowerCase().includes(filtroTexto.toLowerCase()) ||
       (v.telefono && v.telefono.includes(filtroTexto));
@@ -355,123 +423,119 @@ export const AdminVendedoresPage: React.FC = () => {
     return coincideTexto && coincideSede;
   });
 
-  return (
-    <div className="space-y-6">
-      {/* Encabezado Editorial Apple Liquid Glass */}
-      <div className="glass-mirror-card rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <span className="glass-mirror-pill inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest text-[#661521] border border-[#D19650]/40 mb-2">
-            Control de Nómina y Sedes Físicas
-          </span>
-          <div className="flex items-center gap-3">
-            <span className="p-3 bg-[#661521] text-[#D19650] border border-[#D19650] rounded-2xl shadow-md">
-              <Users className="w-6 h-6" />
-            </span>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-black text-[#171717] font-display tracking-tight">
-                Gestión de Vendedores y Sedes POS
-              </h1>
-              <p className="text-sm sm:text-base font-medium text-[#50322A] mt-1">
-                Asignación territorial de personal a puntos de venta físicos (Punto Centro, Caobos, Ocaña y Bucaramanga) y control de permisos de mostrador.
-              </p>
-            </div>
-          </div>
-        </div>
+  const timelineVendedor = useMemo<ActivityTimelineItem[]>(() => {
+    if (!selectedVendedor) return [];
+    const fechaAlta = selectedVendedor.creadoEn
+      ? new Date(selectedVendedor.creadoEn).toLocaleDateString('es-CO', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : 'Reciente';
+    return [
+      {
+        id: 'act-alta',
+        timestamp: fechaAlta,
+        title: 'Alta en Nómina y Asignación POS',
+        description: `Vendedor asignado a ${
+          selectedVendedor.ubicacion?.nombre || 'Sede Física'
+        } con credenciales activas.`,
+        user: 'Administración Central',
+        type: 'success',
+      },
+    ];
+  }, [selectedVendedor]);
 
-        <button
-          onClick={() => {
-            setModalError(null);
-            setIsCreateOpen(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-[#661521] hover:bg-[#4A0E17] text-white border border-[#D19650] text-sm font-bold rounded-2xl shadow-lg transition-all active:scale-95 self-start md:self-auto"
-        >
-          <UserPlus className="w-4 h-4 text-[#D19650]" />
-          <span>Nuevo Vendedor</span>
-        </button>
-      </div>
+  return (
+    <div className="space-y-5">
+      {/* Encabezado Ejecutivo */}
+      <PageHeader
+        title="Gestión de Vendedores y Sedes POS"
+        subtitle="Asignación territorial de personal a puntos de venta físicos (Punto Centro, Caobos, Ocaña y Bucaramanga) y control de permisos de mostrador."
+        badge="Control de Nómina y Sedes"
+        actions={
+          <button
+            onClick={() => {
+              setModalError(null);
+              setIsCreateOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#741C2B] hover:bg-[#5E1623] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-[#C49A68]" />
+            <span>Nuevo Vendedor</span>
+          </button>
+        }
+      />
 
       {/* Banner de Notificación de Éxito */}
       {mensajeNotificacion && (
-        <div className="p-4 bg-[#D19650]/20 border border-[#D19650] text-[#351912] rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-between gap-3 shadow-md transition-all">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-[#661521] shrink-0" />
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-bold flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
             <span>{mensajeNotificacion}</span>
           </div>
           <button
             onClick={() => setMensajeNotificacion(null)}
-            className="text-[#50322A] hover:text-[#171717]"
+            className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
       {/* Tarjetas de Métricas de Personal */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A]">
-            Total Vendedores
-          </span>
-          <div className="text-3xl font-black font-mono tabular-nums text-[#171717] mt-1">
-            {vendedores.length}
-          </div>
-          <span className="text-[11px] text-[#50322A]/80 font-medium">Personal registrado</span>
-        </div>
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A]">
-            Activos en Turno
-          </span>
-          <div className="text-3xl font-black font-mono tabular-nums text-[#661521] mt-1">
-            {vendedores.filter((v) => v.activo && v.permVender).length}
-          </div>
-          <span className="text-[11px] text-[#661521] font-bold">Con acceso a terminal POS</span>
-        </div>
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A]">
-            Puntos Cubiertos
-          </span>
-          <div className="text-3xl font-black font-mono tabular-nums text-[#351912] mt-1">
-            {new Set(vendedores.map((v) => v.ubicacionId).filter(Boolean)).size} /{' '}
-            {ubicaciones.filter((u) => u.tipo === 'TIENDA_FISICA').length}
-          </div>
-          <span className="text-[11px] text-[#50322A]/80 font-medium">Sedes con cajero asignado</span>
-        </div>
-        <div className="glass-mirror-card p-5 rounded-3xl">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-[#50322A]">
-            Especialistas Web
-          </span>
-          <div className="text-3xl font-black font-mono tabular-nums text-[#171717] mt-1">
-            {vendedores.filter((v) => v.permPedidosWeb).length}
-          </div>
-          <span className="text-[11px] text-[#50322A]/80 font-medium">Atención omnicanal</span>
-        </div>
+        <KPIStatCard
+          title="Total Vendedores"
+          value={vendedores.length.toString()}
+          subtitle="Personal registrado"
+          icon={Users}
+        />
+        <KPIStatCard
+          title="Activos en Turno"
+          value={vendedores.filter((v) => v.activo && v.permVender).length.toString()}
+          subtitle="Con acceso a terminal POS"
+          icon={CheckCircle2}
+        />
+        <KPIStatCard
+          title="Puntos Cubiertos"
+          value={`${new Set(vendedores.map((v) => v.ubicacionId).filter(Boolean)).size} / ${
+            ubicaciones.filter((u) => u.tipo === 'TIENDA_FISICA').length
+          }`}
+          subtitle="Sedes con cajero asignado"
+          icon={Store}
+        />
+        <KPIStatCard
+          title="Especialistas Web"
+          value={vendedores.filter((v) => v.permPedidosWeb).length.toString()}
+          subtitle="Atención omnicanal"
+          icon={Sparkles}
+        />
       </div>
 
       {/* Barra de Búsqueda y Filtro por Sede */}
-      <div className="glass-mirror-card p-5 rounded-3xl flex flex-col sm:flex-row items-center gap-3.5">
+      <div className="bg-white p-3 rounded-2xl border border-[#E7E0D8] flex flex-col sm:flex-row items-center gap-3 shadow-xs">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-[#50322A]" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#77736E]" />
           <input
             type="text"
             value={filtroTexto}
             onChange={(e) => setFiltroTexto(e.target.value)}
             placeholder="Buscar por nombre, correo o teléfono..."
-            className="capsule-mirror-input w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm font-semibold text-[#171717] placeholder-[#50322A]/60"
+            className="w-full pl-9 pr-4 py-2 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] placeholder-[#77736E] focus:outline-none focus:border-[#741C2B]"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-[#50322A] shrink-0" />
+          <Filter className="w-3.5 h-3.5 text-[#77736E] shrink-0" />
           <select
             value={filtroSede}
             onChange={(e) => setFiltroSede(e.target.value)}
-            className="capsule-mirror-input px-4 py-2.5 rounded-2xl text-sm font-bold text-[#171717] cursor-pointer w-full sm:w-auto"
+            className="px-3 py-2 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#292827] cursor-pointer w-full sm:w-auto focus:outline-none focus:border-[#741C2B]"
           >
-            <option value="todas" className="bg-[#F4EFE8] text-[#171717]">
-              Todas las Sedes Físicas
-            </option>
+            <option value="todas">Todas las Sedes Físicas</option>
             {ubicaciones.map((u) => (
-              <option key={u.id} value={u.id.toString()} className="bg-[#F4EFE8] text-[#171717]">
+              <option key={u.id} value={u.id.toString()}>
                 {u.nombre}
               </option>
             ))}
@@ -481,184 +545,293 @@ export const AdminVendedoresPage: React.FC = () => {
 
       {/* Tabla Principal de Vendedores */}
       {isLoading ? (
-        <div className="glass-mirror-card p-14 rounded-3xl text-center text-[#50322A] flex flex-col items-center gap-3">
-          <Loader2 className="w-7 h-7 animate-spin text-[#661521]" />
-          <span className="text-sm font-bold">Cargando nómina de vendedores...</span>
+        <div className="bg-white p-12 rounded-2xl border border-[#E7E0D8] text-center text-[#77736E] flex flex-col items-center gap-2 shadow-xs">
+          <Loader2 className="w-6 h-6 animate-spin text-[#741C2B]" />
+          <span className="text-xs font-bold">Cargando nómina de vendedores...</span>
         </div>
       ) : error ? (
-        <div className="glass-mirror-card p-5 border border-[#661521]/40 text-[#661521] rounded-3xl text-sm font-bold flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
+        <div className="bg-rose-50 border border-rose-200 text-[#C44848] p-4 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-xs">
+          <AlertCircle className="w-4 h-4" />
           <span>{error}</span>
         </div>
       ) : vendedoresFiltrados.length === 0 ? (
-        <div className="glass-mirror-card p-14 text-center rounded-3xl">
-          <Users className="w-10 h-10 text-[#50322A] mx-auto mb-3" />
-          <p className="text-base font-bold text-[#171717]">
+        <div className="bg-white p-12 text-center rounded-2xl border border-[#E7E0D8] shadow-xs">
+          <Users className="w-8 h-8 text-[#C49A68] mx-auto mb-2 opacity-60" />
+          <p className="text-xs font-bold text-[#292827]">
             No se encontraron vendedores registrados o coincidentes con los filtros.
           </p>
         </div>
       ) : (
-        <div className="glass-mirror-card rounded-3xl overflow-hidden shadow-xl border border-[#D19650]/30">
+        <div className="bg-white rounded-2xl border border-[#E7E0D8] overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#50322A]/20 bg-[#E7DED2]/85 text-xs font-extrabold text-[#351912] uppercase tracking-wider">
-                  <th className="px-5 py-4">Vendedor</th>
-                  <th className="px-5 py-4">Sede Asignada (Edición Rápida)</th>
-                  <th className="px-5 py-4">Permisos Operativos</th>
-                  <th className="px-5 py-4">Estado</th>
-                  <th className="px-5 py-4 text-right">Acciones</th>
+                <tr className="border-b border-[#E7E0D8] bg-[#F5F3EF] text-[11px] font-semibold text-[#77736E] uppercase tracking-wider">
+                  <th className="px-5 py-3.5">Vendedor</th>
+                  <th className="px-5 py-3.5">Sede Asignada (Edición Rápida)</th>
+                  <th className="px-5 py-3.5">Permisos Operativos</th>
+                  <th className="px-5 py-3.5">Estado</th>
+                  <th className="px-5 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#50322A]/10 text-sm">
-                {vendedoresFiltrados.map((v) => (
-                  <tr
-                    key={v.id}
-                    className="hover:bg-white/80 transition-colors"
-                  >
-                    {/* Información del Vendedor */}
-                    <td className="px-5 py-4">
-                      <div className="font-extrabold text-[#171717] text-sm flex items-center gap-2">
-                        <span>{v.nombreCompleto}</span>
-                        {v.ubicacion?.nombre?.includes('Bucaramanga') && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-[#D19650]/20 text-[#661521] border border-[#D19650]/40">
-                            <Sparkles className="w-3 h-3 text-[#D19650]" /> Bucaramanga
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-[#50322A] font-mono tabular-nums font-medium flex items-center gap-1.5 mt-0.5">
-                        <Mail className="w-3 h-3 text-[#661521]" />
-                        <span>{v.correo}</span>
-                      </div>
-                      {v.telefono && (
-                        <div className="text-xs text-[#50322A]/80 font-mono flex items-center gap-1.5 mt-0.5">
-                          <Phone className="w-3 h-3 text-[#D19650]" />
-                          <span>{v.telefono}</span>
+              <tbody className="divide-y divide-[#E7E0D8]">
+                {vendedoresFiltrados.map((v) => {
+                  const isSelected = selectedVendedor?.id === v.id;
+                  return (
+                    <tr
+                      key={v.id}
+                      onClick={() => setSelectedVendedor(v)}
+                      className={`transition-colors h-14 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#741C2B]/5 border-l-4 border-l-[#741C2B]'
+                          : 'hover:bg-[#F5F3EF]/60'
+                      }`}
+                    >
+                      {/* Información del Vendedor */}
+                      <td className="px-5 py-3">
+                        <div className="font-bold text-[#292827] text-xs flex items-center gap-2">
+                          <span>{v.nombreCompleto}</span>
+                          {v.ubicacion?.nombre?.includes('Bucaramanga') && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-[#F5F3EF] text-[#741C2B] border border-[#E7E0D8]">
+                              <Sparkles className="w-2.5 h-2.5 text-[#C49A68]" /> Bucaramanga
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </td>
-
-                    {/* Selector Directo de Cambio Rápido de Sede */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="relative inline-block w-full max-w-[220px]">
-                          <select
-                            value={v.ubicacionId || ''}
-                            disabled={reasingnandoId === v.id}
-                            onChange={(e) => handleCambioRapidoSede(v.id, Number(e.target.value))}
-                            className="capsule-mirror-input w-full pl-8 pr-3 py-1.5 rounded-xl text-xs font-bold text-[#171717] border border-[#D19650]/50 cursor-pointer bg-white/70 hover:bg-white disabled:opacity-50"
-                            title="Cambiar punto de venta asignado para este vendedor"
-                          >
-                            {ubicaciones.map((u) => (
-                              <option key={u.id} value={u.id} className="bg-[#F4EFE8] text-[#171717]">
-                                {u.nombre}
-                              </option>
-                            ))}
-                          </select>
-                          <Store className="w-3.5 h-3.5 text-[#661521] absolute left-2.5 top-2.5 pointer-events-none" />
+                        <div className="text-[11px] text-[#77736E] font-mono tabular-nums flex items-center gap-1.5 mt-0.5">
+                          <Mail className="w-3 h-3 text-[#741C2B]" />
+                          <span>{v.correo}</span>
                         </div>
-                        {reasingnandoId === v.id && (
-                          <Loader2 className="w-4 h-4 animate-spin text-[#661521]" />
+                        {v.telefono && (
+                          <div className="text-[11px] text-[#77736E] font-mono flex items-center gap-1.5 mt-0.5">
+                            <Phone className="w-3 h-3 text-[#C49A68]" />
+                            <span>{v.telefono}</span>
+                          </div>
                         )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Badges de Permisos */}
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-1.5 max-w-sm">
-                        {v.permVender && (
-                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#661521] text-white border border-[#D19650]/50">
-                            Venta POS
-                          </span>
-                        )}
-                        {v.permCaja && (
-                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#351912] text-[#F4EFE8] border border-[#D19650]/40">
-                            Caja
-                          </span>
-                        )}
-                        {v.permDescuentoManual && (
-                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#D19650]/25 text-[#171717] border border-[#D19650]">
-                            Descuentos
-                          </span>
-                        )}
-                        {v.permDevoluciones && (
-                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#661521]/15 text-[#661521] border border-[#661521]/30">
-                            Devolución
-                          </span>
-                        )}
-                        {v.permPedidosWeb && (
-                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#E7DED2] text-[#351912] border border-[#50322A]/30">
-                            Web
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                      {/* Selector Directo de Cambio Rápido de Sede */}
+                      <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          <div className="relative inline-block w-full max-w-[210px]">
+                            <select
+                              value={v.ubicacionId || ''}
+                              disabled={reasingnandoId === v.id}
+                              onChange={(e) => handleCambioRapidoSede(v.id, Number(e.target.value))}
+                              className="w-full pl-7 pr-3 py-1.5 bg-[#F5F3EF] rounded-xl text-xs font-semibold text-[#292827] border border-[#E7E0D8] cursor-pointer hover:bg-white disabled:opacity-50 focus:outline-none focus:border-[#741C2B]"
+                              title="Cambiar punto de venta asignado para este vendedor"
+                            >
+                              {ubicaciones.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.nombre}
+                                </option>
+                              ))}
+                            </select>
+                            <Store className="w-3 h-3 text-[#741C2B] absolute left-2.5 top-2.5 pointer-events-none" />
+                          </div>
+                          {reasingnandoId === v.id && (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#741C2B]" />
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Estado Activo / Inactivo */}
-                    <td className="px-5 py-4">
-                      {v.activo ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-[#661521] font-extrabold bg-[#D19650]/20 px-2.5 py-1 rounded-full border border-[#D19650]/50">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Activo</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-[#50322A] font-bold bg-[#50322A]/10 px-2.5 py-1 rounded-full">
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Inactivo</span>
-                        </span>
-                      )}
-                    </td>
+                      {/* Badges de Permisos */}
+                      <td className="px-5 py-3">
+                        <div className="flex flex-wrap gap-1 max-w-sm">
+                          {v.permVender && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#741C2B] text-white">
+                              Venta POS
+                            </span>
+                          )}
+                          {v.permCaja && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#292827] text-white">
+                              Caja
+                            </span>
+                          )}
+                          {v.permDescuentoManual && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F5F3EF] text-[#741C2B] border border-[#E7E0D8]">
+                              Descuentos
+                            </span>
+                          )}
+                          {v.permDevoluciones && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-[#C44848] border border-rose-200">
+                              Devolución
+                            </span>
+                          )}
+                          {v.permPedidosWeb && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                              Web
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Acciones */}
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => {
-                          setModalError(null);
-                          setEditingVendedor({ ...v });
-                        }}
-                        className="glass-mirror-pill inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#351912] hover:text-[#661521] hover:border-[#661521] border border-[#D19650]/40 rounded-xl transition-all shadow-sm active:scale-95"
-                        title="Editar permisos completos y datos"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-[#661521]" />
-                        <span>Editar</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      {/* Estado Activo / Inactivo */}
+                      <td className="px-5 py-3">
+                        {v.activo ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Activo</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-[#77736E] font-medium bg-[#F5F3EF] px-2.5 py-1 rounded-full border border-[#E7E0D8]">
+                            <XCircle className="w-3 h-3" />
+                            <span>Inactivo</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Acciones */}
+                      <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => {
+                            setModalError(null);
+                            setEditingVendedor({ ...v });
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#292827] hover:text-[#741C2B] hover:bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                          title="Editar permisos completos y datos"
+                        >
+                          <Edit2 className="w-3 h-3 text-[#741C2B]" />
+                          <span>Editar</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
+      {/* DetailDrawer Lateral de Vendedor */}
+      <DetailDrawer
+        isOpen={selectedVendedor !== null}
+        onClose={() => setSelectedVendedor(null)}
+        title={selectedVendedor?.nombreCompleto || 'Ficha de Vendedor'}
+        subtitle={selectedVendedor?.ubicacion?.nombre || 'Sede Física Asignada'}
+        badge={
+          selectedVendedor
+            ? {
+                label: selectedVendedor.activo ? 'Activo en Turno' : 'Inactivo',
+                variant: selectedVendedor.activo ? 'success' : 'neutral',
+              }
+            : undefined
+        }
+        tabs={[
+          { id: 'detalle', label: 'Perfil y Permisos' },
+          { id: 'actividad', label: 'Actividad' },
+        ]}
+        activeTab={drawerTab}
+        onTabChange={(t) => setDrawerTab(t as 'detalle' | 'actividad')}
+        activityItems={timelineVendedor}
+        footerActions={
+          selectedVendedor ? (
+            <button
+              type="button"
+              onClick={() => {
+                const target = selectedVendedor;
+                setSelectedVendedor(null);
+                setModalError(null);
+                setEditingVendedor({ ...target });
+              }}
+              className="w-full py-2.5 bg-[#741C2B] hover:bg-[#5E1623] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-[#C49A68]" />
+              <span>Editar Permisos y Sede</span>
+            </button>
+          ) : undefined
+        }
+      >
+        {selectedVendedor && (
+          <div className="space-y-4 text-xs">
+            <div className="p-4 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] space-y-2.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#77736E]">
+                Datos Corporativos
+              </h4>
+              <div className="flex items-center gap-2 text-[#292827]">
+                <Mail className="w-3.5 h-3.5 text-[#741C2B]" />
+                <span className="font-mono">{selectedVendedor.correo}</span>
+              </div>
+              {selectedVendedor.telefono && (
+                <div className="flex items-center gap-2 text-[#292827]">
+                  <Phone className="w-3.5 h-3.5 text-[#C49A68]" />
+                  <span className="font-mono">{selectedVendedor.telefono}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-[#292827]">
+                <Store className="w-3.5 h-3.5 text-[#741C2B]" />
+                <span className="font-bold">
+                  {selectedVendedor.ubicacion?.nombre || 'Sede no asignada'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#77736E] mb-2.5">
+                Permisos de Mostrador Habilitados
+              </h4>
+              <div className="grid grid-cols-1 gap-2">
+                {PERMISOS_CONFIG.map(({ key, label, desc }) => {
+                  const habilitado = Boolean(selectedVendedor[key as keyof VendedorDTO]);
+                  return (
+                    <div
+                      key={key}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                        habilitado
+                          ? 'bg-white border-[#E7E0D8]'
+                          : 'bg-[#F5F3EF]/60 border-[#E7E0D8]/60 opacity-60'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-bold text-[#292827] block">{label}</span>
+                        <span className="text-[11px] text-[#77736E]">{desc}</span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          habilitado
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-[#F5F3EF] text-[#77736E]'
+                        }`}
+                      >
+                        {habilitado ? 'Habilitado' : 'Restringido'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
+
       {/* Modal Crear Vendedor */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-[#171717]/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-mirror-card rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-[#50322A]/15">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-[#E7E0D8]">
+            <div className="flex justify-between items-center pb-4 border-b border-[#E7E0D8]">
               <div className="flex items-center gap-2.5">
-                <span className="p-2 bg-[#661521] text-[#D19650] rounded-xl">
-                  <UserPlus className="w-5 h-5" />
+                <span className="p-2 bg-[#741C2B]/10 text-[#741C2B] rounded-xl border border-[#741C2B]/20">
+                  <UserPlus className="w-4 h-4" />
                 </span>
                 <div>
-                  <h2 className="text-xl font-black text-[#171717] font-display">
+                  <h2 className="text-base font-bold text-[#292827]">
                     Registrar Nuevo Vendedor
                   </h2>
-                  <p className="text-xs text-[#50322A] font-medium">
+                  <p className="text-xs text-[#77736E]">
                     Asigne el punto de venta autorizado obligatorio y configure los permisos de caja.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsCreateOpen(false)}
-                className="text-[#50322A] hover:text-[#661521] p-1.5 rounded-lg hover:bg-black/5"
+                className="text-[#77736E] hover:text-[#292827] p-1.5 rounded-lg hover:bg-[#F5F3EF] cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {modalError && (
-              <div className="mt-4 p-3.5 bg-[#661521]/10 text-[#661521] border border-[#661521]/30 rounded-2xl text-xs font-bold flex items-center gap-2">
+              <div className="mt-4 p-3 bg-rose-50 text-[#C44848] border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{modalError}</span>
               </div>
@@ -667,7 +840,7 @@ export const AdminVendedoresPage: React.FC = () => {
             <form onSubmit={handleCrearVendedor} className="mt-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
                     Nombre Completo *
                   </label>
                   <input
@@ -678,12 +851,12 @@ export const AdminVendedoresPage: React.FC = () => {
                       setFormNuevo({ ...formNuevo, nombreCompleto: e.target.value })
                     }
                     placeholder="Ej. Daniela Gómez"
-                    className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-semibold text-[#171717]"
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
                     Correo Electrónico *
                   </label>
                   <input
@@ -694,14 +867,14 @@ export const AdminVendedoresPage: React.FC = () => {
                       setFormNuevo({ ...formNuevo, correo: e.target.value })
                     }
                     placeholder="daniela.bucaramanga@forma.com"
-                    className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-semibold text-[#171717]"
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
                     Contraseña Inicial *
                   </label>
                   <input
@@ -713,12 +886,12 @@ export const AdminVendedoresPage: React.FC = () => {
                       setFormNuevo({ ...formNuevo, password: e.target.value })
                     }
                     placeholder="Mínimo 8 caracteres"
-                    className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-semibold text-[#171717]"
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
                     Sede Asignada Obligatoria *
                   </label>
                   <select
@@ -726,10 +899,10 @@ export const AdminVendedoresPage: React.FC = () => {
                     onChange={(e) =>
                       setFormNuevo({ ...formNuevo, ubicacionId: Number(e.target.value) })
                     }
-                    className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-bold text-[#171717]"
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
                   >
                     {ubicaciones.map((u) => (
-                      <option key={u.id} value={u.id} className="bg-[#F4EFE8] text-[#171717]">
+                      <option key={u.id} value={u.id}>
                         {u.nombre}
                       </option>
                     ))}
@@ -738,7 +911,7 @@ export const AdminVendedoresPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-[#292827] mb-1.5">
                   Teléfono de Contacto (opcional)
                 </label>
                 <input
@@ -746,21 +919,21 @@ export const AdminVendedoresPage: React.FC = () => {
                   value={formNuevo.telefono || ''}
                   onChange={(e) => setFormNuevo({ ...formNuevo, telefono: e.target.value })}
                   placeholder="315 889 4210"
-                  className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-semibold text-[#171717]"
+                  className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
                 />
               </div>
 
               {/* Matriz de Permisos */}
-              <div className="pt-3 border-t border-[#50322A]/15">
-                <span className="text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#661521]" />
+              <div className="pt-3 border-t border-[#E7E0D8]">
+                <span className="text-xs font-bold text-[#292827] mb-3 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#741C2B]" />
                   <span>Matriz de Permisos Operativos de Caja</span>
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {PERMISOS_CONFIG.map(({ key, label, desc }) => (
                     <label
                       key={key}
-                      className="glass-mirror-pill flex items-start gap-2.5 p-3 rounded-2xl border border-[#D19650]/35 cursor-pointer hover:border-[#661521] transition-colors"
+                      className="flex items-start gap-2.5 p-2.5 rounded-xl border border-[#E7E0D8] bg-[#F5F3EF]/50 cursor-pointer hover:border-[#741C2B] transition-colors"
                     >
                       <input
                         type="checkbox"
@@ -771,33 +944,33 @@ export const AdminVendedoresPage: React.FC = () => {
                             [key]: e.target.checked,
                           })
                         }
-                        className="mt-0.5 w-4 h-4 rounded accent-[#661521]"
+                        className="mt-0.5 w-3.5 h-3.5 rounded accent-[#741C2B]"
                       />
                       <div>
-                        <div className="font-bold text-[#171717] text-xs">
-                          {label}
-                        </div>
-                        <div className="text-[11px] font-medium text-[#50322A]">{desc}</div>
+                        <div className="font-bold text-[#292827] text-xs">{label}</div>
+                        <div className="text-[11px] text-[#77736E]">{desc}</div>
                       </div>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-[#50322A]/15">
+              <div className="pt-4 flex justify-end gap-2 border-t border-[#E7E0D8]">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="glass-mirror-pill px-5 py-2.5 text-xs font-bold text-[#50322A] hover:text-[#171717] rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF] rounded-xl cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-[#661521] hover:bg-[#4A0E17] text-white border border-[#D19650] text-xs font-bold rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-50"
+                  className="px-4 py-2 bg-[#741C2B] hover:bg-[#5E1623] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin text-[#D19650]" /> : null}
+                  {isSubmitting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C49A68]" />
+                  ) : null}
                   <span>Guardar Vendedor</span>
                 </button>
               </div>
@@ -808,32 +981,32 @@ export const AdminVendedoresPage: React.FC = () => {
 
       {/* Modal Editar Vendedor */}
       {editingVendedor && (
-        <div className="fixed inset-0 z-50 bg-[#171717]/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-mirror-card rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-[#50322A]/15">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-[#E7E0D8]">
+            <div className="flex justify-between items-center pb-4 border-b border-[#E7E0D8]">
               <div className="flex items-center gap-2.5">
-                <span className="p-2 bg-[#661521] text-[#D19650] rounded-xl">
-                  <Edit2 className="w-5 h-5" />
+                <span className="p-2 bg-[#741C2B]/10 text-[#741C2B] rounded-xl border border-[#741C2B]/20">
+                  <Edit2 className="w-4 h-4" />
                 </span>
                 <div>
-                  <h2 className="text-xl font-black text-[#171717] font-display">
+                  <h2 className="text-base font-bold text-[#292827]">
                     Editar Vendedor: {editingVendedor.nombreCompleto}
                   </h2>
-                  <p className="text-xs text-[#50322A] font-medium">
-                    Actualice la sede asignada, estado de acceso y permisos operativos.
+                  <p className="text-xs text-[#77736E]">
+                    Modifique los datos de contacto, sede física autorizada o permisos operativos.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setEditingVendedor(null)}
-                className="text-[#50322A] hover:text-[#661521] p-1.5 rounded-lg hover:bg-black/5"
+                className="text-[#77736E] hover:text-[#292827] p-1.5 rounded-lg hover:bg-[#F5F3EF] cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {modalError && (
-              <div className="mt-4 p-3.5 bg-[#661521]/10 text-[#661521] border border-[#661521]/30 rounded-2xl text-xs font-bold flex items-center gap-2">
+              <div className="mt-4 p-3 bg-rose-50 text-[#C44848] border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{modalError}</span>
               </div>
@@ -842,8 +1015,40 @@ export const AdminVendedoresPage: React.FC = () => {
             <form onSubmit={handleActualizarVendedor} className="mt-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
-                    Sede Asignada
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
+                    Nombre Completo
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingVendedor.nombreCompleto}
+                    onChange={(e) =>
+                      setEditingVendedor({ ...editingVendedor, nombreCompleto: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
+                    Correo Electrónico
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editingVendedor.correo}
+                    onChange={(e) =>
+                      setEditingVendedor({ ...editingVendedor, correo: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
+                    Sede Asignada Obligatoria
                   </label>
                   <select
                     value={editingVendedor.ubicacionId || ''}
@@ -853,10 +1058,10 @@ export const AdminVendedoresPage: React.FC = () => {
                         ubicacionId: Number(e.target.value),
                       })
                     }
-                    className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-bold text-[#171717]"
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
                   >
                     {ubicaciones.map((u) => (
-                      <option key={u.id} value={u.id} className="bg-[#F4EFE8] text-[#171717]">
+                      <option key={u.id} value={u.id}>
                         {u.nombre}
                       </option>
                     ))}
@@ -864,54 +1069,60 @@ export const AdminVendedoresPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
-                    Estado en el Sistema
+                  <label className="block text-xs font-bold text-[#292827] mb-1.5">
+                    Teléfono de Contacto
                   </label>
-                  <select
-                    value={editingVendedor.activo ? '1' : '0'}
+                  <input
+                    type="text"
+                    value={editingVendedor.telefono || ''}
                     onChange={(e) =>
-                      setEditingVendedor({
-                        ...editingVendedor,
-                        activo: e.target.value === '1',
-                      })
+                      setEditingVendedor({ ...editingVendedor, telefono: e.target.value })
                     }
-                    className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-bold text-[#171717]"
-                  >
-                    <option value="1" className="bg-[#F4EFE8] text-[#171717]">
-                      Activo (Puede ingresar al POS)
-                    </option>
-                    <option value="0" className="bg-[#F4EFE8] text-[#171717]">
-                      Inactivo (Acceso revocado)
-                    </option>
-                  </select>
+                    placeholder="315 889 4210"
+                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] focus:outline-none focus:border-[#741C2B]"
+                  />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-1.5">
-                  Teléfono de Contacto
+                <label className="block text-xs font-bold text-[#292827] mb-1.5">
+                  Estado del Vendedor
                 </label>
-                <input
-                  type="text"
-                  value={editingVendedor.telefono || ''}
-                  onChange={(e) =>
-                    setEditingVendedor({ ...editingVendedor, telefono: e.target.value })
-                  }
-                  placeholder="315 889 4210"
-                  className="capsule-mirror-input w-full p-3 rounded-2xl text-sm font-semibold text-[#171717]"
-                />
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#292827]">
+                    <input
+                      type="radio"
+                      name="estadoVendedor"
+                      checked={editingVendedor.activo}
+                      onChange={() => setEditingVendedor({ ...editingVendedor, activo: true })}
+                      className="accent-[#741C2B]"
+                    />
+                    <span>Activo en Turno</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#77736E]">
+                    <input
+                      type="radio"
+                      name="estadoVendedor"
+                      checked={!editingVendedor.activo}
+                      onChange={() => setEditingVendedor({ ...editingVendedor, activo: false })}
+                      className="accent-[#741C2B]"
+                    />
+                    <span>Inactivo / Suspendido</span>
+                  </label>
+                </div>
               </div>
 
               {/* Matriz de Permisos */}
-              <div className="pt-3 border-t border-[#50322A]/15">
-                <span className="block text-xs font-extrabold text-[#351912] uppercase tracking-wider mb-3">
-                  Matriz de Permisos Concedidos
+              <div className="pt-3 border-t border-[#E7E0D8]">
+                <span className="text-xs font-bold text-[#292827] mb-3 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#741C2B]" />
+                  <span>Matriz de Permisos Operativos de Caja</span>
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {PERMISOS_CONFIG.map(({ key, label, desc }) => (
                     <label
                       key={key}
-                      className="glass-mirror-pill flex items-start gap-2.5 p-3 rounded-2xl border border-[#D19650]/35 cursor-pointer hover:border-[#661521] transition-colors"
+                      className="flex items-start gap-2.5 p-2.5 rounded-xl border border-[#E7E0D8] bg-[#F5F3EF]/50 cursor-pointer hover:border-[#741C2B] transition-colors"
                     >
                       <input
                         type="checkbox"
@@ -922,33 +1133,33 @@ export const AdminVendedoresPage: React.FC = () => {
                             [key]: e.target.checked,
                           })
                         }
-                        className="mt-0.5 w-4 h-4 rounded accent-[#661521]"
+                        className="mt-0.5 w-3.5 h-3.5 rounded accent-[#741C2B]"
                       />
                       <div>
-                        <div className="font-bold text-[#171717] text-xs">
-                          {label}
-                        </div>
-                        <div className="text-[11px] font-medium text-[#50322A]">{desc}</div>
+                        <div className="font-bold text-[#292827] text-xs">{label}</div>
+                        <div className="text-[11px] text-[#77736E]">{desc}</div>
                       </div>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-[#50322A]/15">
+              <div className="pt-4 flex justify-end gap-2 border-t border-[#E7E0D8]">
                 <button
                   type="button"
                   onClick={() => setEditingVendedor(null)}
-                  className="glass-mirror-pill px-5 py-2.5 text-xs font-bold text-[#50322A] hover:text-[#171717] rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF] rounded-xl cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-[#661521] hover:bg-[#4A0E17] text-white border border-[#D19650] text-xs font-bold rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-50"
+                  className="px-4 py-2 bg-[#741C2B] hover:bg-[#5E1623] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin text-[#D19650]" /> : null}
+                  {isSubmitting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C49A68]" />
+                  ) : null}
                   <span>Guardar Cambios</span>
                 </button>
               </div>

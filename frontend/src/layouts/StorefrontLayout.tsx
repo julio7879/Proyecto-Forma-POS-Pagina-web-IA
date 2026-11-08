@@ -67,8 +67,13 @@ const StorefrontShell: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/politica-privacidad" className="hover:text-[#D19650] transition-colors">
-                  Habeas Data — Ley 1581 de 2012
+                <Link to="/privacidad" className="hover:text-[#D19650] transition-colors">
+                  Política de Privacidad · Google OAuth
+                </Link>
+              </li>
+              <li>
+                <Link to="/terminos" className="hover:text-[#D19650] transition-colors">
+                  Condiciones del Servicio (Términos)
                 </Link>
               </li>
               <li>

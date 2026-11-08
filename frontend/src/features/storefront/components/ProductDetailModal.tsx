@@ -339,11 +339,11 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
                         {sede.label}
                       </p>
                       <p
-                        className={`text-xs font-extrabold font-mono tabular-nums mt-0.5 ${
+                        className={`text-[10px] font-extrabold mt-0.5 ${
                           unidades > 0 ? 'text-[#661521]' : 'text-stone-400'
                         }`}
                       >
-                        {unidades > 0 ? `${unidades} u.` : '0 u.'}
+                        {unidades > 5 ? '● Disponible' : unidades > 0 ? '● Últimas uds' : '● Agotado'}
                       </p>
                     </div>
                   );
@@ -355,7 +355,10 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
             {esCosmeticoSinCambio && (
               <div className="p-3 rounded-xl bg-[#661521]/10 border border-[#661521]/20 flex items-start gap-2 text-xs text-[#50322A] leading-relaxed">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#661521]" />
-                <span>Por higiene y seguridad sanitaria, este producto cosmético no admite cambios de uso personal.</span>
+                <div className="space-y-0.5">
+                  <span>Por higiene y seguridad sanitaria, este producto cosmético no admite cambios de uso personal.</span>
+                  <span className="block text-[11px] font-bold text-[#661521]">Uso personal (sin cambio por higiene).</span>
+                </div>
               </div>
             )}
 
@@ -372,9 +375,18 @@ export const ProductDetailModal = ({ producto, isOpen, onClose, onAddToCart }: P
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="font-mono tabular-nums font-bold text-xs text-[#50322A] px-1">
-                    {cantidad}
-                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={maxCantidad}
+                    value={cantidad}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val)) setCantidad(Math.max(1, Math.min(maxCantidad, val)));
+                    }}
+                    aria-label="Cantidad de prendas"
+                    className="w-10 text-center font-mono tabular-nums font-bold text-xs text-[#50322A] bg-transparent focus:outline-none focus:ring-1 focus:ring-[#D19650] rounded"
+                  />
                   <button
                     type="button"
                     onClick={handleIncrement}

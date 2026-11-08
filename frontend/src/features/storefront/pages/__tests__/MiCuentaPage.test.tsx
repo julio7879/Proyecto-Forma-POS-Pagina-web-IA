@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MiCuentaPage } from '../MiCuentaPage';
 
@@ -114,5 +114,54 @@ describe('MiCuentaPage Component - Perfil y Trazabilidad de Pedidos', () => {
     // Debe reflejarse el estado oficial actual del pedido
     expect(screen.getByText('Reserva Blanda Activa')).toBeInTheDocument();
     expect(screen.getByText('En Curso')).toBeInTheDocument();
+  });
+
+  it('habilita al cliente confirmar En Entrega y Entregado cuando el pedido está DESPACHADO', () => {
+    const mockUser = {
+      id: 'usr-cliente-03',
+      nombreCompleto: 'Andrés Villamizar',
+      email: 'andres@forma.co',
+      rol: 'CLIENTE',
+    };
+    localStorage.setItem('usuario', JSON.stringify(mockUser));
+    localStorage.setItem('token', 'token-jwt-andres');
+
+    const mockPedidoDespachado = {
+      codigo: 'PED-2026-771200',
+      cliente: 'Andrés Villamizar',
+      emailCliente: 'andres@forma.co',
+      ciudadDestino: 'Cúcuta (Norte de Santander)',
+      sedeAsignada: 'Punto Centro (Cúcuta)',
+      direccionEntrega: 'Av. 0 # 11-30',
+      estadoActual: 'DESPACHADO',
+      metodoPago: 'Pago Contraentrega DANE',
+      fechaCreacionBogota: '06/11/2026, 10:15',
+      totalCOP: 180000,
+      productos: [],
+    };
+
+    localStorage.setItem('forma_pedidos_andres@forma.co', JSON.stringify([mockPedidoDespachado]));
+
+    render(
+      <MemoryRouter>
+        <MiCuentaPage />
+      </MemoryRouter>
+    );
+
+    const btnEnEntrega = screen.getByRole('button', {
+      name: /Marcar En Entrega \(Recibiendo paquete\)/i,
+    });
+    expect(btnEnEntrega).toBeInTheDocument();
+    fireEvent.click(btnEnEntrega);
+
+    expect(screen.getByText('6. En Entrega')).toBeInTheDocument();
+
+    const btnEntregado = screen.getByRole('button', {
+      name: /Confirmar Pedido Entregado y Pagado/i,
+    });
+    fireEvent.click(btnEntregado);
+
+    expect(screen.getByText('7. Entregado')).toBeInTheDocument();
+    expect(screen.getByText(/Pagado en Sistema/i)).toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingBag,
+  ShoppingCart,
   User,
   LogOut,
   Menu,
@@ -15,14 +16,13 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useStorefrontCart } from '../../../features/storefront/context/StorefrontCartContext';
-import { formatMoneyCOP } from '../../../features/storefront/services/catalogService';
 import { FormaLogo } from '../../../components/common/FormaLogo';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const { totalItems, totalCOP } = useStorefrontCart();
+  const { totalItems, openCart } = useStorefrontCart();
 
   const [session, setSession] = useState(() => ({
     token: localStorage.getItem('token'),
@@ -103,7 +103,7 @@ export const Navbar: React.FC = () => {
         <div className="max-w-5xl mx-auto pointer-events-auto">
           <nav
             aria-label="Navegación Principal Tienda FORMA"
-            className="rounded-full bg-white/90 backdrop-blur-2xl border border-white/90 shadow-[0_8px_30px_rgb(80,50,42,0.12)] px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4"
+            className="rounded-full bg-white/80 backdrop-blur-2xl border border-white/90 shadow-[0_8px_32px_rgba(80,50,42,0.12)] px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4"
           >
             {/* Logotipo Oficial FORMA de Alta Costura */}
             <Link
@@ -185,34 +185,39 @@ export const Navbar: React.FC = () => {
               </Link>
             </div>
 
-            {/* Acciones Derecha: Bolsa, Cuenta y Botón Hamburguesa Móvil */}
+            {/* Acciones Derecha: Carrito Compacto, Mi Cuenta (Icono) y Botón Hamburguesa Móvil */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-              {/* Botón de Bolsa (N) */}
+              {/* Botón de Bolsa / Carrito Compacto */}
               <Link
                 to="/bolsa"
-                aria-label={`Ver bolsa de compras con ${totalItems} prendas`}
-                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full bg-[#661521] hover:bg-[#50322A] text-white text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95 shrink-0"
+                onClick={(e) => {
+                  if (location.pathname !== '/bolsa' && location.pathname !== '/checkout') {
+                    e.preventDefault();
+                    openCart();
+                  }
+                }}
+                aria-label={`Bolsa (${totalItems})`}
+                title={`Carrito de compras (${totalItems})`}
+                className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#661521] hover:bg-[#50322A] text-white transition-all shadow-md active:scale-95 shrink-0 cursor-pointer border border-white/40"
               >
-                <ShoppingBag className="w-4 h-4 text-[#D19650]" />
-                <span className="hidden sm:inline">Bolsa</span>
-                <span className="font-mono">({totalItems})</span>
-                {totalCOP > 0 && (
-                  <span className="hidden lg:inline font-mono-tabular text-xs px-2 py-0.5 rounded-full bg-white/20 text-[#E7DED2]">
-                    {formatMoneyCOP(totalCOP)}
-                  </span>
-                )}
+                <ShoppingCart className="w-4 h-4 text-[#D19650]" />
+                <span className="sr-only">Bolsa ({totalItems})</span>
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#D19650] text-[#171717] font-mono text-[11px] font-black flex items-center justify-center shadow-xs border border-white">
+                  {totalItems}
+                </span>
               </Link>
 
-              {/* Botón de Usuario */}
+              {/* Botón de Mi Cuenta Compacto (Solo ícono del muñequito/usuario) */}
               {session.token ? (
                 <div className="flex items-center gap-1">
                   <Link
                     to="/cuenta"
-                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-full bg-[#50322A] hover:bg-[#661521] text-white text-xs sm:text-sm font-bold transition-all shadow-sm shrink-0"
+                    aria-label="Mi Cuenta"
                     title={session.usuario?.nombreCompleto || 'Mi Cuenta'}
+                    className="w-10 h-10 rounded-full bg-[#50322A] hover:bg-[#661521] text-white inline-flex items-center justify-center transition-all shadow-sm shrink-0 border border-white/40"
                   >
-                    <User className="w-3.5 h-3.5 text-[#D19650]" />
-                    <span className="hidden sm:inline">Mi Cuenta</span>
+                    <User className="w-4 h-4 text-[#D19650]" />
+                    <span className="sr-only">Mi Cuenta</span>
                   </Link>
                   <button
                     onClick={handleLogout}
@@ -225,11 +230,13 @@ export const Navbar: React.FC = () => {
                 </div>
               ) : (
                 <Link
-                  to="/login"
-                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full bg-[#D19650] hover:bg-[#bf833e] text-white text-xs sm:text-sm font-bold transition-all shadow-sm shrink-0"
+                  to="/cuenta"
+                  aria-label="Mi Cuenta"
+                  title="Mi Cuenta"
+                  className="w-10 h-10 rounded-full bg-[#D19650] hover:bg-[#bf833e] text-white inline-flex items-center justify-center transition-all shadow-sm shrink-0 border border-white/40"
                 >
-                  <User className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Ingresar</span>
+                  <User className="w-4 h-4" />
+                  <span className="sr-only">Mi Cuenta</span>
                 </Link>
               )}
 

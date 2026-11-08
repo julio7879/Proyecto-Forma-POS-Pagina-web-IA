@@ -1,6 +1,6 @@
 // frontend/src/layouts/PosLayout.tsx
 import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '../api/apiClient';
 import { FormaLogo } from '../components/common/FormaLogo';
+import { getSesionAbierta, CAJA_EVENT } from '../features/pos/utils/cajaStore';
 
 export const SEDES_POS = [
   'Punto Centro (Cúcuta)',
@@ -118,26 +119,29 @@ const getCleanSellerName = (u: UsuarioStorage | null): string => {
 
 /**
  * Layout Portal 2: Terminal Punto de Venta (PosLayout)
- * Navegación limpia con Menú Lateral Compacto (190-210px), Cero Header Superior Redundante
- * y Bloqueo Estricto por Turno Activo (Opción A).
+ * Navegación limpia con Menú Lateral Compacto (190-210px), Header de Estado de Turno en Vivo
+ * y Bloqueo Obligatorio hasta Abrir Turno de Caja (QA-POS-015).
  */
 export const PosLayout: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Estado del menú lateral: expandido/colapsado (desktop 190-210px, drawer en móvil)
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [cajero, setCajero] = useState<UsuarioStorage | null>(null);
-  const [cajaAbierta, setCajaAbierta] = useState<boolean>(true);
+  const [, setCajaTick] = useState(0);
 
   // Estados del formulario de autenticación rápida en terminal
   const [correoInput, setCorreoInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [sedeInput, setSedeInput] = useState<SedePosNombre | ''>('Punto Bucaramanga');
-  const [sedeActiva, setSedeActiva] = useState<string>('Punto Centro (Cúcuta)');
+  const [sedeActiva, setSedeActiva] = useState<string>(
+    () => localStorage.getItem('forma_pos_sede') || 'Punto Centro (Cúcuta)'
+  );
   const [errorLogin, setErrorLogin] = useState<string | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(false);
 
-  // Carga y sincronización de usuario logueado y estado de caja
+  // Carga y sincronización de usuario logueado y sesión de caja en vivo (cajaStore)
   useEffect(() => {
     const syncUsuario = () => {
       try {
@@ -159,16 +163,7 @@ export const PosLayout: React.FC = () => {
     };
 
     const syncCaja = () => {
-      try {
-        const saved = localStorage.getItem('pos_caja_estado');
-        if (saved) {
-          setCajaAbierta(saved === 'ABIERTA');
-        } else {
-          setCajaAbierta(true);
-        }
-      } catch {
-        setCajaAbierta(true);
-      }
+      setCajaTick((t) => t + 1);
     };
 
     syncUsuario();
@@ -176,14 +171,22 @@ export const PosLayout: React.FC = () => {
 
     window.addEventListener('storage', syncUsuario);
     window.addEventListener('storage', syncCaja);
+    window.addEventListener(CAJA_EVENT, syncCaja);
+    window.addEventListener('forma-pos-ledger-update', syncCaja);
     window.addEventListener('pos-caja-changed', syncCaja);
 
     return () => {
       window.removeEventListener('storage', syncUsuario);
       window.removeEventListener('storage', syncCaja);
+      window.removeEventListener(CAJA_EVENT, syncCaja);
+      window.removeEventListener('forma-pos-ledger-update', syncCaja);
       window.removeEventListener('pos-caja-changed', syncCaja);
     };
   }, []);
+
+  // Consulta en vivo de la sesión abierta en la sede activa (QA-POS-015)
+  const sesionAbierta = getSesionAbierta(sedeActiva);
+  const cajaEstaAbierta = Boolean(sesionAbierta);
 
   const handleCerrarSesion = () => {
     try {
@@ -197,7 +200,7 @@ export const PosLayout: React.FC = () => {
     }
   };
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handlePosLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorLogin(null);
     setLoadingAuth(true);
@@ -334,6 +337,11 @@ export const PosLayout: React.FC = () => {
     setSedeActiva(sedeInput);
     window.dispatchEvent(new Event('storage'));
     setLoadingAuth(false);
+
+    // QA-POS-015: Si la sede no tiene sesión de caja abierta, llevar directamente a /pos/caja
+    if (!getSesionAbierta(sedeInput)) {
+      navigate('/pos/caja');
+    }
   };
 
   const esAdmin = cajero?.rol === 'ADMIN';
@@ -405,7 +413,7 @@ export const PosLayout: React.FC = () => {
                 </div>
               )}
 
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <form onSubmit={handlePosLogin} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
                     Correo Electrónico del Vendedor
@@ -517,7 +525,13 @@ export const PosLayout: React.FC = () => {
             <div className="p-3 border-b border-[#D8CFC6]/60 bg-[#FAF7F4]">
               <div className="flex items-center justify-between gap-1">
                 <Link
-                  to="/pos/venta"
+                  to={cajaEstaAbierta ? '/pos/venta' : '/pos/caja'}
+                  onClick={(e) => {
+                    if (!cajaEstaAbierta) {
+                      e.preventDefault();
+                      navigate('/pos/caja');
+                    }
+                  }}
                   className="flex items-center gap-1.5 shrink-0 group min-w-0"
                   aria-label="Terminal FORMA POS"
                 >
@@ -542,36 +556,54 @@ export const PosLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* Lista de enlaces principales */}
+            {/* Lista de enlaces principales (con bloqueo por candado si la caja está cerrada) */}
             <div className="flex-1 overflow-y-auto py-2 px-2.5 space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.activeCheck(location.pathname);
+                const esModuloCaja = item.to === '/pos/caja';
+                const bloqueadoPorCaja = !cajaEstaAbierta && !esModuloCaja;
 
                 return (
                   <Link
                     key={item.to}
-                    to={item.to}
-                    onClick={() => {
+                    to={bloqueadoPorCaja ? '/pos/caja' : item.to}
+                    onClick={(e) => {
+                      if (bloqueadoPorCaja) {
+                        e.preventDefault();
+                        navigate('/pos/caja');
+                      }
                       if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                         setSidebarOpen(false);
                       }
                     }}
+                    title={
+                      bloqueadoPorCaja
+                        ? 'Debes abrir el turno de caja antes de usar este módulo'
+                        : item.label
+                    }
                     className={`
                       w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all
                       ${
                         isActive
                           ? 'bg-[#661521] text-white shadow-xs'
+                          : bloqueadoPorCaja
+                          ? 'text-stone-400 hover:bg-amber-50/70 hover:text-amber-900'
                           : 'text-stone-700 hover:bg-[#FAF7F4] hover:text-[#1C1311]'
                       }
                     `}
                   >
                     <Icon
                       className={`w-4 h-4 shrink-0 ${
-                        isActive ? 'text-[#D19650]' : 'text-stone-500'
+                        isActive
+                          ? 'text-[#D19650]'
+                          : bloqueadoPorCaja
+                          ? 'text-stone-400'
+                          : 'text-stone-500'
                       }`}
                     />
                     <span className="truncate">{item.label}</span>
+                    {bloqueadoPorCaja && <Lock className="w-3.5 h-3.5 ml-auto opacity-75" />}
                   </Link>
                 );
               })}
@@ -593,17 +625,21 @@ export const PosLayout: React.FC = () => {
 
                   {/* Dot de estado de caja */}
                   <span
-                    title={cajaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}
+                    title={
+                      cajaEstaAbierta && sesionAbierta
+                        ? `Caja Abierta (Turno #${sesionAbierta.turnoNumero})`
+                        : 'Caja Cerrada · Requiere Apertura'
+                    }
                     className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      cajaAbierta ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-amber-500'
+                      cajaEstaAbierta ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-amber-500'
                     }`}
                   />
                 </div>
 
                 <div className="flex items-center justify-between text-[10px] text-stone-500 font-medium px-0.5">
                   <span className="truncate">{sedeActiva.replace(/\s*\(Cúcuta\)/i, '')}</span>
-                  <span className={cajaAbierta ? 'text-emerald-700 font-bold' : 'text-amber-700'}>
-                    {cajaAbierta ? 'Caja Activa' : 'Cerrada'}
+                  <span className={cajaEstaAbierta ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                    {cajaEstaAbierta ? 'Caja Activa' : 'Cerrada'}
                   </span>
                 </div>
               </div>
@@ -637,9 +673,38 @@ export const PosLayout: React.FC = () => {
             </div>
           </aside>
 
-          {/* ÁREA DE TRABAJO PRINCIPAL (OUTLET OCUPANDO EL 100% DE LA ALTURA) */}
-          <main className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-2 sm:p-2.5 bg-[#F4EFEA] relative flex flex-col">
-            <Outlet />
+          {/* ÁREA DE TRABAJO PRINCIPAL (HEADER DE TURNO + OUTLET) */}
+          <main className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-2 sm:p-2.5 bg-[#F4EFEA] relative flex flex-col gap-2">
+            {/* Header superior compacto con estado real de la caja en la sede activa */}
+            <div className="px-3.5 py-2 rounded-xl bg-white border border-[#D8CFC6] shadow-2xs flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2 text-xs">
+                <MapPin className="w-3.5 h-3.5 text-[#661521]" />
+                <span className="font-black text-[#1C1311]">{sedeActiva}</span>
+                <span className="text-stone-300">·</span>
+                <span className="font-semibold text-stone-600">Cajero: {nombreVendedor}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {cajaEstaAbierta && sesionAbierta ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-[#059669] border border-emerald-300">
+                    <span className="w-2 h-2 rounded-full bg-[#059669] animate-pulse" />
+                    <span>{`Caja Abierta (Turno #${sesionAbierta.turnoNumero})`}</span>
+                  </span>
+                ) : (
+                  <Link
+                    to="/pos/caja"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-rose-800 border border-amber-400 hover:bg-amber-200 transition-colors"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-rose-700" />
+                    <span>Caja Cerrada · Requiere Apertura</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              <Outlet />
+            </div>
           </main>
         </>
       )}

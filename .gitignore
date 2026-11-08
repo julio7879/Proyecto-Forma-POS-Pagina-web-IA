@@ -151,3 +151,4 @@ vite.config.ts.timestamp-*
 # Scratch and temporary agent files
 scratch/
 .gemini/
+.obsidian/

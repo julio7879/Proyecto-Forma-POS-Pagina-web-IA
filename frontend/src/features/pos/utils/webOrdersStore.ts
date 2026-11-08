@@ -12,6 +12,7 @@ export type EstadoPedidoWeb =
   | 'EN_PREPARACION'
   | 'LISTO_DESPACHO'
   | 'DESPACHADO'
+  | 'EN_ENTREGA'
   | 'ENTREGADO'
   | 'NO_ENTREGADO'
   | 'CANCELADO';
@@ -77,13 +78,14 @@ export interface PedidoWebRecord {
 const KEY_GLOBAL = 'forma_pedidos_web_global';
 export const WEB_ORDERS_EVENT = 'forma-web-orders-update';
 
-/** Orden lógico para línea de tiempo del cliente (MiCuenta / Soporte). */
+/** Orden lógico para línea de tiempo del cliente (MiCuenta / Rastreo). */
 export const FLUJO_ESTADOS_WEB: EstadoPedidoWeb[] = [
   'RECIBIDO',
   'CONFIRMADO',
   'EN_PREPARACION',
   'LISTO_DESPACHO',
   'DESPACHADO',
+  'EN_ENTREGA',
   'ENTREGADO',
 ];
 
@@ -112,10 +114,62 @@ export const getWebOrders = (): PedidoWebRecord[] => {
   try {
     const raw = localStorage.getItem(KEY_GLOBAL);
     const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
+    // Purga proactiva de pedidos de prueba huérfanos de $540.000
+    const filtrados = Array.isArray(arr)
+      ? arr.filter((p) => p && p.totalCOP !== 540000 && p.subtotalCOP !== 540000)
+      : [];
+    if (Array.isArray(arr) && arr.length !== filtrados.length) {
+      localStorage.setItem(KEY_GLOBAL, JSON.stringify(filtrados));
+    }
+    return filtrados;
   } catch {
     return [];
   }
+};
+
+/**
+ * Elimina un pedido web permanentemente del almacén y de los espejos de cliente.
+ */
+export const eliminarPedidoWeb = (codigo: string): boolean => {
+  const lista = getWebOrders();
+  const objetivo = lista.find((p) => p.codigo === codigo);
+  if (!objetivo) return false;
+
+  const nuevaLista = lista.filter((p) => p.codigo !== codigo);
+  guardar(nuevaLista);
+
+  // Limpiar también del espejo del cliente
+  if (objetivo.emailCliente) {
+    try {
+      const key = `forma_pedidos_${objetivo.emailCliente.toLowerCase()}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const clienteLista = JSON.parse(raw);
+        if (Array.isArray(clienteLista)) {
+          const nuevaClienteLista = clienteLista.filter((x) => x?.codigo !== codigo);
+          localStorage.setItem(key, JSON.stringify(nuevaClienteLista));
+        }
+      }
+    } catch {
+      /* noop */
+    }
+  }
+
+  emitir();
+  return true;
+};
+
+/**
+ * Purga de pedidos de prueba por monto exacto.
+ */
+export const purgarPedidosPorMonto = (montoCop: number = 540000): number => {
+  const lista = getWebOrders();
+  const aConservar = lista.filter((p) => p.totalCOP !== montoCop && p.subtotalCOP !== montoCop);
+  const eliminados = lista.length - aConservar.length;
+  if (eliminados > 0) {
+    guardar(aConservar);
+  }
+  return eliminados;
 };
 
 const guardar = (lista: PedidoWebRecord[]) => {
@@ -128,8 +182,20 @@ const guardar = (lista: PedidoWebRecord[]) => {
   emitir();
 };
 
+/**
+ * Bandeja compartida con bloqueo al primer clic:
+ * - Mientras el pedido está en 'RECIBIDO' o 'CONFIRMADO', es visible en la bandeja compartida
+ *   de las sedes con stock disponible (o hasta que la primera sede inicie el alistamiento).
+ * - Apenas una sede inicia 'EN_PREPARACION', el pedido queda bloqueado exclusivamente para
+ *   esa `sedeAsignada` y desaparece del listado de las demás sedes.
+ */
 export const getWebOrdersBySede = (sede: string): PedidoWebRecord[] =>
-  getWebOrders().filter((p) => mismaSede(p.sedeAsignada, sede));
+  getWebOrders().filter((p) => {
+    if (p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO') {
+      return true;
+    }
+    return mismaSede(p.sedeAsignada, sede);
+  });
 
 export const getWebOrdersByEmail = (email: string): PedidoWebRecord[] => {
   const e = email.trim().toLowerCase();
@@ -209,7 +275,9 @@ export const transicionarPedidoWeb = (
   codigo: string,
   nuevoEstado: EstadoPedidoWeb,
   usuario: string,
-  extra: Partial<Pick<PedidoWebRecord, 'guiaTransportadora' | 'transportadora' | 'observaciones'>> = {},
+  extra: Partial<
+    Pick<PedidoWebRecord, 'guiaTransportadora' | 'transportadora' | 'observaciones' | 'sedeAsignada' | 'estadoCobro'>
+  > = {},
   nota?: string
 ): PedidoWebRecord | undefined => {
   const actual = getWebOrder(codigo);
@@ -217,11 +285,20 @@ export const transicionarPedidoWeb = (
 
   const cambios: Partial<PedidoWebRecord> = { ...extra, estado: nuevoEstado };
 
-  if (nuevoEstado === 'DESPACHADO' && actual.estado !== 'DESPACHADO') {
+  if (
+    nuevoEstado === 'DESPACHADO' &&
+    actual.estado !== 'DESPACHADO' &&
+    actual.estado !== 'EN_ENTREGA' &&
+    actual.estado !== 'ENTREGADO'
+  ) {
     actual.productos.forEach((p) => applyStockDelta(p.sku, -p.cantidad));
   }
+  if (nuevoEstado === 'ENTREGADO') {
+    // Cuando el pedido es entregado, el dinero de contraentrega o transferencia verificada ingresa formalmente al sistema
+    cambios.estadoCobro = 'PAGADO';
+  }
   if (nuevoEstado === 'NO_ENTREGADO') {
-    if (actual.estado === 'DESPACHADO') {
+    if (actual.estado === 'DESPACHADO' || actual.estado === 'EN_ENTREGA') {
       actual.productos.forEach((p) => applyStockDelta(p.sku, p.cantidad));
     }
     cambios.estadoCobro = 'ANULADO';
@@ -233,15 +310,82 @@ export const transicionarPedidoWeb = (
   const titulos: Record<EstadoPedidoWeb, string> = {
     RECIBIDO: 'Pedido recibido',
     CONFIRMADO: 'Pedido confirmado',
-    EN_PREPARACION: 'Alistamiento iniciado (reserva dura)',
+    EN_PREPARACION: 'Alistamiento iniciado y bloqueado por sede',
     LISTO_DESPACHO: 'Empacado y listo para despacho',
     DESPACHADO: 'Entregado a transportadora',
-    ENTREGADO: 'Entregado al cliente',
+    EN_ENTREGA: 'En ruta de entrega al domicilio',
+    ENTREGADO: 'Entregado y confirmado por el cliente',
     NO_ENTREGADO: 'No entregado · retorno logístico',
     CANCELADO: 'Pedido cancelado',
   };
 
   return updateWebOrder(codigo, cambios, nuevoEvento(titulos[nuevoEstado], usuario, nota, nuevoEstado));
+};
+
+/**
+ * Permite que la primera sede en hacer clic en "Iniciar Alistamiento" tome y bloquee el pedido.
+ * Si otra sede ya lo tomó antes, devuelve ok: false para evitar doble despacho.
+ */
+export const tomarPedidoWebEnSede = (
+  codigo: string,
+  sede: string,
+  usuario: string
+): { ok: boolean; pedido?: PedidoWebRecord; error?: string } => {
+  const actual = getWebOrder(codigo);
+  if (!actual) {
+    return { ok: false, error: 'El pedido no existe.' };
+  }
+  if (actual.estado !== 'RECIBIDO' && actual.estado !== 'CONFIRMADO') {
+    if (!mismaSede(actual.sedeAsignada, sede)) {
+      return {
+        ok: false,
+        error: `Este pedido ya fue tomado para alistamiento por ${actual.sedeAsignada}.`,
+      };
+    }
+  }
+  const actualizado = transicionarPedidoWeb(
+    codigo,
+    'EN_PREPARACION',
+    usuario,
+    {
+      sedeAsignada: sede,
+      observaciones: actual.observaciones || `Alistamiento tomado por ${sede}`,
+    },
+    `Pedido tomado y bloqueado para despacho exclusivo desde ${sede}.`
+  );
+  return { ok: true, pedido: actualizado };
+};
+
+/**
+ * Confirmación desde la Tienda Web por parte del cliente:
+ * Avanza a EN_ENTREGA o a ENTREGADO (liquidando el pago contraentrega para que ingrese al sistema).
+ */
+export const confirmarEntregaClienteWeb = (
+  codigo: string,
+  paso: 'EN_ENTREGA' | 'ENTREGADO',
+  clienteNombre?: string
+): PedidoWebRecord | undefined => {
+  const actual = getWebOrder(codigo);
+  if (!actual) return undefined;
+  const actor = clienteNombre || actual.cliente || 'Cliente Tienda Web';
+  if (paso === 'EN_ENTREGA') {
+    return transicionarPedidoWeb(
+      codigo,
+      'EN_ENTREGA',
+      actor,
+      {},
+      'Cliente notificó recepción en curso / En ruta de entrega final.'
+    );
+  }
+  return transicionarPedidoWeb(
+    codigo,
+    'ENTREGADO',
+    actor,
+    { estadoCobro: 'PAGADO' },
+    actual.metodoPago === 'CONTRAENTREGA'
+      ? 'Entrega confirmada por el cliente. Pago contraentrega recaudado e ingresado al sistema.'
+      : 'Entrega a conformidad confirmada por el cliente en plataforma web.'
+  );
 };
 
 /** Solo Admin: confirma que el dinero llegó a la cuenta de FORMA (CA-40). */

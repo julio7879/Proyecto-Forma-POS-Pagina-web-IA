@@ -76,6 +76,14 @@ export class EmailService implements NotificacionPort {
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
+    const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+    if (isTestEnv) {
+      this.transporter = nodemailer.createTransport({
+        jsonTransport: true,
+      });
+      return this.transporter;
+    }
+
     if (user && pass) {
       this.transporter = nodemailer.createTransport({
         host: host || 'smtp.gmail.com',

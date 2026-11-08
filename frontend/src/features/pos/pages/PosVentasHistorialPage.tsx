@@ -10,22 +10,29 @@ import {
   ShoppingBag,
   User,
   MapPin,
-  Sparkles,
   FileSpreadsheet,
   CheckCircle2,
   Truck,
-  Info,
+  RotateCcw,
+  Filter,
+  Calculator,
 } from 'lucide-react';
 import { TicketVentaPOS } from '../components/TicketVentaPOS';
 import { VentaTicketDTO } from '../types/ticket.types';
-import { getPosRegisteredSales } from '../utils/posLedgerSync';
+import {
+  getPosRegisteredSales,
+  getPosRegisteredExchanges,
+  type PosSaleRecord,
+  type PosExchangeRecord,
+} from '../utils/posLedgerSync';
 import { DetailDrawer } from '../components/DetailDrawer';
 import {
-  getWebOrders,
+  getWebOrdersBySede,
   WEB_ORDERS_EVENT,
   mismaSede,
   type PedidoWebRecord,
 } from '../utils/webOrdersStore';
+import { getSesionAbierta, CAJA_EVENT } from '../utils/cajaStore';
 
 export interface PrendaVentaHistorial {
   sku: string;
@@ -42,8 +49,10 @@ export interface VentaHistorialItem {
   id: string;
   consecutivo: string;
   fechaHora: string;
+  fechaIso?: string;
   fechaCorta: string;
   vendedor: string;
+  sede?: string;
   cliente: string;
   documentoCliente?: string;
   medioPago: 'EFECTIVO' | 'TRANSFERENCIA';
@@ -56,13 +65,63 @@ export interface VentaHistorialItem {
   prendas: PrendaVentaHistorial[];
 }
 
+export type TipoOperacionHistorial = 'VENTA_MOSTRADOR' | 'CAMBIO' | 'DEVOLUCION' | 'PEDIDO_WEB';
+export type FiltroTipoOperacion = 'TODOS' | 'VENTAS' | 'CAMBIOS' | 'DEVOLUCIONES' | 'WEB';
+export type FiltroMedioPago = 'TODOS' | 'EFECTIVO' | 'TRANSFERENCIA' | 'CONTRAENTREGA';
+export type FiltroPeriodo = 'HOY' | 'TODOS';
+
+export interface OperacionUnificadaItem {
+  uid: string;
+  tipo: TipoOperacionHistorial;
+  consecutivo: string;
+  fechaHoraTexto: string;
+  fechaIso: string;
+  vendedor: string;
+  cliente: string;
+  documentoCliente?: string;
+  medioPago: 'EFECTIVO' | 'TRANSFERENCIA' | 'CONTRAENTREGA';
+  totalCop: number;
+  resumenPrendas: string;
+  ventaOriginal?: VentaHistorialItem;
+  cambioOriginal?: PosExchangeRecord;
+  pedidoWebOriginal?: PedidoWebRecord;
+}
+
 const formatCOP = (valor: number): string => {
-  return new Intl.NumberFormat('es-CO', {
+  const absVal = Math.abs(Math.trunc(valor));
+  const formatted = new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
-  }).format(Math.trunc(valor));
+  }).format(absVal);
+  return valor < 0 ? `-${formatted}` : formatted;
+};
+
+const getBogotaDateYMD = (iso?: string): string => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(iso ? new Date(iso) : new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+};
+
+const formatBogotaDateTime = (iso?: string): string => {
+  if (!iso) return 'Hoy';
+  try {
+    return new Intl.DateTimeFormat('es-CO', {
+      timeZone: 'America/Bogota',
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
 };
 
 const escapeXml = (str: string | number | undefined | null): string => {
@@ -75,409 +134,248 @@ const escapeXml = (str: string | number | undefined | null): string => {
     .replace(/'/g, '&apos;');
 };
 
-const VENTAS_INICIALES_MOCK: VentaHistorialItem[] = [
-  {
-    id: 'vta-0050',
-    consecutivo: '#BUC-0050',
-    fechaHora: 'Hoy · 09:40 a. m. (America/Bogota)',
-    fechaCorta: 'Hoy 09:40 AM',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Camila Andrea Suárez',
-    documentoCliente: 'CC 1.098.712.330',
-    medioPago: 'EFECTIVO',
-    subtotalCop: 158824,
-    iva19Cop: 30176,
-    totalCop: 189000,
-    montoRecibidoCop: 200000,
-    cambioCop: 11000,
-    prendas: [
-      {
-        sku: 'ROP-DNM-001-S',
-        nombre: 'Chaqueta Denim Artesanal',
-        talla: 'S',
-        color: 'Azul Índigo',
-        cantidad: 1,
-        precioUnitarioCop: 189000,
-        totalCop: 189000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-  {
-    id: 'vta-0049',
-    consecutivo: '#BUC-0049',
-    fechaHora: 'Hoy · 08:30 a. m. (America/Bogota)',
-    fechaCorta: 'Hoy 08:30 AM',
-    vendedor: 'Daniela Gómez',
-    cliente: 'Javier Enrique Prada',
-    documentoCliente: 'CC 91.240.852',
-    medioPago: 'TRANSFERENCIA',
-    referenciaPago: 'NEQUI-QR-78219',
-    subtotalCop: 82353,
-    iva19Cop: 15647,
-    totalCop: 98000,
-    prendas: [
-      {
-        sku: 'COS-KIT-008-SET',
-        nombre: 'Kit Botánico Cuidado Facial',
-        talla: 'Set x3',
-        color: 'Natural',
-        cantidad: 1,
-        precioUnitarioCop: 98000,
-        totalCop: 98000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-  {
-    id: 'vta-0042',
-    consecutivo: '#MED-0042',
-    fechaHora: 'Hoy · 10:15 a. m. (America/Bogota)',
-    fechaCorta: 'Hoy 10:15 AM',
-    vendedor: 'Carlos Mendoza',
-    cliente: 'Andrés Felipe Calderón',
-    documentoCliente: 'CC 88.241.503',
-    medioPago: 'TRANSFERENCIA',
-    referenciaPago: 'BANCOLOMBIA-QR-88912',
-    subtotalCop: 291597,
-    iva19Cop: 55403,
-    totalCop: 347000,
-    prendas: [
-      {
-        sku: 'ACC-BOL-003-UNI',
-        nombre: 'Bolso Cuero Graso Unisex',
-        talla: 'Única',
-        color: 'Miel Natural',
-        cantidad: 1,
-        precioUnitarioCop: 249000,
-        totalCop: 249000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=600&q=80',
-      },
-      {
-        sku: 'COS-KIT-008-SET',
-        nombre: 'Kit Botánico Cuidado Facial',
-        talla: 'Set x3',
-        color: 'Natural',
-        cantidad: 1,
-        precioUnitarioCop: 98000,
-        totalCop: 98000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-  {
-    id: 'vta-0041',
-    consecutivo: '#MED-0041',
-    fechaHora: 'Ayer · 04:30 p. m. (America/Bogota)',
-    fechaCorta: 'Ayer 04:30 PM',
-    vendedor: 'Carlos Mendoza',
-    cliente: 'Valentina Restrepo',
-    documentoCliente: 'CC 1.090.482.910',
-    medioPago: 'EFECTIVO',
-    subtotalCop: 196639,
-    iva19Cop: 37361,
-    totalCop: 234000,
-    montoRecibidoCop: 250000,
-    cambioCop: 16000,
-    prendas: [
-      {
-        sku: 'ROP-DNM-001-M',
-        nombre: 'Chaqueta Denim Artesanal',
-        talla: 'M',
-        color: 'Azul Índigo',
-        cantidad: 1,
-        precioUnitarioCop: 189000,
-        totalCop: 189000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=600&q=80',
-      },
-      {
-        sku: 'COS-CRM-004-100ML',
-        nombre: 'Crema Hidratante Botánica 100ml',
-        talla: '100ml',
-        color: 'Natural',
-        cantidad: 1,
-        precioUnitarioCop: 45000,
-        totalCop: 45000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1608248597359-5633454b5683?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-  {
-    id: 'vta-0040',
-    consecutivo: '#MED-0040',
-    fechaHora: 'Ayer · 01:20 p. m. (America/Bogota)',
-    fechaCorta: 'Ayer 01:20 PM',
-    vendedor: 'Laura Marcela Díaz',
-    cliente: 'Julián Camilo Peña',
-    documentoCliente: 'CC 1.094.221.098',
-    medioPago: 'EFECTIVO',
-    subtotalCop: 222689,
-    iva19Cop: 42311,
-    totalCop: 265000,
-    montoRecibidoCop: 300000,
-    cambioCop: 35000,
-    prendas: [
-      {
-        sku: 'CAL-BOT-006-39',
-        nombre: 'Botines Chelsea Cuero Vélez',
-        talla: '39',
-        color: 'Tabaco Envejecido',
-        cantidad: 1,
-        precioUnitarioCop: 265000,
-        totalCop: 265000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-  {
-    id: 'vta-0039',
-    consecutivo: '#MED-0039',
-    fechaHora: 'Hace 2 días · 05:45 p. m. (America/Bogota)',
-    fechaCorta: '2 días atrás',
-    vendedor: 'Laura Marcela Díaz',
-    cliente: 'Mariana Duque Gómez',
-    documentoCliente: 'CC 60.334.190',
-    medioPago: 'TRANSFERENCIA',
-    referenciaPago: 'NEQUI-QR-33109',
-    subtotalCop: 100672,
-    iva19Cop: 19128,
-    totalCop: 119800,
-    prendas: [
-      {
-        sku: 'ROP-CAM-002-S',
-        nombre: 'Camiseta Básica Algodón Pima',
-        talla: 'S',
-        color: 'Blanco Hueso',
-        cantidad: 2,
-        precioUnitarioCop: 59900,
-        totalCop: 119800,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-  {
-    id: 'vta-0038',
-    consecutivo: '#MED-0038',
-    fechaHora: 'Hace 2 días · 02:10 p. m. (America/Bogota)',
-    fechaCorta: '2 días atrás',
-    vendedor: 'Carlos Mendoza',
-    cliente: 'Consumidor Final',
-    medioPago: 'EFECTIVO',
-    subtotalCop: 113445,
-    iva19Cop: 21555,
-    totalCop: 135000,
-    montoRecibidoCop: 150000,
-    cambioCop: 15000,
-    prendas: [
-      {
-        sku: 'ART-MOC-005-STD',
-        nombre: 'Mochila Tejeduría Ancestral',
-        talla: 'Estándar',
-        color: 'Tierra / Crudo',
-        cantidad: 1,
-        precioUnitarioCop: 135000,
-        totalCop: 135000,
-        imagenUrl:
-          'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80',
-      },
-    ],
-  },
-];
+const mapSaleToVentaItem = (s: PosSaleRecord): VentaHistorialItem => ({
+  id: s.id,
+  consecutivo: s.consecutivo,
+  fechaHora: s.fechaHora || formatBogotaDateTime(s.fechaIso),
+  fechaIso: s.fechaIso,
+  fechaCorta: s.fechaCorta || 'Hoy',
+  vendedor: s.vendedor || 'Carlos Mendoza',
+  sede: s.sede,
+  cliente: s.cliente || 'Consumidor Final',
+  documentoCliente: s.documentoCliente,
+  medioPago: ((s.medioPago || s.metodoPago || 'EFECTIVO') === 'TRANSFERENCIA'
+    ? 'TRANSFERENCIA'
+    : 'EFECTIVO') as 'EFECTIVO' | 'TRANSFERENCIA',
+  referenciaPago: s.referenciaPago,
+  subtotalCop: s.subtotalCop,
+  iva19Cop: s.iva19Cop ?? s.ivaCop ?? 0,
+  totalCop: s.totalCop,
+  montoRecibidoCop: s.montoRecibidoCop ?? s.efectivoRecibidoCop,
+  cambioCop: s.cambioCop,
+  prendas: (s.prendas || s.items || []).map((i) => ({
+    sku: i.sku,
+    nombre: i.nombre,
+    talla: i.talla || 'Única',
+    color: i.color || 'Estándar',
+    cantidad: i.cantidad,
+    precioUnitarioCop: i.precioUnitarioCop ?? i.precioUnitarioCOP ?? 0,
+    totalCop: i.totalCop,
+    imagenUrl: i.imagenUrl || '/products/blazer-imperial-vinotinto.png',
+  })),
+});
 
 export const PosVentasHistorialPage: React.FC = () => {
-  const [tabPrincipal, setTabPrincipal] = useState<'MOSTRADOR' | 'WEB'>('MOSTRADOR');
-  const [ventas, setVentas] = useState<VentaHistorialItem[]>(VENTAS_INICIALES_MOCK);
-  const [pedidosWeb, setPedidosWeb] = useState<PedidoWebRecord[]>(() => getWebOrders());
-  const [pedidoWebSeleccionado, setPedidoWebSeleccionado] = useState<PedidoWebRecord | null>(null);
-  const [filtroSedeScope, setFiltroSedeScope] = useState<'SEDE_ACTUAL' | 'TODAS_SEDES'>('SEDE_ACTUAL');
+  const [vendedorActivo, setVendedorActivo] = useState<string>('Carlos Mendoza');
+  const [sedeActiva, setSedeActiva] = useState<string>(
+    () => localStorage.getItem('forma_pos_sede') || 'Punto Centro (Cúcuta)'
+  );
+  const [, setSyncTick] = useState(0);
 
+  // Filtros combinables (QA-POS-020)
+  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>('HOY');
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipoOperacion>('TODOS');
+  const [filtroPago, setFiltroPago] = useState<FiltroMedioPago>('TODOS');
   const [busqueda, setBusqueda] = useState<string>('');
-  const [filtroPago, setFiltroPago] = useState<'TODOS' | 'EFECTIVO' | 'TRANSFERENCIA'>('TODOS');
-  const [ventaSeleccionada, setVentaSeleccionada] = useState<VentaHistorialItem | null>(null);
+
+  // Selección para DetailDrawer y Ticket 80mm
+  const [operacionSeleccionada, setOperacionSeleccionada] =
+    useState<OperacionUnificadaItem | null>(null);
   const [drawerTab, setDrawerTab] = useState<string>('detalle');
   const [mostrarModalTicket, setMostrarModalTicket] = useState<boolean>(false);
-
-  // Vendedor y sede activa del turno
-  const [vendedorActivo, setVendedorActivo] = useState<string>('Carlos Mendoza');
-  const [sedeActiva, setSedeActiva] = useState<string>('Punto Centro (Cúcuta)');
-  const [filtroSoloMiTurno, setFiltroSoloMiTurno] = useState<boolean>(true);
   const [mensajeExcelExito, setMensajeExcelExito] = useState<string | null>(null);
 
-  // Cargar usuario y sede activa del localStorage
+  // Sincronización en tiempo real de usuario, sede y stores
   useEffect(() => {
-    try {
-      const rawUser = localStorage.getItem('usuario');
-      if (rawUser) {
-        const u = JSON.parse(rawUser);
-        const name = u.nombreCompleto || u.nombre || 'Carlos Mendoza';
-        setVendedorActivo(name);
-      }
-      const rawSede = localStorage.getItem('forma_pos_sede');
-      if (rawSede) {
-        setSedeActiva(rawSede);
-      }
-    } catch {}
-  }, []);
-
-  // Cargar ventas registradas en POS sincronizadas en tiempo real
-  useEffect(() => {
-    const syncSales = () => {
+    const syncAll = () => {
       try {
-        const registradas: VentaHistorialItem[] = getPosRegisteredSales().map((s) => ({
-          id: s.id,
-          consecutivo: s.consecutivo,
-          fechaHora: s.fechaHora,
-          fechaCorta: s.fechaCorta || 'Hoy ' + (s.fechaHora.split('·')[1]?.trim() || ''),
-          vendedor: s.vendedor,
-          cliente: s.cliente || 'Consumidor Final',
-          documentoCliente: s.documentoCliente,
-          medioPago: (s.medioPago || s.metodoPago || 'EFECTIVO') as 'EFECTIVO' | 'TRANSFERENCIA',
-          referenciaPago: s.referenciaPago,
-          subtotalCop: s.subtotalCop,
-          iva19Cop: s.iva19Cop ?? s.ivaCop ?? 0,
-          totalCop: s.totalCop,
-          montoRecibidoCop: s.montoRecibidoCop ?? s.efectivoRecibidoCop,
-          cambioCop: s.cambioCop,
-          prendas: (s.prendas || s.items || []).map((i) => ({
-            sku: i.sku,
-            nombre: i.nombre,
-            talla: i.talla || 'Única',
-            color: i.color || 'Estándar',
-            cantidad: i.cantidad,
-            precioUnitarioCop: i.precioUnitarioCop ?? i.precioUnitarioCOP ?? 0,
-            totalCop: i.totalCop,
-            imagenUrl: i.imagenUrl || '/products/blazer-imperial-vinotinto.png',
-          })),
-        }));
-
-        setVentas((prev) => {
-          const ids = new Set(registradas.map((r) => r.consecutivo));
-          const mockSinDuplicados = prev.filter((p) => !ids.has(p.consecutivo));
-          return [...registradas, ...mockSinDuplicados];
-        });
+        const rawUser = localStorage.getItem('usuario');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          setVendedorActivo(u.nombreCompleto || u.nombre || 'Carlos Mendoza');
+        }
+        const rawSede = localStorage.getItem('forma_pos_sede');
+        if (rawSede) {
+          setSedeActiva(rawSede);
+        }
       } catch {
-        // Ignorar errores
+        /* noop */
       }
+      setSyncTick((t) => t + 1);
     };
 
-    syncSales();
-    window.addEventListener('forma-pos-ledger-update', syncSales);
-    return () => window.removeEventListener('forma-pos-ledger-update', syncSales);
-  }, []);
+    syncAll();
+    window.addEventListener('forma-pos-ledger-update', syncAll);
+    window.addEventListener(WEB_ORDERS_EVENT, syncAll);
+    window.addEventListener(CAJA_EVENT, syncAll);
+    window.addEventListener('storage', syncAll);
 
-  // Sincronizar pedidos web despachados en tiempo real
-  useEffect(() => {
-    const syncWeb = () => {
-      setPedidosWeb(getWebOrders());
-    };
-    syncWeb();
-    window.addEventListener(WEB_ORDERS_EVENT, syncWeb);
-    window.addEventListener('storage', syncWeb);
     return () => {
-      window.removeEventListener(WEB_ORDERS_EVENT, syncWeb);
-      window.removeEventListener('storage', syncWeb);
+      window.removeEventListener('forma-pos-ledger-update', syncAll);
+      window.removeEventListener(WEB_ORDERS_EVENT, syncAll);
+      window.removeEventListener(CAJA_EVENT, syncAll);
+      window.removeEventListener('storage', syncAll);
     };
   }, []);
 
-  // Filtrado reactivo por turno del vendedor, sede, consecutivo, cliente o fecha
-  const ventasFiltradas = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    const vNameClean = vendedorActivo.toLowerCase().split(' ')[0] || '';
+  // Construcción de la lista unificada de operaciones reales de sedeActiva (Cero Mocks)
+  const operacionesSede = useMemo<OperacionUnificadaItem[]>(() => {
+    const ventasRaw = getPosRegisteredSales()
+      .filter((s) => !s.sede || mismaSede(s.sede, sedeActiva))
+      .map(mapSaleToVentaItem);
 
-    return ventas.filter((v) => {
-      if (filtroSoloMiTurno && vNameClean) {
-        if (!v.vendedor.toLowerCase().includes(vNameClean)) {
+    const cambiosRaw = getPosRegisteredExchanges().filter(
+      (c) => !c.sede || mismaSede(c.sede, sedeActiva)
+    );
+
+    const pedidosRaw = getWebOrdersBySede(sedeActiva);
+
+    const itemsVentas: OperacionUnificadaItem[] = ventasRaw.map((v) => ({
+      uid: `VTA-${v.id}`,
+      tipo: 'VENTA_MOSTRADOR',
+      consecutivo: v.consecutivo.startsWith('#') ? v.consecutivo : `#${v.consecutivo}`,
+      fechaHoraTexto: v.fechaHora,
+      fechaIso: v.fechaIso || new Date().toISOString(),
+      vendedor: v.vendedor,
+      cliente: v.cliente,
+      documentoCliente: v.documentoCliente,
+      medioPago: v.medioPago,
+      totalCop: v.totalCop,
+      resumenPrendas:
+        v.prendas.map((p) => `${p.cantidad}x ${p.nombre} (${p.talla})`).join(', ') ||
+        'Prendas de mostrador',
+      ventaOriginal: v,
+    }));
+
+    const itemsCambios: OperacionUnificadaItem[] = cambiosRaw.map((c) => {
+      const esDevolucion = c.tipoLiquidacion === 'REINTEGRO_A_FAVOR' || c.diferenciaCop < 0;
+      const medio: 'EFECTIVO' | 'TRANSFERENCIA' =
+        c.medioPagoExcedente === 'TRANSFERENCIA' ? 'TRANSFERENCIA' : 'EFECTIVO';
+      return {
+        uid: `CMB-${c.id}`,
+        tipo: esDevolucion ? 'DEVOLUCION' : 'CAMBIO',
+        consecutivo: c.consecutivoFactura.startsWith('#')
+          ? c.consecutivoFactura
+          : `#${c.consecutivoFactura}`,
+        fechaHoraTexto: c.fecha || formatBogotaDateTime(c.fechaIso),
+        fechaIso: c.fechaIso || new Date().toISOString(),
+        vendedor: c.vendedor || vendedorActivo,
+        cliente: c.cliente || 'Consumidor Final',
+        medioPago: medio,
+        totalCop: c.diferenciaCop,
+        resumenPrendas: `Entra: ${c.prendaDevuelta} → Sale: ${c.prendaEntregada}`,
+        cambioOriginal: c,
+      };
+    });
+
+    const itemsWeb: OperacionUnificadaItem[] = pedidosRaw.map((p) => ({
+      uid: `WEB-${p.codigo}`,
+      tipo: 'PEDIDO_WEB',
+      consecutivo: p.codigo.startsWith('#') ? p.codigo : `#${p.codigo}`,
+      fechaHoraTexto: formatBogotaDateTime(p.fechaCreacionIso),
+      fechaIso: p.fechaCreacionIso,
+      vendedor: `Despacho ${p.sedeAsignada}`,
+      cliente: p.cliente,
+      documentoCliente: p.documento,
+      medioPago: p.metodoPago === 'CONTRAENTREGA' ? 'CONTRAENTREGA' : 'TRANSFERENCIA',
+      totalCop: p.totalCOP,
+      resumenPrendas:
+        p.productos.map((pr) => `${pr.cantidad}x ${pr.nombre} (${pr.talla})`).join(', ') ||
+        'Pedido Tienda Web',
+      pedidoWebOriginal: p,
+    }));
+
+    return [...itemsVentas, ...itemsCambios, ...itemsWeb].sort((a, b) =>
+      b.fechaIso.localeCompare(a.fechaIso)
+    );
+  }, [sedeActiva, vendedorActivo]);
+
+  // Aplicación de los filtros combinables (Periodo + Tipo + Medio de Pago + Buscador)
+  const operacionesFiltradas = useMemo(() => {
+    const hoyBogota = getBogotaDateYMD();
+    const sesionAbierta = getSesionAbierta(sedeActiva);
+    const q = busqueda.trim().toLowerCase();
+
+    return operacionesSede.filter((op) => {
+      // 1. Filtro de Periodo (Turno Actual / Hoy vs Todos los Días)
+      if (filtroPeriodo === 'HOY') {
+        const esHoyBogota = getBogotaDateYMD(op.fechaIso) === hoyBogota;
+        const enTurnoAbierto = Boolean(
+          sesionAbierta && op.fechaIso >= sesionAbierta.aperturaIso
+        );
+        const textoDiceHoy = op.fechaHoraTexto.toLowerCase().includes('hoy');
+        if (!esHoyBogota && !enTurnoAbierto && !textoDiceHoy) {
           return false;
         }
       }
-      if (filtroPago !== 'TODOS' && v.medioPago !== filtroPago) {
-        return false;
-      }
+
+      // 2. Filtro por Tipo de Operación
+      if (filtroTipo === 'VENTAS' && op.tipo !== 'VENTA_MOSTRADOR') return false;
+      if (filtroTipo === 'CAMBIOS' && op.tipo !== 'CAMBIO') return false;
+      if (filtroTipo === 'DEVOLUCIONES' && op.tipo !== 'DEVOLUCION') return false;
+      if (filtroTipo === 'WEB' && op.tipo !== 'PEDIDO_WEB') return false;
+
+      // 3. Filtro por Medio de Pago
+      if (filtroPago !== 'TODOS' && op.medioPago !== filtroPago) return false;
+
+      // 4. Buscador libre
       if (!q) return true;
-      const matchConsecutivo = v.consecutivo.toLowerCase().includes(q);
-      const matchCliente = v.cliente.toLowerCase().includes(q);
-      const matchVendedor = v.vendedor.toLowerCase().includes(q);
-      const matchFecha = v.fechaHora.toLowerCase().includes(q);
-      const matchPrenda = v.prendas.some(
-        (p) =>
-          p.nombre.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.talla.toLowerCase().includes(q)
+      return (
+        op.consecutivo.toLowerCase().includes(q) ||
+        op.cliente.toLowerCase().includes(q) ||
+        op.vendedor.toLowerCase().includes(q) ||
+        op.resumenPrendas.toLowerCase().includes(q) ||
+        op.fechaHoraTexto.toLowerCase().includes(q)
       );
-      return matchConsecutivo || matchCliente || matchVendedor || matchFecha || matchPrenda;
     });
-  }, [ventas, busqueda, filtroPago, filtroSoloMiTurno, vendedorActivo]);
+  }, [operacionesSede, filtroPeriodo, filtroTipo, filtroPago, busqueda, sedeActiva]);
 
-  // Filtrado de pedidos web asignados o despachados
-  const pedidosWebFiltrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    return pedidosWeb.filter((p) => {
-      if (filtroSedeScope === 'SEDE_ACTUAL' && !mismaSede(p.sedeAsignada, sedeActiva)) {
-        return false;
+  // =========================================================================
+  // 4 KPIs SUPERIORES CLAROS (QA-POS-023) Y AUTOSUMA INFERIOR (QA-POS-020)
+  // =========================================================================
+  const metricas = useMemo(() => {
+    let totalVentasMostradorCop = 0;
+    let sumaEfectivo = 0;
+    let sumaTransferencia = 0;
+    let sumaContraentrega = 0;
+    let sumaCambios = 0;
+    let cantidadCambiosDevoluciones = 0;
+
+    for (const op of operacionesFiltradas) {
+      if (op.tipo === 'VENTA_MOSTRADOR') {
+        totalVentasMostradorCop += op.totalCop;
+        if (op.medioPago === 'EFECTIVO') {
+          sumaEfectivo += op.totalCop;
+        } else if (op.medioPago === 'TRANSFERENCIA') {
+          sumaTransferencia += op.totalCop;
+        }
+      } else if (op.tipo === 'CAMBIO' || op.tipo === 'DEVOLUCION') {
+        cantidadCambiosDevoluciones++;
+        sumaCambios += op.totalCop;
+      } else if (op.tipo === 'PEDIDO_WEB') {
+        if (op.medioPago === 'TRANSFERENCIA') {
+          sumaTransferencia += op.totalCop;
+        } else {
+          sumaContraentrega += op.totalCop;
+        }
       }
-      if (filtroPago === 'EFECTIVO' && p.metodoPago !== 'CONTRAENTREGA') {
-        return false;
-      }
-      if (filtroPago === 'TRANSFERENCIA' && p.metodoPago !== 'TRANSFERENCIA') {
-        return false;
-      }
-      if (!q) return true;
-      const matchCodigo = p.codigo.toLowerCase().includes(q);
-      const matchCliente = p.cliente.toLowerCase().includes(q);
-      const matchCiudad = p.ciudadDestino.toLowerCase().includes(q);
-      const matchGuia = (p.guiaTransportadora || '').toLowerCase().includes(q);
-      const matchPrenda = p.productos.some(
-        (pr) =>
-          pr.nombre.toLowerCase().includes(q) ||
-          pr.sku.toLowerCase().includes(q) ||
-          pr.talla.toLowerCase().includes(q)
-      );
-      return matchCodigo || matchCliente || matchCiudad || matchGuia || matchPrenda;
-    });
-  }, [pedidosWeb, filtroSedeScope, sedeActiva, filtroPago, busqueda]);
+    }
 
-  // KPIs agregados sobre las ventas filtradas del turno
-  const totalFacturadoCop = useMemo(
-    () => ventasFiltradas.reduce((acc, v) => acc + v.totalCop, 0),
-    [ventasFiltradas]
-  );
-  const totalEfectivoCop = useMemo(
-    () =>
-      ventasFiltradas
-        .filter((v) => v.medioPago === 'EFECTIVO')
-        .reduce((acc, v) => acc + v.totalCop, 0),
-    [ventasFiltradas]
-  );
-  const totalTransferenciaCop = useMemo(
-    () =>
-      ventasFiltradas
-        .filter((v) => v.medioPago === 'TRANSFERENCIA')
-        .reduce((acc, v) => acc + v.totalCop, 0),
-    [ventasFiltradas]
-  );
+    const granTotalNeto =
+      sumaEfectivo + sumaTransferencia + sumaContraentrega + sumaCambios;
 
-  // KPIs web
-  const totalWebDespachadoCop = useMemo(
-    () => pedidosWebFiltrados.reduce((acc, p) => acc + p.totalCOP, 0),
-    [pedidosWebFiltrados]
-  );
-  const totalWebContraentregaCop = useMemo(
-    () =>
-      pedidosWebFiltrados
-        .filter((p) => p.metodoPago === 'CONTRAENTREGA')
-        .reduce((acc, p) => acc + p.totalCOP, 0),
-    [pedidosWebFiltrados]
-  );
+    return {
+      totalVentasMostradorCop,
+      sumaEfectivo,
+      sumaTransferencia,
+      sumaContraentrega,
+      sumaCambios,
+      cantidadCambiosDevoluciones,
+      granTotalNeto,
+    };
+  }, [operacionesFiltradas]);
 
-  // Exportar ventas a Excel (.xlsx / XML Spreadsheet)
+  // Exportar operaciones filtradas a Excel (.xlsx)
   const exportarVentasExcel = () => {
     const cleanStr = (s: string) =>
       s
@@ -489,76 +387,8 @@ export const PosVentasHistorialPage: React.FC = () => {
 
     const vendedorSlug = cleanStr(vendedorActivo);
     const sedeSlug = cleanStr(sedeActiva.replace(/\s*\(Cúcuta\)/i, ''));
-
-    let fechaHoyStr = new Date().toISOString().slice(0, 10);
-    try {
-      fechaHoyStr = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Bogota',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date());
-    } catch {}
-
+    const fechaHoyStr = getBogotaDateYMD();
     const nombreArchivo = `Ventas_Diarias_${vendedorSlug}_${sedeSlug}_${fechaHoyStr}.xlsx`;
-
-    const ventasAExportar = ventasFiltradas.length > 0 ? ventasFiltradas : ventas;
-
-    const filas: {
-      consecutivo: string;
-      fechaHora: string;
-      vendedor: string;
-      sede: string;
-      sku: string;
-      prenda: string;
-      talla: string;
-      color: string;
-      cantidad: number;
-      medioPago: string;
-      subtotalCop: number;
-      ivaCop: number;
-      totalCop: number;
-    }[] = [];
-
-    ventasAExportar.forEach((v) => {
-      if (v.prendas && v.prendas.length > 0) {
-        v.prendas.forEach((p) => {
-          const subtotalPrenda = Math.round(p.totalCop / 1.19);
-          const ivaPrenda = p.totalCop - subtotalPrenda;
-          filas.push({
-            consecutivo: v.consecutivo,
-            fechaHora: v.fechaHora,
-            vendedor: v.vendedor,
-            sede: sedeActiva,
-            sku: p.sku,
-            prenda: p.nombre,
-            talla: p.talla,
-            color: p.color,
-            cantidad: p.cantidad,
-            medioPago: v.medioPago,
-            subtotalCop: subtotalPrenda,
-            ivaCop: ivaPrenda,
-            totalCop: p.totalCop,
-          });
-        });
-      } else {
-        filas.push({
-          consecutivo: v.consecutivo,
-          fechaHora: v.fechaHora,
-          vendedor: v.vendedor,
-          sede: sedeActiva,
-          sku: 'N/A',
-          prenda: 'Venta Global Mostrador',
-          talla: '-',
-          color: '-',
-          cantidad: 1,
-          medioPago: v.medioPago,
-          subtotalCop: v.subtotalCop,
-          ivaCop: v.iva19Cop,
-          totalCop: v.totalCop,
-        });
-      }
-    });
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -567,78 +397,32 @@ export const PosVentasHistorialPage: React.FC = () => {
  xmlns:x="urn:schemas-microsoft-com:office:excel"
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:html="http://www.w3.org/TR/REC-html40">
- <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
-  <Author>FORMA POS</Author>
-  <Created>${new Date().toISOString()}</Created>
-  <Company>FORMA Moda Colombiana</Company>
- </DocumentProperties>
- <Styles>
-  <Style ss:ID="HeaderStyle">
-   <Font ss:Bold="1" ss:Color="#FFFFFF" ss:FontName="Calibri" ss:Size="11"/>
-   <Interior ss:Color="#661521" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-   <Borders>
-    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D19650"/>
-   </Borders>
-  </Style>
-  <Style ss:ID="CurrencyStyle">
-   <NumberFormat ss:Format="&quot;$&quot;#,##0;[Red]\-&quot;$&quot;#,##0"/>
-   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="CenterStyle">
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="TextStyle">
-   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="Ventas Diarias">
+ <Worksheet ss:Name="Historial POS">
   <Table>
-   <Column ss:Width="110"/>
-   <Column ss:Width="160"/>
-   <Column ss:Width="140"/>
-   <Column ss:Width="150"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="200"/>
-   <Column ss:Width="70"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="70"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="100"/>
-   <Column ss:Width="110"/>
-   <Row ss:Height="26">
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Consecutivo</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Fecha/Hora</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Vendedor</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Sede</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">SKU</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Prenda</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Talla</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Color</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Cantidad</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Medio de Pago</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Subtotal COP</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">IVA COP</Data></Cell>
-    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Total COP</Data></Cell>
+   <Row>
+    <Cell><Data ss:Type="String">Consecutivo</Data></Cell>
+    <Cell><Data ss:Type="String">Tipo Operacion</Data></Cell>
+    <Cell><Data ss:Type="String">Fecha Hora</Data></Cell>
+    <Cell><Data ss:Type="String">Sede</Data></Cell>
+    <Cell><Data ss:Type="String">Vendedor</Data></Cell>
+    <Cell><Data ss:Type="String">Cliente</Data></Cell>
+    <Cell><Data ss:Type="String">Detalle Prendas</Data></Cell>
+    <Cell><Data ss:Type="String">Medio Pago</Data></Cell>
+    <Cell><Data ss:Type="String">Total COP</Data></Cell>
    </Row>
-   ${filas
+   ${operacionesFiltradas
      .map(
-       (f) => `
-   <Row ss:Height="20">
-    <Cell ss:StyleID="CenterStyle"><Data ss:Type="String">${escapeXml(f.consecutivo)}</Data></Cell>
-    <Cell ss:StyleID="TextStyle"><Data ss:Type="String">${escapeXml(f.fechaHora)}</Data></Cell>
-    <Cell ss:StyleID="TextStyle"><Data ss:Type="String">${escapeXml(f.vendedor)}</Data></Cell>
-    <Cell ss:StyleID="TextStyle"><Data ss:Type="String">${escapeXml(f.sede)}</Data></Cell>
-    <Cell ss:StyleID="CenterStyle"><Data ss:Type="String">${escapeXml(f.sku)}</Data></Cell>
-    <Cell ss:StyleID="TextStyle"><Data ss:Type="String">${escapeXml(f.prenda)}</Data></Cell>
-    <Cell ss:StyleID="CenterStyle"><Data ss:Type="String">${escapeXml(f.talla)}</Data></Cell>
-    <Cell ss:StyleID="TextStyle"><Data ss:Type="String">${escapeXml(f.color)}</Data></Cell>
-    <Cell ss:StyleID="CenterStyle"><Data ss:Type="Number">${f.cantidad}</Data></Cell>
-    <Cell ss:StyleID="CenterStyle"><Data ss:Type="String">${escapeXml(f.medioPago)}</Data></Cell>
-    <Cell ss:StyleID="CurrencyStyle"><Data ss:Type="Number">${f.subtotalCop}</Data></Cell>
-    <Cell ss:StyleID="CurrencyStyle"><Data ss:Type="Number">${f.ivaCop}</Data></Cell>
-    <Cell ss:StyleID="CurrencyStyle"><Data ss:Type="Number">${f.totalCop}</Data></Cell>
+       (op) => `
+   <Row>
+    <Cell><Data ss:Type="String">${escapeXml(op.consecutivo)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(op.tipo)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(op.fechaHoraTexto)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(sedeActiva)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(op.vendedor)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(op.cliente)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(op.resumenPrendas)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(op.medioPago)}</Data></Cell>
+    <Cell><Data ss:Type="Number">${op.totalCop}</Data></Cell>
    </Row>`
      )
      .join('')}
@@ -663,19 +447,20 @@ export const PosVentasHistorialPage: React.FC = () => {
     setTimeout(() => setMensajeExcelExito(null), 4000);
   };
 
-  // Convertir a DTO de Ticket para impresión
+  // DTO de Ticket para reimpresión 80mm cuando se selecciona una venta
   const ticketDataParaImprimir: VentaTicketDTO | null = useMemo(() => {
-    if (!ventaSeleccionada) return null;
+    const venta = operacionSeleccionada?.ventaOriginal;
+    if (!venta) return null;
     return {
       nombreTienda: 'FORMA BOUTIQUE STORE',
       nombreSede: sedeActiva,
       direccionSede: 'Calle 10 # 3-45, Centro Comercial Plaza',
       telefonoSede: '(+57) 310 492 8810',
-      consecutivo: ventaSeleccionada.consecutivo,
-      fechaHora: ventaSeleccionada.fechaHora,
-      cajeroNombre: ventaSeleccionada.vendedor,
-      clienteNombre: ventaSeleccionada.cliente,
-      items: ventaSeleccionada.prendas.map((p) => ({
+      consecutivo: venta.consecutivo,
+      fechaHora: venta.fechaHora,
+      cajeroNombre: venta.vendedor,
+      clienteNombre: venta.cliente,
+      items: venta.prendas.map((p) => ({
         sku: p.sku,
         nombre: p.nombre,
         talla: p.talla,
@@ -686,290 +471,268 @@ export const PosVentasHistorialPage: React.FC = () => {
         descuentoCop: 0,
         totalCop: p.totalCop,
       })),
-      subtotalCop: ventaSeleccionada.subtotalCop,
+      subtotalCop: venta.subtotalCop,
       descuentoTotalCop: 0,
-      ivaDiscriminadoCop: ventaSeleccionada.iva19Cop,
-      totalNetoCop: ventaSeleccionada.totalCop,
-      metodoPago: ventaSeleccionada.medioPago,
-      montoRecibidoCop: ventaSeleccionada.montoRecibidoCop,
-      cambioCop: ventaSeleccionada.cambioCop,
-      referenciaTransferencia: ventaSeleccionada.referenciaPago,
+      ivaDiscriminadoCop: venta.iva19Cop,
+      totalNetoCop: venta.totalCop,
+      metodoPago: venta.medioPago,
+      montoRecibidoCop: venta.montoRecibidoCop,
+      cambioCop: venta.cambioCop,
+      referenciaTransferencia: venta.referenciaPago,
     };
-  }, [ventaSeleccionada]);
+  }, [operacionSeleccionada, sedeActiva]);
 
   return (
-    <div className="min-h-full lg:h-full w-full overflow-y-auto bg-[#F4EFEA] text-[#1C1311] rounded-2xl border border-[#D8CFC6] shadow-inner p-2.5 sm:p-5 select-none font-sans">
-      {/* =========================================================================
-          CABECERA EDITORIAL Y KPIS DE VENTAS DEL PUNTO DE VENTA
-      ========================================================================= */}
-      <header className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 sm:p-5 mb-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#EFEAE4]">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-[#661521] text-white flex items-center justify-center shrink-0 shadow-md">
-              <Receipt className="w-6 h-6 text-[#D19650]" />
+    <div className="min-h-full lg:h-full w-full overflow-y-auto bg-[#F4EFEA] text-[#1C1311] rounded-2xl border border-[#D8CFC6] shadow-inner p-2.5 sm:p-5 select-none font-sans flex flex-col justify-between">
+      <div>
+        {/* =========================================================================
+            CABECERA EDITORIAL Y 4 KPIS CLAROS (QA-POS-023)
+        ========================================================================= */}
+        <header className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 sm:p-5 mb-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#EFEAE4]">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#661521] text-white flex items-center justify-center shrink-0 shadow-md">
+                <Receipt className="w-6 h-6 text-[#D19650]" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#1C1311] text-[#D19650] font-mono text-xs font-black tracking-wider uppercase">
+                    Historial Unificado de Sede
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#059669] text-xs font-extrabold">
+                    {operacionesFiltradas.length} Operaciones en Vista
+                  </span>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-black text-[#1C1311] tracking-tight mt-1">
+                  Historial de Ventas del Mostrador
+                </h1>
+              </div>
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-md bg-[#1C1311] text-[#D19650] font-mono text-xs font-black tracking-wider uppercase">
-                  Punto de Venta
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#059669] text-xs font-extrabold">
-                  {ventas.length} Ventas Registradas
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 text-xs bg-[#FAF7F4] px-3.5 py-2.5 rounded-xl border border-[#E5DDD3]">
+                <MapPin className="w-4 h-4 text-[#661521]" />
+                <span className="font-bold text-[#1C1311]">Sede {sedeActiva}</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs bg-[#FAF7F4] px-3.5 py-2.5 rounded-xl border border-[#E5DDD3]">
+                <User className="w-4 h-4 text-[#D19650]" />
+                <span className="font-bold text-stone-700">
+                  Turno: <strong className="text-[#1C1311]">{vendedorActivo}</strong>
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#1C1311] tracking-tight mt-1">
-                Historial de Ventas del Mostrador
-              </h1>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-xs bg-[#FAF7F4] px-3.5 py-2.5 rounded-xl border border-[#E5DDD3]">
-              <MapPin className="w-4 h-4 text-[#661521]" />
-              <span className="font-bold text-[#1C1311]">Sede {sedeActiva}</span>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs bg-[#FAF7F4] px-3.5 py-2.5 rounded-xl border border-[#E5DDD3]">
-              <User className="w-4 h-4 text-[#D19650]" />
-              <span className="font-bold text-stone-700">
-                Turno: <strong className="text-[#1C1311]">{vendedorActivo}</strong>
-              </span>
-            </div>
-
-            {/* Botón Dominante de Exportación Diaria a Excel (.xlsx) */}
-            <button
-              type="button"
-              onClick={exportarVentasExcel}
-              className="min-h-[46px] px-4 py-2.5 rounded-xl bg-[#059669] hover:bg-emerald-700 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
-              title="Descargar reporte diario de ventas en formato Excel (.xlsx)"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
-              <span>Exportar Ventas Diarias a Excel (.xlsx)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Pestañas Principales: Mostrador vs Ventas Web Despachadas */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-[#EFEAE4]">
-          <button
-            type="button"
-            onClick={() => setTabPrincipal('MOSTRADOR')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
-              tabPrincipal === 'MOSTRADOR'
-                ? 'bg-[#661521] text-white shadow-sm'
-                : 'bg-[#FAF7F4] text-stone-700 hover:bg-stone-200/60 border border-[#D8CFC6]'
-            }`}
-          >
-            <Receipt className="w-4 h-4 text-[#D19650]" />
-            <span>Ventas de Mostrador (Caja)</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] bg-white/20">
-              {ventasFiltradas.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTabPrincipal('WEB')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
-              tabPrincipal === 'WEB'
-                ? 'bg-[#661521] text-white shadow-sm'
-                : 'bg-[#FAF7F4] text-stone-700 hover:bg-stone-200/60 border border-[#D8CFC6]'
-            }`}
-          >
-            <Truck className="w-4 h-4 text-[#D19650]" />
-            <span>Ventas Web Despachadas</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] bg-white/20">
-              {pedidosWebFiltrados.length}
-            </span>
-          </button>
-        </div>
-
-        {mensajeExcelExito && (
-          <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#059669] text-xs font-bold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{mensajeExcelExito}</span>
-          </div>
-        )}
-
-        {/* Tarjetas de Resumen Financiero */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-4">
-          <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Total Facturado
-              </span>
-              <DollarSign className="w-4 h-4 text-[#059669]" />
-            </div>
-            <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#1C1311] mt-1">
-              {formatCOP(totalFacturadoCop)}
-            </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">En {ventas.length} comprobantes emitidos</p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Ventas en Efectivo
-              </span>
-              <Banknote className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#059669] mt-1">
-              {formatCOP(totalEfectivoCop)}
-            </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Dinero en gaveta física</p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Transferencias Bancarias
-              </span>
-              <CreditCard className="w-4 h-4 text-indigo-600" />
-            </div>
-            <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-indigo-900 mt-1">
-              {formatCOP(totalTransferenciaCop)}
-            </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Bancolombia QR & Nequi</p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-[#1C1311] text-white border-2 border-[#D19650]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#D19650]">
-                Ticket Promedio
-              </span>
-              <Sparkles className="w-4 h-4 text-[#D19650]" />
-            </div>
-            <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-white mt-1">
-              {ventas.length > 0 ? formatCOP(totalFacturadoCop / ventas.length) : '$0 COP'}
-            </p>
-            <p className="text-[11px] text-[#E7DED2]/80 mt-0.5">Promedio por transacción</p>
-          </div>
-        </div>
-      </header>
-
-      {/* =========================================================================
-          BARRA DE BÚSQUEDA Y FILTROS RÁPIDOS
-      ========================================================================= */}
-      <div className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 mb-5 flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por consecutivo (#MED-0042), cliente, prenda, SKU o fecha..."
-            className="w-full min-h-[48px] pl-10 pr-4 rounded-xl bg-[#FAF7F4] border-2 border-[#D8CFC6] text-sm font-semibold text-[#1C1311] placeholder:text-stone-400 focus:outline-none focus:border-[#661521]"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {tabPrincipal === 'MOSTRADOR' ? (
-            /* Alternador de Turno vs Sede Completa */
-            <div className="flex items-center gap-1 bg-[#FAF7F4] p-1 rounded-xl border border-[#D8CFC6]">
               <button
                 type="button"
-                onClick={() => setFiltroSoloMiTurno(true)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filtroSoloMiTurno
-                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
-                    : 'text-stone-600 hover:text-[#1C1311]'
-                }`}
+                onClick={exportarVentasExcel}
+                className="min-h-[46px] px-4 py-2.5 rounded-xl bg-[#059669] hover:bg-emerald-700 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+                title="Descargar reporte diario de ventas en formato Excel (.xlsx)"
               >
-                Mi Turno ({vendedorActivo.split(' ')[0]})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFiltroSoloMiTurno(false)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  !filtroSoloMiTurno
-                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
-                    : 'text-stone-600 hover:text-[#1C1311]'
-                }`}
-              >
-                Toda la Sede
+                <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+                <span>Exportar Ventas Diarias a Excel (.xlsx)</span>
               </button>
             </div>
-          ) : (
-            /* Alternador de Sede para Pedidos Web */
-            <div className="flex items-center gap-1 bg-[#FAF7F4] p-1 rounded-xl border border-[#D8CFC6]">
-              <button
-                type="button"
-                onClick={() => setFiltroSedeScope('SEDE_ACTUAL')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filtroSedeScope === 'SEDE_ACTUAL'
-                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
-                    : 'text-stone-600 hover:text-[#1C1311]'
-                }`}
-              >
-                Esta Sede ({sedeActiva.replace(/\s*\(.*?\)/, '')})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFiltroSedeScope('TODAS_SEDES')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filtroSedeScope === 'TODAS_SEDES'
-                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
-                    : 'text-stone-600 hover:text-[#1C1311]'
-                }`}
-              >
-                Todas las Sedes
-              </button>
+          </div>
+
+          {mensajeExcelExito && (
+            <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#059669] text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{mensajeExcelExito}</span>
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <span className="text-xs font-bold text-stone-500 mr-1 hidden sm:inline">Medio de Pago:</span>
-            {(['TODOS', 'EFECTIVO', 'TRANSFERENCIA'] as const).map((medio) => (
+          {/* 4 KPIs Superiores Claros (QA-POS-023) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-4">
+            <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                  Total Ventas Mostrador
+                </span>
+                <DollarSign className="w-4 h-4 text-[#059669]" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#1C1311] mt-1">
+                {formatCOP(metricas.totalVentasMostradorCop)}
+              </p>
+              <p className="text-[11px] text-stone-500 mt-0.5">Facturación directa en sede</p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                  Efectivo en Gaveta
+                </span>
+                <Banknote className="w-4 h-4 text-emerald-600" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#059669] mt-1">
+                {formatCOP(metricas.sumaEfectivo)}
+              </p>
+              <p className="text-[11px] text-stone-500 mt-0.5">Ventas pagadas en efectivo</p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                  Transferencias QR
+                </span>
+                <CreditCard className="w-4 h-4 text-indigo-600" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-indigo-900 mt-1">
+                {formatCOP(metricas.sumaTransferencia)}
+              </p>
+              <p className="text-[11px] text-stone-500 mt-0.5">Pagos verificados en banco</p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#1C1311] text-white border-2 border-[#D19650]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#D19650]">
+                  Cambios y Devoluciones
+                </span>
+                <RotateCcw className="w-4 h-4 text-[#D19650]" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono tabular-nums text-white mt-1">
+                {metricas.cantidadCambiosDevoluciones} ops · {formatCOP(metricas.sumaCambios)}
+              </p>
+              <p className="text-[11px] text-[#E7DED2]/80 mt-0.5">
+                Saldo neto de excedentes y reintegros
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* =========================================================================
+            BARRA DE FILTROS INTERACTIVA Y COMBINABLE (QA-POS-020)
+        ========================================================================= */}
+        <div className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 mb-5 space-y-3">
+          {/* Fila 1: Buscador + Filtro de Periodo */}
+          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por consecutivo, cliente, prenda o SKU..."
+                className="w-full min-h-[44px] pl-10 pr-4 rounded-xl bg-[#FAF7F4] border-2 border-[#D8CFC6] text-xs sm:text-sm font-semibold text-[#1C1311] placeholder:text-stone-400 focus:outline-none focus:border-[#661521]"
+              />
+            </div>
+
+            {/* Filtro de Periodo */}
+            <div className="flex items-center gap-1 bg-[#FAF7F4] p-1 rounded-xl border border-[#D8CFC6] shrink-0">
               <button
-                key={medio}
                 type="button"
-                onClick={() => setFiltroPago(medio)}
-                className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-extrabold border transition-all shrink-0 ${
-                  filtroPago === medio
-                    ? 'bg-[#661521] text-white border-[#661521] shadow-sm'
-                    : 'bg-[#FAF7F4] text-[#1C1311] border-[#D8CFC6] hover:bg-stone-200/60'
+                onClick={() => setFiltroPeriodo('HOY')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filtroPeriodo === 'HOY'
+                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
+                    : 'text-stone-600 hover:text-[#1C1311]'
                 }`}
               >
-                {medio === 'TODOS'
-                  ? 'Todos'
-                  : medio === 'EFECTIVO'
-                  ? tabPrincipal === 'WEB'
-                    ? 'Contraentrega'
-                    : 'Efectivo'
-                  : 'Transferencia'}
+                Turno Actual / Hoy
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setFiltroPeriodo('TODOS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filtroPeriodo === 'TODOS'
+                    ? 'bg-[#1C1311] text-[#D19650] shadow-sm'
+                    : 'text-stone-600 hover:text-[#1C1311]'
+                }`}
+              >
+                Todos los Días
+              </button>
+            </div>
+          </div>
+
+          {/* Fila 2: Filtro por Tipo de Operación + Filtro por Medio de Pago */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2 border-t border-[#EFEAE4]">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase text-stone-500 mr-1 flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5 text-[#661521]" />
+                <span>Operación:</span>
+              </span>
+              {(
+                [
+                  { id: 'TODOS', label: 'Todos' },
+                  { id: 'VENTAS', label: 'Ventas Mostrador' },
+                  { id: 'CAMBIOS', label: 'Cambios' },
+                  { id: 'DEVOLUCIONES', label: 'Devoluciones' },
+                  { id: 'WEB', label: 'Pedidos Web' },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setFiltroTipo(item.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                    filtroTipo === item.id
+                      ? 'bg-[#661521] text-white border-[#661521] shadow-2xs'
+                      : 'bg-[#FAF7F4] text-[#1C1311] border-[#D8CFC6] hover:bg-stone-200/60'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase text-stone-500 mr-1">
+                Medio de Pago:
+              </span>
+              {(
+                [
+                  { id: 'TODOS', label: 'Todos' },
+                  { id: 'EFECTIVO', label: 'Efectivo' },
+                  { id: 'TRANSFERENCIA', label: 'Transferencia' },
+                  { id: 'CONTRAENTREGA', label: 'Contraentrega' },
+                ] as const
+              ).map((medio) => (
+                <button
+                  key={medio.id}
+                  type="button"
+                  onClick={() => setFiltroPago(medio.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                    filtroPago === medio.id
+                      ? 'bg-[#1C1311] text-[#D19650] border-[#1C1311] shadow-2xs'
+                      : 'bg-[#FAF7F4] text-[#1C1311] border-[#D8CFC6] hover:bg-stone-200/60'
+                  }`}
+                >
+                  {medio.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* =========================================================================
-          TABLA / TARJETAS LIMPIAS DEL HISTORIAL DE VENTAS
-      ========================================================================= */}
-      {tabPrincipal === 'MOSTRADOR' ? (
+        {/* =========================================================================
+            TABLA UNIFICADA DE OPERACIONES DE LA SEDE + BARRA INFERIOR DE AUTOSUMA
+        ========================================================================= */}
         <section className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm overflow-hidden">
           <div className="p-4 border-b border-[#EFEAE4] flex items-center justify-between">
             <h2 className="text-base font-black text-[#1C1311]">
-              Ventas Registradas en el Mostrador ({ventasFiltradas.length})
+              Operaciones Registradas en {sedeActiva} ({operacionesFiltradas.length})
             </h2>
             <span className="text-xs text-stone-500 font-medium">
-              Haz clic en cualquier venta para ver el detalle o reimprimir ticket
+              Haz clic en cualquier fila para ver el detalle o reimprimir ticket
             </span>
           </div>
 
-          {ventasFiltradas.length === 0 ? (
+          {operacionesFiltradas.length === 0 ? (
             <div className="p-10 text-center text-stone-500 space-y-2">
               <ShoppingBag className="w-12 h-12 mx-auto text-stone-300" />
-              <p className="font-bold text-sm">No se encontraron ventas con los criterios de búsqueda.</p>
+              <p className="font-bold text-sm">
+                No hay operaciones registradas en {sedeActiva} para los filtros seleccionados.
+              </p>
               <button
                 type="button"
                 onClick={() => {
                   setBusqueda('');
+                  setFiltroTipo('TODOS');
                   setFiltroPago('TODOS');
+                  setFiltroPeriodo('TODOS');
                 }}
-                className="text-xs text-[#661521] font-bold underline"
+                className="text-xs text-[#661521] font-bold underline cursor-pointer"
               >
-                Restablecer filtros
+                Restablecer todos los filtros
               </button>
             </div>
           ) : (
@@ -978,75 +741,83 @@ export const PosVentasHistorialPage: React.FC = () => {
                 <thead>
                   <tr className="bg-[#FAF7F4] border-b border-[#E5DDD3] text-stone-600 font-extrabold uppercase text-[11px] tracking-wider">
                     <th className="py-3 px-4">Consecutivo</th>
+                    <th className="py-3 px-4">Operación</th>
                     <th className="py-3 px-4">Fecha / Hora</th>
-                    <th className="py-3 px-4">Vendedor</th>
                     <th className="py-3 px-4">Cliente</th>
+                    <th className="py-3 px-4">Prendas / Concepto</th>
                     <th className="py-3 px-4">Medio de Pago</th>
-                    <th className="py-3 px-4 text-right">Total Pagado</th>
+                    <th className="py-3 px-4 text-right">Valor COP</th>
                     <th className="py-3 px-4 text-center">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EFEAE4]">
-                  {ventasFiltradas.map((v) => (
+                  {operacionesFiltradas.map((op) => (
                     <tr
-                      key={v.id}
-                      onClick={() => setVentaSeleccionada(v)}
+                      key={op.uid}
+                      onClick={() => setOperacionSeleccionada(op)}
                       className="hover:bg-[#FAF7F4] cursor-pointer transition-colors group"
                     >
                       <td className="py-3.5 px-4 font-mono font-black text-sm text-[#1C1311]">
                         <span className="px-2 py-0.5 rounded-lg bg-[#1C1311] text-[#D19650]">
-                          {v.consecutivo}
+                          {op.consecutivo}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                            op.tipo === 'VENTA_MOSTRADOR'
+                              ? 'bg-emerald-100 text-[#059669]'
+                              : op.tipo === 'PEDIDO_WEB'
+                              ? 'bg-sky-100 text-sky-900'
+                              : op.tipo === 'DEVOLUCION'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'bg-amber-100 text-amber-900'
+                          }`}
+                        >
+                          {op.tipo === 'VENTA_MOSTRADOR'
+                            ? 'Venta Mostrador'
+                            : op.tipo === 'PEDIDO_WEB'
+                            ? 'Pedido Web'
+                            : op.tipo === 'DEVOLUCION'
+                            ? 'Devolución'
+                            : 'Cambio'}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-medium text-stone-700 whitespace-nowrap">
-                        {v.fechaHora}
+                        {op.fechaHoraTexto}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-[#1C1311]">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{v.vendedor}</span>
-                        </div>
+                        {op.cliente}
                       </td>
-                      <td className="py-3.5 px-4 font-medium text-stone-800">
-                        <div>
-                          <span>{v.cliente}</span>
-                          {v.documentoCliente && (
-                            <span className="block text-[11px] text-stone-500 font-mono">
-                              {v.documentoCliente}
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-3.5 px-4 text-stone-600 max-w-xs truncate">
+                        {op.resumenPrendas}
                       </td>
                       <td className="py-3.5 px-4">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black ${
-                            v.medioPago === 'EFECTIVO'
+                            op.medioPago === 'EFECTIVO'
                               ? 'bg-emerald-100 text-[#059669] border border-emerald-300'
+                              : op.medioPago === 'CONTRAENTREGA'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
                               : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
                           }`}
                         >
-                          {v.medioPago === 'EFECTIVO' ? (
-                            <>
-                              <Banknote className="w-3.5 h-3.5" />
-                              <span>Efectivo</span>
-                            </>
-                          ) : (
-                            <>
-                              <CreditCard className="w-3.5 h-3.5" />
-                              <span>Transferencia</span>
-                            </>
-                          )}
+                          {op.medioPago === 'EFECTIVO'
+                            ? 'Efectivo'
+                            : op.medioPago === 'CONTRAENTREGA'
+                            ? 'Contraentrega'
+                            : 'Transferencia'}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-[#1C1311]">
-                        {formatCOP(v.totalCop)}
+                        {formatCOP(op.totalCop)}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setVentaSeleccionada(v);
+                            setOperacionSeleccionada(op);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CFC6] text-xs font-extrabold text-[#661521] hover:bg-[#661521] hover:text-white transition-all inline-flex items-center gap-1 shadow-sm"
                         >
@@ -1060,230 +831,76 @@ export const PosVentasHistorialPage: React.FC = () => {
               </table>
             </div>
           )}
-        </section>
-      ) : (
-        <section className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm overflow-hidden">
-          {/* Banner explicativo de CA-40 para ventas web y contraentrega */}
-          <div className="p-4 bg-amber-50/70 border-b border-amber-200 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
-              <div>
-                <span className="font-bold block">Trazabilidad y Conciliación Financiera (Regla CA-40)</span>
-                <span className="text-[11px] text-amber-900 leading-relaxed block">
-                  Los pedidos web despachados descuentan inventario físico en Kardex. Si el pedido es <strong>Contraentrega</strong>, la transportadora recauda el dinero al entregar y consigna a FORMA. <strong>Ese dinero no entra a la gaveta de caja física del POS</strong>; su conciliación se efectúa desde Administración.
-                </span>
-              </div>
+
+          {/* =====================================================================
+              BARRA INFERIOR DE AUTOSUMA (STICKY FOOTER — QA-POS-020)
+          ===================================================================== */}
+          <div className="sticky bottom-0 z-10 bg-[#1C1311] text-white border-t-2 border-[#D19650] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <span className="inline-flex items-center gap-1.5 font-mono font-bold text-[#D19650]">
+                <Calculator className="w-4 h-4" />
+                <span>Registros en vista: {operacionesFiltradas.length}</span>
+              </span>
+              <span className="font-mono">
+                Suma Efectivo: <strong className="text-emerald-300">{formatCOP(metricas.sumaEfectivo)}</strong>
+              </span>
+              <span className="font-mono">
+                Suma Transferencias: <strong className="text-sky-300">{formatCOP(metricas.sumaTransferencia)}</strong>
+              </span>
+              <span className="font-mono">
+                Ajustes Cambios/Devoluciones:{' '}
+                <strong className="text-amber-300">{formatCOP(metricas.sumaCambios)}</strong>
+              </span>
             </div>
-            <div className="text-left sm:text-right shrink-0">
-              <span className="font-mono font-bold text-xs text-emerald-700 block">
-                Total Web: {formatCOP(totalWebDespachadoCop)} COP
-              </span>
-              <span className="text-[10px] text-amber-800 block">
-                Contraentrega por recaudar: {formatCOP(totalWebContraentregaCop)} COP
-              </span>
-              <span className="text-[10px] text-stone-500">
-                {pedidosWebFiltrados.length} pedidos listados
-              </span>
+
+            <div className="px-3.5 py-1.5 rounded-xl bg-[#661521] border border-[#D19650] font-mono text-xs sm:text-sm font-black text-white">
+              TOTAL AUTOSUMA FILTRADO: {formatCOP(metricas.granTotalNeto)}
             </div>
           </div>
-
-          <div className="p-4 border-b border-[#EFEAE4] flex items-center justify-between">
-            <h2 className="text-base font-black text-[#1C1311]">
-              Ventas Web Asignadas y Despachadas ({pedidosWebFiltrados.length})
-            </h2>
-            <span className="text-xs text-stone-500 font-medium">
-              Haz clic en cualquier pedido para consultar prendas, guía y actividad
-            </span>
-          </div>
-
-          {pedidosWebFiltrados.length === 0 ? (
-            <div className="p-10 text-center text-stone-500 space-y-2">
-              <Truck className="w-12 h-12 mx-auto text-stone-300" />
-              <p className="font-bold text-sm">No se encontraron pedidos web con los criterios de búsqueda.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setBusqueda('');
-                  setFiltroPago('TODOS');
-                  setFiltroSedeScope('TODAS_SEDES');
-                }}
-                className="text-xs text-[#661521] font-bold underline"
-              >
-                Ver pedidos de todas las sedes
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-[#FAF7F4] border-b border-[#E5DDD3] text-stone-600 font-extrabold uppercase text-[11px] tracking-wider">
-                    <th className="py-3 px-4">Pedido / Guía</th>
-                    <th className="py-3 px-4">Fecha</th>
-                    <th className="py-3 px-4">Cliente / Ciudad</th>
-                    <th className="py-3 px-4">Sede Despacho</th>
-                    <th className="py-3 px-4">Método de Pago & Recaudo</th>
-                    <th className="py-3 px-4">Estado Pedido</th>
-                    <th className="py-3 px-4 text-right">Total COP</th>
-                    <th className="py-3 px-4 text-center">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFEAE4]">
-                  {pedidosWebFiltrados.map((p) => {
-                    const fechaBogotaStr = new Intl.DateTimeFormat('es-CO', {
-                      timeZone: 'America/Bogota',
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    }).format(new Date(p.fechaCreacionIso));
-
-                    return (
-                      <tr
-                        key={p.codigo}
-                        onClick={() => setPedidoWebSeleccionado(p)}
-                        className="hover:bg-[#FAF7F4] cursor-pointer transition-colors group"
-                      >
-                        <td className="py-3.5 px-4 font-mono font-black text-sm text-[#1C1311]">
-                          <span className="px-2 py-0.5 rounded-lg bg-[#1C1311] text-[#D19650] block w-fit">
-                            #{p.codigo}
-                          </span>
-                          {p.guiaTransportadora && (
-                            <span className="block text-[10px] text-stone-500 font-mono mt-0.5">
-                              Guía: {p.guiaTransportadora}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 font-medium text-stone-700 whitespace-nowrap">
-                          {fechaBogotaStr}
-                        </td>
-                        <td className="py-3.5 px-4 font-medium text-stone-800">
-                          <div>
-                            <span className="font-bold">{p.cliente}</span>
-                            <span className="block text-[11px] text-stone-500">
-                              {p.ciudadDestino}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-stone-700">
-                          <span className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200 text-xs">
-                            {p.sedeAsignada}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {p.metodoPago === 'CONTRAENTREGA' ? (
-                            <div>
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
-                                Contraentrega
-                              </span>
-                              <span className="block text-[10px] text-amber-800 font-medium mt-0.5">
-                                {p.estadoCobro === 'PAGADO' ? '✓ Recaudo conciliado Admin' : '• Cobra transportadora'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div>
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-900 border border-sky-300">
-                                Transferencia
-                              </span>
-                              <span className="block text-[10px] text-sky-800 font-medium mt-0.5">
-                                {p.estadoCobro === 'PAGADO' ? '✓ Verificado en banco' : '• Pendiente verificación'}
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-stone-100 text-stone-700 border border-stone-300">
-                            {p.estado}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-black text-sm text-[#059669]">
-                          {formatCOP(p.totalCOP)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPedidoWebSeleccionado(p);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CFC6] text-xs font-extrabold text-[#661521] hover:bg-[#661521] hover:text-white transition-all inline-flex items-center gap-1 shadow-sm"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Ver Detalle</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </section>
-      )}
+      </div>
 
       {/* =========================================================================
-          DRAWER LATERAL DE DETALLE DE VENTA (Master-Detail + Actividad)
+          DRAWER LATERAL DE DETALLE DE OPERACIÓN (VENTA / CAMBIO / PEDIDO WEB)
       ========================================================================= */}
-      {ventaSeleccionada && (
+      {operacionSeleccionada && (
         <DetailDrawer
-          isOpen={Boolean(ventaSeleccionada)}
-          onClose={() => setVentaSeleccionada(null)}
-          title={`Factura ${ventaSeleccionada.consecutivo}`}
-          subtitle={`${ventaSeleccionada.cliente} · ${ventaSeleccionada.fechaHora}`}
+          isOpen={Boolean(operacionSeleccionada)}
+          onClose={() => setOperacionSeleccionada(null)}
+          title={`Operación ${operacionSeleccionada.consecutivo}`}
+          subtitle={`${operacionSeleccionada.cliente} · ${operacionSeleccionada.fechaHoraTexto}`}
           badge={{
-            label: ventaSeleccionada.medioPago,
-            variant: ventaSeleccionada.medioPago === 'EFECTIVO' ? 'success' : 'info',
+            label: operacionSeleccionada.medioPago,
+            variant: operacionSeleccionada.medioPago === 'EFECTIVO' ? 'success' : 'info',
           }}
           activeTab={drawerTab}
           onTabChange={setDrawerTab}
           activityItems={[
             {
-              id: 'act-vta-1',
-              timestamp: ventaSeleccionada.fechaHora,
-              title: `Venta registrada en caja (${ventaSeleccionada.consecutivo})`,
-              description: `Emitida por ${ventaSeleccionada.vendedor} en Sede ${sedeActiva}. Cliente: ${ventaSeleccionada.cliente}.`,
-              user: ventaSeleccionada.vendedor,
-              type: 'success',
-            },
-            {
-              id: 'act-vta-2',
-              timestamp: ventaSeleccionada.fechaHora,
-              title: `Cobro liquidado vía ${ventaSeleccionada.medioPago}`,
-              description: `Total de ${formatCOP(ventaSeleccionada.totalCop)} liquidado exitosamente.${
-                ventaSeleccionada.referenciaPago ? ` Ref: ${ventaSeleccionada.referenciaPago}` : ''
-              }`,
-              user: 'Pasarela / Gaveta POS',
-              type: 'info',
-            },
-            {
-              id: 'act-vta-3',
-              timestamp: ventaSeleccionada.fechaHora,
-              title: 'Descarga de inventario en Kardex efectuada',
-              description: `${ventaSeleccionada.prendas.length} prendas descontadas en tiempo real de SaldoStock (RN-GEN-02).`,
-              user: 'InventoryLedgerService',
-              type: 'info',
-            },
-            {
-              id: 'act-vta-4',
-              timestamp: ventaSeleccionada.fechaHora,
-              title: 'Consecutivo diferido asignado y comprobante generado',
-              description: `Consecutivo ${ventaSeleccionada.consecutivo} emitido antes del commit conforme a RN-VTA-09.`,
-              user: 'ConsecutivoService',
+              id: 'act-op-1',
+              timestamp: operacionSeleccionada.fechaHoraTexto,
+              title: `Operación registrada (${operacionSeleccionada.consecutivo})`,
+              description: `${operacionSeleccionada.resumenPrendas} · Sede ${sedeActiva}.`,
+              user: operacionSeleccionada.vendedor,
               type: 'success',
             },
           ]}
           footerActions={
             <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={() => setMostrarModalTicket(true)}
-                className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-              >
-                <Printer className="w-4 h-4 text-[#D19650]" />
-                <span>Reimprimir Ticket de Venta (80mm)</span>
-              </button>
+              {operacionSeleccionada.ventaOriginal && (
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalTicket(true)}
+                  className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-[#D19650]" />
+                  <span>Reimprimir Ticket de Venta (80mm)</span>
+                </button>
+              )}
 
               <button
                 type="button"
-                onClick={() => setVentaSeleccionada(null)}
+                onClick={() => setOperacionSeleccionada(null)}
                 className="min-h-[46px] px-4 rounded-xl bg-white border border-[#D8CFC6] text-stone-800 font-bold text-xs hover:bg-stone-50 cursor-pointer"
               >
                 Cerrar
@@ -1291,269 +908,77 @@ export const PosVentasHistorialPage: React.FC = () => {
             </div>
           }
         >
-          {/* Contenido de la pestaña Detalle */}
           <div className="space-y-4 text-xs">
-            {/* Banner identificador */}
             <div className="p-3 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] flex items-center justify-between">
               <div>
                 <span className="font-bold text-[#1C1311] block">Detalle de Factura</span>
                 <span className="text-[11px] text-stone-500 font-mono">
-                  {ventaSeleccionada.consecutivo} • {ventaSeleccionada.fechaHora}
+                  {operacionSeleccionada.consecutivo} • {operacionSeleccionada.fechaHoraTexto}
                 </span>
               </div>
               <span className="font-mono font-bold text-sm text-[#059669]">
-                {formatCOP(ventaSeleccionada.totalCop)} COP
+                {formatCOP(operacionSeleccionada.totalCop)} COP
               </span>
             </div>
 
-            {/* Metadatos del Cliente y Vendedor */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-2xl border border-[#E5DDD3]">
-              <div>
-                <span className="text-[11px] font-bold uppercase text-stone-500 block">Cliente</span>
-                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
-                  {ventaSeleccionada.cliente}
-                </p>
-                {ventaSeleccionada.documentoCliente && (
-                  <span className="text-[11px] font-mono text-stone-600 block">
-                    {ventaSeleccionada.documentoCliente}
-                  </span>
-                )}
-              </div>
-
-              <div>
-                <span className="text-[11px] font-bold uppercase text-stone-500 block">
-                  Atendido por
-                </span>
-                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
-                  {ventaSeleccionada.vendedor}
-                </p>
-                <span className="text-[11px] text-stone-600 block">Cajero Mostrador POS</span>
-              </div>
-            </div>
-
-            {/* Lista de Prendas Vendidas */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
-                Prendas en esta Venta ({ventaSeleccionada.prendas.length})
-              </h4>
-
-              <div className="space-y-2">
-                {ventaSeleccionada.prendas.map((prenda, idx) => (
-                  <div
-                    key={`${prenda.sku}-${idx}`}
-                    className="p-2.5 sm:p-3 bg-white rounded-2xl border border-[#E5DDD3] flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={prenda.imagenUrl}
-                        alt={prenda.nombre}
-                        className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-white"
-                      />
-                      <div className="min-w-0">
-                        <h5 className="text-xs sm:text-sm font-bold text-[#1C1311] truncate">
-                          {prenda.nombre}
-                        </h5>
-                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] font-mono text-stone-600">
-                          <span className="px-1.5 py-0.2 rounded bg-stone-100 text-[#1C1311] font-bold">
-                            SKU: {prenda.sku}
-                          </span>
-                          <span>Talla: {prenda.talla}</span>
-                          <span>Color: {prenda.color}</span>
-                        </div>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          {prenda.cantidad} ud(s) × {formatCOP(prenda.precioUnitarioCop)}
-                        </p>
+            {operacionSeleccionada.ventaOriginal ? (
+              <>
+                <div className="space-y-2">
+                  {operacionSeleccionada.ventaOriginal.prendas.map((prenda, idx) => (
+                    <div
+                      key={`${prenda.sku}-${idx}`}
+                      className="p-3 bg-white rounded-2xl border border-[#E5DDD3] flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <h5 className="font-bold text-[#1C1311]">{prenda.nombre}</h5>
+                        <span className="text-[11px] font-mono text-stone-500">
+                          SKU: {prenda.sku} · Talla: {prenda.talla} · {prenda.cantidad}x{' '}
+                          {formatCOP(prenda.precioUnitarioCop)}
+                        </span>
                       </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="font-mono text-xs sm:text-sm font-black text-[#1C1311]">
+                      <span className="font-mono font-black text-[#1C1311]">
                         {formatCOP(prenda.totalCop)}
                       </span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
 
-            {/* Liquidación Financiera con IVA 19% discriminado */}
-            <div className="bg-[#FAF7F4] p-3.5 sm:p-4 rounded-2xl border border-[#E5DDD3] space-y-2">
-              <div className="flex justify-between text-xs font-medium text-stone-600">
-                <span>Subtotal antes de impuestos:</span>
-                <span className="font-mono">{formatCOP(ventaSeleccionada.subtotalCop)}</span>
-              </div>
-              <div className="flex justify-between text-xs font-medium text-stone-600">
-                <span>IVA discriminado (19% incluido):</span>
-                <span className="font-mono">{formatCOP(ventaSeleccionada.iva19Cop)}</span>
-              </div>
-              <div className="pt-2 border-t border-[#E5DDD3] flex justify-between items-baseline">
-                <span className="text-xs sm:text-sm font-black text-[#1C1311]">Total Pagado:</span>
-                <span className="text-base sm:text-lg font-black font-mono text-[#059669]">
-                  {formatCOP(ventaSeleccionada.totalCop)} COP
-                </span>
-              </div>
-
-              {/* Desglose de Pago */}
-              <div className="pt-2 border-t border-dashed border-[#D8CFC6] flex flex-wrap items-center justify-between text-[11px]">
-                <span className="font-bold text-stone-700">
-                  Medio de pago: {ventaSeleccionada.medioPago}
-                </span>
-                {ventaSeleccionada.medioPago === 'EFECTIVO' &&
-                  ventaSeleccionada.montoRecibidoCop && (
-                    <span className="font-mono text-stone-600">
-                      Recibido: {formatCOP(ventaSeleccionada.montoRecibidoCop)} · Cambio:{' '}
-                      {formatCOP(ventaSeleccionada.cambioCop || 0)}
+                <div className="bg-[#FAF7F4] p-3.5 rounded-2xl border border-[#E5DDD3] space-y-2">
+                  <div className="flex justify-between text-xs font-medium text-stone-600">
+                    <span>Subtotal antes de impuestos:</span>
+                    <span className="font-mono">
+                      {formatCOP(operacionSeleccionada.ventaOriginal.subtotalCop)}
                     </span>
-                  )}
-                {ventaSeleccionada.medioPago === 'TRANSFERENCIA' &&
-                  ventaSeleccionada.referenciaPago && (
-                    <span className="font-mono text-stone-600">
-                      Ref: {ventaSeleccionada.referenciaPago}
-                    </span>
-                  )}
-              </div>
-            </div>
-          </div>
-        </DetailDrawer>
-      )}
-
-      {/* =========================================================================
-          DRAWER LATERAL DE DETALLE DE PEDIDO WEB DESPACHADO
-      ========================================================================= */}
-      {pedidoWebSeleccionado && (
-        <DetailDrawer
-          isOpen={Boolean(pedidoWebSeleccionado)}
-          onClose={() => setPedidoWebSeleccionado(null)}
-          title={`Pedido Web #${pedidoWebSeleccionado.codigo}`}
-          subtitle={`${pedidoWebSeleccionado.cliente} · ${pedidoWebSeleccionado.ciudadDestino}`}
-          badge={{
-            label: pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA' ? 'Contraentrega' : 'Transferencia',
-            variant: pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA' ? 'warning' : 'info',
-          }}
-          activeTab={drawerTab}
-          onTabChange={setDrawerTab}
-          activityItems={(pedidoWebSeleccionado.historial || []).map((ev) => ({
-            id: ev.id,
-            timestamp: new Intl.DateTimeFormat('es-CO', {
-              timeZone: 'America/Bogota',
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }).format(new Date(ev.fechaIso)),
-            title: ev.titulo,
-            description: ev.descripcion,
-            user: ev.usuario,
-            type: ev.estado === 'DESPACHADO' || ev.estado === 'ENTREGADO' ? 'success' : 'info',
-          }))}
-          footerActions={
-            <button
-              type="button"
-              onClick={() => setPedidoWebSeleccionado(null)}
-              className="w-full min-h-[46px] px-4 rounded-xl bg-white border border-[#D8CFC6] text-stone-800 font-bold text-xs hover:bg-stone-50 cursor-pointer"
-            >
-              Cerrar
-            </button>
-          }
-        >
-          <div className="space-y-4 text-xs">
-            {/* Aviso explicativo CA-40 */}
-            <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-300 text-amber-950 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold">
-                <Banknote className="w-4 h-4 text-amber-700 shrink-0" />
-                <span>
-                  {pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA'
-                    ? 'Recaudo por Transportadora (Regla CA-40)'
-                    : 'Transferencia Bancaria'}
-                </span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-amber-900">
-                {pedidoWebSeleccionado.metodoPago === 'CONTRAENTREGA'
-                  ? 'El dinero de este pedido es cobrado en efectivo por la transportadora al cliente. NUNCA ingresa a la gaveta de caja física del POS. Su recaudo se concilia desde Administración.'
-                  : `Transferencia registrada por el cliente (Ref: ${pedidoWebSeleccionado.referenciaPago || 'CUS'}). Conciliada por contabilidad.`}
-              </p>
-            </div>
-
-            {/* Metadatos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-2xl border border-[#E5DDD3]">
-              <div>
-                <span className="text-[11px] font-bold uppercase text-stone-500 block">Cliente</span>
-                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
-                  {pedidoWebSeleccionado.cliente}
-                </p>
-                <span className="text-[11px] text-stone-600 block">{pedidoWebSeleccionado.ciudadDestino}</span>
-              </div>
-              <div>
-                <span className="text-[11px] font-bold uppercase text-stone-500 block">Sede de Despacho</span>
-                <p className="text-xs sm:text-sm font-black text-[#1C1311] mt-0.5">
-                  {pedidoWebSeleccionado.sedeAsignada}
-                </p>
-                <span className="text-[11px] text-stone-600 block">
-                  Guía: {pedidoWebSeleccionado.guiaTransportadora || 'Pendiente'}
-                </span>
-              </div>
-            </div>
-
-            {/* Prendas */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#50322A]">
-                Prendas en este Pedido ({pedidoWebSeleccionado.productos.length})
-              </h4>
-              <div className="space-y-2">
-                {pedidoWebSeleccionado.productos.map((pr, idx) => (
-                  <div
-                    key={`${pr.sku}-${idx}`}
-                    className="p-2.5 sm:p-3 bg-white rounded-2xl border border-[#E5DDD3] flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={pr.imagenUrl || '/products/blazer-imperial-vinotinto.png'}
-                        alt={pr.nombre}
-                        className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-white"
-                      />
-                      <div className="min-w-0">
-                        <h5 className="text-xs sm:text-sm font-bold text-[#1C1311] truncate">{pr.nombre}</h5>
-                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] font-mono text-stone-600">
-                          <span className="px-1.5 py-0.2 rounded bg-stone-100 text-[#1C1311] font-bold">
-                            SKU: {pr.sku}
-                          </span>
-                          <span>Talla: {pr.talla}</span>
-                          <span>Color: {pr.color}</span>
-                        </div>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          {pr.cantidad} ud(s) × {formatCOP(pr.precioUnitarioCOP)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-mono text-xs sm:text-sm font-black text-[#1C1311]">
-                        {formatCOP(pr.precioUnitarioCOP * pr.cantidad)}
-                      </span>
-                    </div>
                   </div>
-                ))}
+                  <div className="flex justify-between text-xs font-medium text-stone-600">
+                    <span>IVA discriminado (19% incluido):</span>
+                    <span className="font-mono">
+                      {formatCOP(operacionSeleccionada.ventaOriginal.iva19Cop)}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-[#E5DDD3] flex justify-between items-baseline">
+                    <span className="font-black text-[#1C1311]">Total Pagado:</span>
+                    <span className="text-base font-black font-mono text-[#059669]">
+                      {formatCOP(operacionSeleccionada.ventaOriginal.totalCop)} COP
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-3.5 bg-white rounded-2xl border border-[#E5DDD3] space-y-2">
+                <p className="font-semibold text-[#1C1311]">
+                  {operacionSeleccionada.resumenPrendas}
+                </p>
+                {operacionSeleccionada.pedidoWebOriginal && (
+                  <div className="flex items-center gap-2 text-stone-600 pt-1">
+                    <Truck className="w-4 h-4 text-[#661521]" />
+                    <span>
+                      Estado logístico: <strong>{operacionSeleccionada.pedidoWebOriginal.estado}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-
-            {/* Total */}
-            <div className="bg-[#FAF7F4] p-3.5 sm:p-4 rounded-2xl border border-[#E5DDD3] space-y-2">
-              <div className="flex justify-between text-xs font-medium text-stone-600">
-                <span>Subtotal:</span>
-                <span className="font-mono">{formatCOP(pedidoWebSeleccionado.subtotalCOP)}</span>
-              </div>
-              <div className="flex justify-between text-xs font-medium text-stone-600">
-                <span>IVA 19% discriminado:</span>
-                <span className="font-mono">{formatCOP(pedidoWebSeleccionado.ivaCOP)}</span>
-              </div>
-              <div className="flex justify-between text-xs font-medium text-stone-600">
-                <span>Flete de envío:</span>
-                <span className="font-mono">{formatCOP(pedidoWebSeleccionado.fleteCOP)}</span>
-              </div>
-              <div className="pt-2 border-t border-[#E5DDD3] flex justify-between items-baseline">
-                <span className="text-xs sm:text-sm font-black text-[#1C1311]">Total Pedido:</span>
-                <span className="text-base sm:text-lg font-black font-mono text-[#059669]">
-                  {formatCOP(pedidoWebSeleccionado.totalCOP)} COP
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </DetailDrawer>
       )}

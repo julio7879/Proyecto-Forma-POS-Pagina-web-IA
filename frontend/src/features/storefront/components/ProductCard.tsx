@@ -63,7 +63,7 @@ export const ProductCard = ({ producto, onOpenDetail, onQuickAdd }: Props) => {
           <div className="absolute bottom-2.5 left-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 text-[#661521] backdrop-blur-md flex items-center gap-1 shadow-sm">
               <Sparkles className="w-3 h-3 text-[#D19650]" />
-              Vista 3D & Tallas
+              Ver Variantes & Tallas
             </span>
           </div>
         </div>

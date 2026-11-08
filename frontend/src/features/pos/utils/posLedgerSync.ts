@@ -71,6 +71,36 @@ const STORAGE_KEYS = {
   EXCHANGES: 'forma_pos_cambios_registrados',
 };
 
+export const CLEAN_RESET_KEY = 'forma_clean_zero_store_stock_v1';
+
+export const ensureCleanZeroStoreStockReset = (): void => {
+  try {
+    if (typeof window === 'undefined' || Boolean((import.meta as any).env?.VITEST)) {
+      return;
+    }
+    if (localStorage.getItem(CLEAN_RESET_KEY) !== '1') {
+      const keysToClear = [
+        'forma_caja_sesiones',
+        'pos_caja_abierta_terminal',
+        'pos_caja_estado',
+        'pos_caja_usuario_id',
+        'forma_pos_stock_deltas',
+        'forma_pos_ventas_registradas',
+        'forma_pos_cambios_registrados',
+        'forma_pos_recepciones_kardex',
+        'forma_pos_solicitudes_traslado',
+        'forma_admin_traslados',
+      ];
+      keysToClear.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(CLEAN_RESET_KEY, '1');
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+ensureCleanZeroStoreStockReset();
+
 export const getAllStockDeltas = (): Record<string, number> => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.DELTAS);
@@ -95,6 +125,14 @@ export const applyStockDelta = (sku: string, delta: number): void => {
   } catch {
     // Ignore storage errors
   }
+};
+
+export const getBodegaCentralDelta = (sku: string): number => {
+  return getStockDelta(`BODEGA::${sku}`);
+};
+
+export const applyBodegaCentralDelta = (sku: string, delta: number): void => {
+  applyStockDelta(`BODEGA::${sku}`, delta);
 };
 
 export const getPosRegisteredSales = (): PosSaleRecord[] => {

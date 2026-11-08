@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SoportePage from '../pages/SoportePage';
 
@@ -11,98 +11,39 @@ const renderSoportePage = () => {
   );
 };
 
-describe('SoportePage - Centro de Soporte & Trazabilidad Logística', () => {
+describe('SoportePage - Centro de Ayuda & WhatsApp Oficial FORMA', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it('renderiza correctamente el encabezado editorial y el modo invitado por defecto', () => {
+  it('renderiza la tarjeta principal de WhatsApp Oficial FORMA y el enlace a Trazabilidad en Mi Cuenta', () => {
     renderSoportePage();
 
     expect(
-      screen.getByRole('heading', { name: /Rastreo de Pedidos, Tarifas DANE & Garantía Legal/i })
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Modo Consulta Libre \/ Invitado/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/PED-2026-849201/i).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('detecta usuario autenticado en localStorage y personaliza pedidos multi-cuenta', async () => {
-    const mockUsuario = {
-      id: 42,
-      rol: 'CLIENTE',
-      nombreCompleto: 'Diana Carolina Hoyos',
-      email: 'diana.hoyos@forma.co',
-    };
-    localStorage.setItem('usuario', JSON.stringify(mockUsuario));
-
-    renderSoportePage();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Cuenta: Diana Carolina Hoyos/i)).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/Tus Pedidos Registrados:/i)).toBeInTheDocument();
-    expect(
-      JSON.parse(localStorage.getItem('forma_pedidos_diana.hoyos@forma.co') || '[]').length
-    ).toBeGreaterThan(0);
-  });
-
-  it('muestra el listado de productos con SKU, talla, color, precio COP y sede despachadora', () => {
-    renderSoportePage();
-
-    // El pedido por defecto PED-2026-849201 contiene 2 productos
-    expect(screen.getByText(/Chaqueta Denim Artesanal/i)).toBeInTheDocument();
-    expect(screen.getByText(/ROP-DNM-001-M/i)).toBeInTheDocument();
-    expect(screen.getByText(/Bolso Cuero Graso Unisex/i)).toBeInTheDocument();
-    expect(screen.getByText(/ACC-BOL-003-UNI/i)).toBeInTheDocument();
-
-    // Sede despachadora
-    expect(
-      screen.getAllByText(/Punto Bucaramanga \(Hub Oriente DANE 68001\)/i).length
-    ).toBeGreaterThanOrEqual(1);
-
-    // Nivel de reserva en Kardex
-    expect(
-      screen.getAllByText(/RESERVA DURA \(PROTEGIDA\)/i).length
-    ).toBeGreaterThanOrEqual(1);
-  });
-
-  it('abre el Modal de Estado Detallado del Pedido al hacer clic en Ver Trazabilidad', async () => {
-    renderSoportePage();
-
-    const botonesTrazabilidad = screen.getAllByRole('button', { name: /Ver Trazabilidad/i });
-    expect(botonesTrazabilidad.length).toBeGreaterThan(0);
-
-    fireEvent.click(botonesTrazabilidad[0]);
-
-    // Modal dialog
-    const modalDialog = await screen.findByRole('dialog');
-    expect(modalDialog).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /Expediente de Estado Detallado del Pedido/i })
+      screen.getByRole('heading', { name: /Soporte Oficial FORMA & WhatsApp Directo/i })
     ).toBeInTheDocument();
 
-    // Verifica que se muestren los 7 estados dentro del modal
-    expect(screen.getByText(/Paso 3 de 7/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /01.*RECIBIDO/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /02.*CONFIRMADO/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /03.*EN_PREPARACION/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /04.*LISTO_DESPACHO/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /05.*DESPACHADO/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /06.*EN_ENTREGA/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /07.*ENTREGADO/i })).toBeInTheDocument();
+    expect(screen.getByText(/\+57 315 800 4210/i)).toBeInTheDocument();
+    expect(screen.getByText(/soporte@forma\.co/i)).toBeInTheDocument();
 
-    // Botón para copiar guía
-    expect(screen.getByRole('button', { name: /Copiar Guía/i })).toBeInTheDocument();
-
-    // Cerrar el modal
-    const botonCerrar = screen.getByRole('button', { name: /Cerrar Expediente/i });
-    fireEvent.click(botonCerrar);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const enlacesRastreo = screen.getAllByRole('link', {
+      name: /Trazabilidad|Rastreo|Mi Cuenta/i,
     });
+    expect(enlacesRastreo.length).toBeGreaterThan(0);
+  });
+
+  it('no contiene códigos internos de documentación (CA-*, RN-*) visibles para el usuario', () => {
+    const { container } = renderSoportePage();
+    const html = container.innerHTML;
+
+    expect(html).not.toMatch(/CA-35/i);
+    expect(html).not.toMatch(/CA-36/i);
+    expect(html).not.toMatch(/CA-39/i);
+    expect(html).not.toMatch(/RN-VTA-03/i);
+    expect(html).not.toMatch(/RN-WEB-16/i);
+    expect(html).not.toMatch(/RN-CAT-02/i);
+    expect(html).not.toMatch(/RN-DEV-04/i);
   });
 
   it('permite interactuar con el simulador DANE y cambiar de municipio', () => {
@@ -127,13 +68,13 @@ describe('SoportePage - Centro de Soporte & Trazabilidad Logística', () => {
 
     // Por defecto la primera está abierta
     expect(
-      screen.getByText(/Por nuestra regla de integridad logística \(CA-35 y CA-36\)/i)
+      screen.getByText(/nuestro sistema busca automáticamente entre nuestras 4 sedes físicas/i)
     ).toBeInTheDocument();
 
     // Cerrar acordeón haciendo clic
     fireEvent.click(faqButton);
     expect(
-      screen.queryByText(/Por nuestra regla de integridad logística \(CA-35 y CA-36\)/i)
+      screen.queryByText(/nuestro sistema busca automáticamente entre nuestras 4 sedes físicas/i)
     ).not.toBeInTheDocument();
   });
 });

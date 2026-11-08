@@ -11,6 +11,8 @@ const SoportePage = lazy(() => import('../features/storefront/pages/SoportePage'
 const CheckoutPage = lazy(() => import('../features/storefront/pages/CheckoutPage'));
 const BolsaPage = lazy(() => import('../features/storefront/pages/BolsaPage'));
 const MiCuentaPage = lazy(() => import('../features/storefront/pages/MiCuentaPage'));
+const PoliticaPrivacidadPage = lazy(() => import('../features/storefront/pages/PoliticaPrivacidadPage'));
+const TerminosServicioPage = lazy(() => import('../features/storefront/pages/TerminosServicioPage'));
 const PosTerminalPage = lazy(() => import('../features/pos/PosTerminalPage'));
 const PosVentasHistorialPage = lazy(() => import('../features/pos/pages/PosVentasHistorialPage'));
 const PosPedidosWebPage = lazy(() => import('../features/pos/pages/PosPedidosWebPage'));
@@ -26,6 +28,8 @@ const AdminTrasladosPage = lazy(() => import('../features/admin/pages/AdminTrasl
 const AdminVendedoresPage = lazy(() => import('../features/admin/pages/AdminVendedoresPage'));
 const AdminReportesPage = lazy(() => import('../features/admin/pages/AdminReportesPage'));
 const AdminPedidosWebPage = lazy(() => import('../features/admin/pages/AdminPedidosWebPage'));
+const AdminCajasPage = lazy(() => import('../features/admin/pages/AdminCajasPage'));
+const AdminClientesPage = lazy(() => import('../features/admin/pages/AdminClientesPage'));
 
 // Formularios de auth
 const LoginForm = lazy(() =>
@@ -51,19 +55,14 @@ export const AppRouter: React.FC = () => {
             <Route path="bolsa" element={<BolsaPage />} />
             <Route path="carrito" element={<BolsaPage />} />
             <Route path="cuenta" element={<MiCuentaPage />} />
-            <Route
-              path="politica-privacidad"
-              element={
-                <div className="p-8 max-w-2xl mx-auto glass-mirror-card rounded-[2rem] text-sm leading-relaxed text-[#171717]">
-                  <h1 className="font-display text-2xl font-bold text-[#50322A] mb-4">
-                    Política de Tratamiento de Datos Personales
-                  </h1>
-                  <p>
-                    Conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 de la República de Colombia, Forma Store garantiza la protección de sus datos personales. Sus datos serán utilizados exclusivamente para la gestión de pedidos, envíos y comunicaciones comerciales autorizadas.
-                  </p>
-                </div>
-              }
-            />
+            <Route path="mi-cuenta" element={<MiCuentaPage />} />
+            <Route path="rastreo" element={<MiCuentaPage />} />
+            <Route path="politica-privacidad" element={<PoliticaPrivacidadPage />} />
+            <Route path="privacidad" element={<PoliticaPrivacidadPage />} />
+            <Route path="privacy" element={<PoliticaPrivacidadPage />} />
+            <Route path="terminos" element={<TerminosServicioPage />} />
+            <Route path="terms" element={<TerminosServicioPage />} />
+            <Route path="condiciones" element={<TerminosServicioPage />} />
           </Route>
 
           {/* Portal 2: Terminal POS */}
@@ -88,6 +87,8 @@ export const AppRouter: React.FC = () => {
             <Route path="pedidos-web" element={<AdminPedidosWebPage />} />
             <Route path="inventario" element={<AdminInventarioPage />} />
             <Route path="traslados" element={<AdminTrasladosPage />} />
+            <Route path="cajas" element={<AdminCajasPage />} />
+            <Route path="clientes" element={<AdminClientesPage />} />
             <Route path="compras" element={<Navigate to="/admin/dashboard" replace />} />
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
           </Route>

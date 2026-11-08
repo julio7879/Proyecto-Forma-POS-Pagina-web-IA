@@ -3,8 +3,14 @@
 // Reglas: RN-CAJ (una sesión ABIERTA por sede, base inicial declarada, arqueo ciego al cierre),
 // RN-GEN-04 (COP enteros), RN-GEN-03 (los movimientos no se borran: se anulan con contramovimiento).
 
-import { getPosRegisteredSales, getPosRegisteredExchanges } from './posLedgerSync';
+import {
+  getPosRegisteredSales,
+  getPosRegisteredExchanges,
+  ensureCleanZeroStoreStockReset,
+} from './posLedgerSync';
 import { mismaSede } from './webOrdersStore';
+
+ensureCleanZeroStoreStockReset();
 
 export type TipoMovimientoCaja = 'RETIRO_CAJA_FUERTE' | 'GASTO_MENOR' | 'INGRESO_REINTEGRO';
 
@@ -41,9 +47,12 @@ export interface SesionCaja {
 
 export interface ResumenSesionCaja {
   ventasEfectivoCop: number;
+  efectivoRecibidoBrutoCop: number;
+  vueltosEntregadosCop: number;
   ventasTransferenciaCop: number;
   excedentesCambiosEfectivoCop: number;
   excedentesCambiosTransferenciaCop: number;
+  reintegrosCambiosEfectivoCop: number;
   retirosCop: number;
   ingresosCop: number;
   numeroVentas: number;
@@ -97,10 +106,12 @@ export const abrirSesionCaja = (
   const existente = getSesionAbierta(sede);
   if (existente) return existente;
   const previas = getSesionesPorSede(sede);
+  const maxTurno = previas.reduce((max, p) => Math.max(max, p.turnoNumero || 0), 0);
+  const nextTurno = maxTurno + 1;
   const sesion: SesionCaja = {
-    id: `CAJ-${Date.now()}`,
+    id: `CAJ-${Date.now()}-${nextTurno}`,
     sede,
-    turnoNumero: (previas[0]?.turnoNumero || 0) + 1,
+    turnoNumero: nextTurno,
     estado: 'ABIERTA',
     vendedor,
     aperturaIso: new Date().toISOString(),
@@ -134,7 +145,7 @@ export const registrarMovimientoCaja = (
       {
         ...mov,
         montoCop: Math.max(0, Math.trunc(mov.montoCop)),
-        id: `MOV-${Date.now()}`,
+        id: `MOV-${Date.now()}-${s.movimientos.length + 1}`,
         fechaIso: new Date().toISOString(),
         comprobanteRef: `${mov.tipo === 'INGRESO_REINTEGRO' ? 'ING' : 'RET'}-${String(
           s.movimientos.length + 1
@@ -161,22 +172,45 @@ export const resumenSesion = (s: SesionCaja): ResumenSesionCaja => {
   const enVentana = (iso?: string) => Boolean(iso && iso >= desde && iso <= hasta);
 
   let ventasEfectivoCop = 0;
+  let efectivoRecibidoBrutoCop = 0;
+  let vueltosEntregadosCop = 0;
   let ventasTransferenciaCop = 0;
   let numeroVentas = 0;
   getPosRegisteredSales().forEach((v) => {
-    if (!mismaSede(v.sede, s.sede) || !enVentana(v.fechaIso)) return;
+    if (!mismaSede(v.sede, s.sede)) return;
+    if (v.sesionCajaId) {
+      if (v.sesionCajaId !== s.id) return;
+    } else if (!enVentana(v.fechaIso)) {
+      return;
+    }
     numeroVentas++;
-    if ((v.medioPago || v.metodoPago) === 'EFECTIVO') ventasEfectivoCop += v.totalCop;
-    else ventasTransferenciaCop += v.totalCop;
+    if ((v.medioPago || v.metodoPago) === 'EFECTIVO') {
+      ventasEfectivoCop += v.totalCop;
+      const recibido = v.montoRecibidoCop ?? v.efectivoRecibidoCop ?? v.totalCop;
+      const cambio = v.cambioCop ?? Math.max(0, recibido - v.totalCop);
+      efectivoRecibidoBrutoCop += recibido;
+      vueltosEntregadosCop += cambio;
+    } else {
+      ventasTransferenciaCop += v.totalCop;
+    }
   });
 
   let excedentesCambiosEfectivoCop = 0;
   let excedentesCambiosTransferenciaCop = 0;
+  let reintegrosCambiosEfectivoCop = 0;
   getPosRegisteredExchanges().forEach((c) => {
-    if (!mismaSede(c.sede, s.sede) || !enVentana(c.fechaIso)) return;
-    if (c.tipoLiquidacion !== 'EXCEDENTE_COBRADO') return;
-    if (c.medioPagoExcedente === 'TRANSFERENCIA') excedentesCambiosTransferenciaCop += c.diferenciaCop;
-    else excedentesCambiosEfectivoCop += c.diferenciaCop;
+    if (!mismaSede(c.sede, s.sede)) return;
+    if (c.sesionCajaId) {
+      if (c.sesionCajaId !== s.id) return;
+    } else if (!enVentana(c.fechaIso)) {
+      return;
+    }
+    if (c.tipoLiquidacion === 'EXCEDENTE_COBRADO') {
+      if (c.medioPagoExcedente === 'TRANSFERENCIA') excedentesCambiosTransferenciaCop += c.diferenciaCop;
+      else excedentesCambiosEfectivoCop += c.diferenciaCop;
+    } else if (c.tipoLiquidacion === 'REINTEGRO_A_FAVOR' && c.diferenciaCop !== 0) {
+      reintegrosCambiosEfectivoCop += Math.abs(c.diferenciaCop);
+    }
   });
 
   const activos = s.movimientos.filter((m) => !m.anulado);
@@ -189,14 +223,22 @@ export const resumenSesion = (s: SesionCaja): ResumenSesionCaja => {
 
   return {
     ventasEfectivoCop,
+    efectivoRecibidoBrutoCop,
+    vueltosEntregadosCop,
     ventasTransferenciaCop,
     excedentesCambiosEfectivoCop,
     excedentesCambiosTransferenciaCop,
+    reintegrosCambiosEfectivoCop,
     retirosCop,
     ingresosCop,
     numeroVentas,
     efectivoEsperadoCop:
-      s.baseInicialCop + ventasEfectivoCop + excedentesCambiosEfectivoCop + ingresosCop - retirosCop,
+      s.baseInicialCop +
+      ventasEfectivoCop +
+      excedentesCambiosEfectivoCop +
+      ingresosCop -
+      retirosCop -
+      reintegrosCambiosEfectivoCop,
   };
 };
 

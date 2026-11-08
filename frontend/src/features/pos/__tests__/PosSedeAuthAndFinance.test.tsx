@@ -5,10 +5,14 @@ import { MemoryRouter } from 'react-router-dom';
 import PosLayout from '../../../layouts/PosLayout';
 import PosVentasHistorialPage from '../pages/PosVentasHistorialPage';
 import PosArqueoPage from '../pages/PosArqueoPage';
+import { abrirSesionCaja, registrarMovimientoCaja, resetCaja } from '../utils/cajaStore';
+import { recordPosSale, resetPosLedgerSync } from '../utils/posLedgerSync';
 
 describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', () => {
   beforeEach(() => {
     localStorage.clear();
+    resetPosLedgerSync();
+    resetCaja();
     vi.restoreAllMocks();
   });
 
@@ -20,7 +24,6 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
         </MemoryRouter>
       );
 
-      // El botón sandbox de demo falsa NO debe existir en el DOM
       expect(screen.queryByText(/Entrar como Cajero Daniela/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Acceso Rápido de Prueba/i)).not.toBeInTheDocument();
     });
@@ -53,13 +56,11 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
       const sedeSelect = screen.getByRole('combobox');
       const submitBtn = screen.getByRole('button', { name: /Ingresar a Turno POS/i });
 
-      // Credenciales de Daniela pero seleccionando Punto Centro (Cúcuta)
       fireEvent.change(emailInput, { target: { value: 'daniela@forma.com' } });
       fireEvent.change(passInput, { target: { value: 'Vendedor2026*' } });
       fireEvent.change(sedeSelect, { target: { value: 'Punto Centro (Cúcuta)' } });
       fireEvent.click(submitBtn);
 
-      // Alerta visible de error estricta
       await waitFor(() => {
         expect(
           screen.getByText(
@@ -68,7 +69,6 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
         ).toBeInTheDocument();
       });
 
-      // No debe iniciar sesión ni guardar en localStorage
       expect(localStorage.getItem('usuario')).toBeNull();
       expect(localStorage.getItem('forma_pos_sede')).toBeNull();
     });
@@ -133,7 +133,6 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
     });
 
     it('genera la descarga del archivo Excel al hacer clic en el botón dominante', () => {
-      // Mock de createObjectURL
       const mockCreateObjectURL = vi.fn().mockReturnValue('blob:mock-excel-url');
       const mockRevokeObjectURL = vi.fn();
       window.URL.createObjectURL = mockCreateObjectURL;
@@ -151,40 +150,80 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
     });
   });
 
-  describe('3. PosArqueoPage - Límite Estricto de Retiros y Disponibilidad de Gaveta', () => {
-    it('muestra claramente en el panel el saldo de efectivo disponible en gaveta', () => {
+  describe('3. PosArqueoPage - Límite Estricto de Retiros y Disponibilidad de Gaveta (Datos Reales)', () => {
+    beforeEach(() => {
+      localStorage.setItem('forma_pos_sede', 'Punto Centro (Cúcuta)');
+      // Abrir sesión real con base $200.000
+      const sesion = abrirSesionCaja(
+        'Punto Centro (Cúcuta)',
+        'Carlos Mendoza',
+        200000,
+        'Base inicial verificada'
+      );
+      // Registrar venta real en efectivo de $1.480.000
+      recordPosSale({
+        id: 'sale-arqueo-1',
+        consecutivo: '#MED-0099',
+        fechaHora: 'Hoy · 10:00 a. m.',
+        fechaIso: new Date(Date.now() + 1000).toISOString(),
+        sesionCajaId: sesion.id,
+        vendedor: 'Carlos Mendoza',
+        sede: 'Punto Centro (Cúcuta)',
+        medioPago: 'EFECTIVO',
+        subtotalCop: 1243697,
+        iva19Cop: 236303,
+        totalCop: 1480000,
+        montoRecibidoCop: 1500000,
+        cambioCop: 20000,
+        prendas: [],
+      });
+      // Registrar 2 retiros reales ($300.000 + $200.000 = $500.000) -> Saldo en gaveta = $1.180.000
+      registrarMovimientoCaja(sesion.id, {
+        tipo: 'RETIRO_CAJA_FUERTE',
+        montoCop: 300000,
+        motivo: 'Traslado preventivo a caja fuerte',
+        usuario: 'Carlos Mendoza',
+      });
+      registrarMovimientoCaja(sesion.id, {
+        tipo: 'RETIRO_CAJA_FUERTE',
+        montoCop: 200000,
+        motivo: 'Custodia en caja fuerte',
+        usuario: 'Carlos Mendoza',
+      });
+    });
+
+    it('muestra claramente en el panel el saldo de efectivo disponible en gaveta y el desglose de vueltos', () => {
       render(<PosArqueoPage />);
 
       expect(screen.getByText('Efectivo Disponible en Gaveta')).toBeInTheDocument();
+      expect(screen.getByText('(-) Cambio / Vueltos Entregados:')).toBeInTheDocument();
       // Base (200.000) + Ventas (1.480.000) - Retiros (500.000) = 1.180.000
-      expect(screen.getByText(/\$ 1\.180\.000 COP|\$1\.180\.000 COP/)).toBeInTheDocument();
+      expect(screen.getAllByText(/\$ 1\.180\.000|\$1\.180\.000/).length).toBeGreaterThan(0);
     });
 
     it('bloquea y alerta en rojo si el monto a retirar supera el efectivo disponible en caja', () => {
       render(<PosArqueoPage />);
+      fireEvent.click(screen.getByText('2. Movimientos de Efectivo'));
 
       const montoInput = screen.getByLabelText(/Monto a Retirar de Gaveta/i);
       const registrarBtn = screen.getByRole('button', { name: /Registrar Retiro/i });
 
-      // Intentar retirar $2.000.000 cuando solo hay $1.180.000
       fireEvent.change(montoInput, { target: { value: '2000000' } });
 
-      // Mensaje de alerta en rojo
       expect(
         screen.getByText(/El monto a retirar .* no puede superar el efectivo disponible en caja/i)
       ).toBeInTheDocument();
 
-      // Botón debe estar deshabilitado
       expect(registrarBtn).toBeDisabled();
     });
 
     it('permite registrar el retiro si el monto es menor o igual al disponible en gaveta', () => {
       render(<PosArqueoPage />);
+      fireEvent.click(screen.getByText('2. Movimientos de Efectivo'));
 
       const montoInput = screen.getByLabelText(/Monto a Retirar de Gaveta/i);
       const registrarBtn = screen.getByRole('button', { name: /Registrar Retiro/i });
 
-      // Retiro válido de $300.000 (dentro del cupo disponible de $1.180.000)
       fireEvent.change(montoInput, { target: { value: '300000' } });
 
       expect(
@@ -198,64 +237,49 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
 
     it('rechaza números negativos en los inputs numéricos', () => {
       render(<PosArqueoPage />);
+      fireEvent.click(screen.getByText('2. Movimientos de Efectivo'));
 
       const montoInput = screen.getByLabelText(/Monto a Retirar de Gaveta/i);
 
-      // Simular tecla '-' presionada y verificar que cancela el evento
       const allowed = fireEvent.keyDown(montoInput, { key: '-' });
       expect(allowed).toBe(false);
 
-      // Intentar ingresar string con signo negativo: el sanitizer extrae solo dígitos positivos
       fireEvent.change(montoInput, { target: { value: '-50000' } });
       expect(Number((montoInput as HTMLInputElement).value)).toBe(50000);
     });
 
     it('permite anular un retiro de caja hecho por error y restaura inmediatamente los fondos a la gaveta', () => {
       render(<PosArqueoPage />);
+      fireEvent.click(screen.getByText('2. Movimientos de Efectivo'));
 
-      // Saldo inicial: $1.180.000 COP
-      expect(screen.getByText(/\$ 1\.180\.000 COP|\$1\.180\.000 COP/)).toBeInTheDocument();
+      expect(screen.getAllByText(/\$ 1\.180\.000|\$1\.180\.000/).length).toBeGreaterThan(0);
 
-      // Buscar los botones de Anular en la bitácora
       const anularBtns = screen.getAllByRole('button', { name: /Anular/i });
       expect(anularBtns.length).toBeGreaterThan(0);
 
-      // Anular el primer retiro (BOV-0081 de $300.000)
       fireEvent.click(anularBtns[0]);
 
-      // Mensaje de éxito informando que los fondos han vuelto a la gaveta
-      expect(screen.getByText(/fue ANULADO y los fondos han vuelto a la gaveta/i)).toBeInTheDocument();
-
-      // El saldo disponible en gaveta sube en $300.000 ($1.180.000 + $300.000 = $1.480.000)
-      expect(screen.getByText(/\$ 1\.480\.000 COP|\$1\.480\.000 COP/)).toBeInTheDocument();
-      expect(screen.getByText(/Anulado · Fondos Devueltos/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/\$ 1\.480\.000|\$1\.480\.000/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Anulado · Fondos Devueltos/i).length).toBeGreaterThan(0);
     });
 
     it('permite registrar un reintegro de efectivo que suma al saldo disponible en gaveta', () => {
       render(<PosArqueoPage />);
+      fireEvent.click(screen.getByText('2. Movimientos de Efectivo'));
 
-      // Saldo inicial: $1.180.000 COP
-      expect(screen.getByText(/\$ 1\.180\.000 COP|\$1\.180\.000 COP/)).toBeInTheDocument();
-
-      // Cambiar a la pestaña "Reintegro"
       const reintegroTab = screen.getByRole('button', { name: /Reintegro/i });
       fireEvent.click(reintegroTab);
 
-      // Llenar monto y motivo de reintegro
       const montoInput = screen.getByLabelText(/Monto a Reingresar a Gaveta/i);
       fireEvent.change(montoInput, { target: { value: '250000' } });
 
-      const motivoInput = screen.getByPlaceholderText(/Reintegro por error en retiro previo/i);
-      fireEvent.change(motivoInput, { target: { value: 'Devolución de dinero retirado por error' } });
+      const registrarReintegroBtn = screen.getByRole('button', {
+        name: /Registrar Reintegro \/ Ingreso/i,
+      });
+      fireEvent.click(registrarReintegroBtn);
 
-      const submitBtn = screen.getByRole('button', { name: /Registrar Reintegro \/ Ingreso/i });
-      fireEvent.click(submitBtn);
-
-      // Mensaje de confirmación
-      expect(screen.getByText(/registrado en gaveta correctamente/i)).toBeInTheDocument();
-
-      // El saldo disponible en gaveta se incrementa en $250.000 ($1.180.000 + $250.000 = $1.430.000)
-      expect(screen.getByText(/\$ 1\.430\.000 COP|\$1\.430\.000 COP/)).toBeInTheDocument();
+      // $1.180.000 + $250.000 = $1.430.000
+      expect(screen.getAllByText(/\$ 1\.430\.000|\$1\.430\.000/).length).toBeGreaterThan(0);
     });
   });
 });

@@ -183,4 +183,47 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
     fireEvent.click(rastrearBtn);
     expect(mockNavigate).toHaveBeenCalledWith('/soporte');
   });
+
+  it('bloquea letras en Cédula y Teléfono y permite pagar automáticamente con el Código QR Dinámico', async () => {
+    const mockCart = [
+      {
+        id: 'var-101',
+        productoId: 'prod-101',
+        nombre: 'Vestido Lino Silvestre',
+        sku: 'VES-LIN-101-S',
+        talla: 'S',
+        color: 'Crudo Natural',
+        precioUnitarioCOP: 220000,
+        cantidad: 1,
+        imagenUrl: 'https://images.unsplash.com/photo-test',
+        sedeDespacho: 'CUCUTA_CENTRAL',
+      },
+    ];
+    localStorage.setItem('forma_cart_items_v2', JSON.stringify(mockCart));
+
+    render(
+      <MemoryRouter>
+        <StorefrontCartProvider>
+          <CheckoutPage />
+        </StorefrontCartProvider>
+      </MemoryRouter>
+    );
+
+    const cedulaInput = screen.getByLabelText(/Cédula de Ciudadanía/i) as HTMLInputElement;
+    const telefonoInput = screen.getByLabelText(/Teléfono Celular/i) as HTMLInputElement;
+
+    fireEvent.change(cedulaInput, { target: { value: 'ABC1090482910XYZ' } });
+    expect(cedulaInput.value).toBe('1090482910');
+
+    fireEvent.change(telefonoInput, { target: { value: '312abc4892011xyz' } });
+    expect(telefonoInput.value).toBe('3124892011');
+
+    // Simular pago automático por QR
+    const botonQrAuto = screen.getByRole('button', {
+      name: /Escanear QR y Pagar Automáticamente/i,
+    });
+    fireEvent.click(botonQrAuto);
+
+    expect(screen.getByText(/QR Escaneado: Pago por/i)).toBeInTheDocument();
+  });
 });

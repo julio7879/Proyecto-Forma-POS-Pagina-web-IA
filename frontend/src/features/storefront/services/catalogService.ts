@@ -31,7 +31,7 @@ export const formatMoneyCOP = (amount: number): string =>
   }).format(amount);
 
 /** Catálogo semilla con los 5 productos estándar de Thomas (PR #13) y stock multisede */
-export const PRODUCTOS_SEMILLA: ProductoDTO[] = [
+const RAW_PRODUCTOS_SEMILLA: ProductoDTO[] = [
   {
     id: 1,
     nombre: 'Camiseta Básica de Algodón',
@@ -543,6 +543,20 @@ export const PRODUCTOS_SEMILLA: ProductoDTO[] = [
     ],
   },
 ];
+
+export const PRODUCTOS_SEMILLA: ProductoDTO[] = RAW_PRODUCTOS_SEMILLA.map((prod) => ({
+  ...prod,
+  variantes: prod.variantes.map((v) => ({
+    ...v,
+    stockPorSede: {
+      'Bodega Central': v.stockDisponible,
+      'Punto Centro': 0,
+      'Punto Caobos': 0,
+      'Punto Ocaña': 0,
+      'Punto Bucaramanga': 0,
+    },
+  })),
+}));
 
 export const getProductosCatalogo = async (): Promise<ProductoDTO[]> => {
   try {

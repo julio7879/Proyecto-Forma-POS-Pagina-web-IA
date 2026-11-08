@@ -1,4 +1,6 @@
 // frontend/src/features/admin/services/adminService.ts
+import { PRODUCTOS_SEMILLA } from '../../storefront/services/catalogService';
+import { getAllStockDeltas } from '../../pos/utils/posLedgerSync';
 import { apiRequest } from '../../../api/apiClient';
 
 // ============================================
@@ -147,28 +149,180 @@ export interface ResolucionNovedadDto {
   }>;
 }
 
+export interface CrearSolicitudTrasladoLocalDto {
+  origenId: number;
+  origenNombre: string;
+  destinoId: number;
+  destinoNombre: string;
+  observaciones?: string;
+  despacharInmediatamente?: boolean;
+  lineas: Array<{
+    varianteId: number;
+    sku: string;
+    nombreProducto: string;
+    cantidadSolicitada: number;
+  }>;
+}
+
 // ============================================
 // Funciones de Inventario
 // ============================================
-export const fetchInventario = async (filtro: InventarioFiltro = {}): Promise<InventarioDTO[]> => {
+
+const SEDES_FALLBACK = [
+  { id: 1, nombre: 'Bodega Central' },
+  { id: 2, nombre: 'Punto Centro' },
+  { id: 8, nombre: 'Punto Caobos' },
+  { id: 3, nombre: 'Punto Ocaña' },
+  { id: 4, nombre: 'Punto Bucaramanga' },
+];
+
+export const getLocalInventario = (filtro: InventarioFiltro = {}): InventarioDTO[] => {
+  const stockDeltas = typeof window !== 'undefined' ? getAllStockDeltas() : {};
+  const items: InventarioDTO[] = [];
+  let currentId = 1;
+
+  for (const prod of PRODUCTOS_SEMILLA) {
+    if (
+      filtro.categoria &&
+      filtro.categoria !== 'Todas' &&
+      prod.categoriaNombre !== filtro.categoria
+    ) {
+      continue;
+    }
+    for (const v of prod.variantes) {
+      if (
+        filtro.sku &&
+        !v.sku.toLowerCase().includes(filtro.sku.toLowerCase()) &&
+        !prod.nombre.toLowerCase().includes(filtro.sku.toLowerCase())
+      ) {
+        continue;
+      }
+      const delta = stockDeltas[v.sku] || 0;
+      for (const sede of SEDES_FALLBACK) {
+        const rawStock =
+          v.stockPorSede?.[sede.nombre] ??
+          (sede.id === 1 ? (v.stockDisponible ?? 0) : 0);
+        const fisico = Math.max(0, rawStock + (sede.id === 2 ? delta : 0));
+        const resBlando = 0;
+        const resDuro = 0;
+        const noVendible = 0;
+        const disponible = Math.max(0, fisico - resDuro);
+        const umbral = 4;
+
+        if (filtro.stockBajo && disponible > umbral) {
+          continue;
+        }
+
+        items.push({
+          id: currentId++,
+          sku: v.sku,
+          nombreProducto: prod.nombre,
+          categoriaNombre: prod.categoriaNombre,
+          sedeId: sede.id,
+          sedeNombre: sede.nombre,
+          fisico,
+          disponible,
+          reservadoBlando: resBlando,
+          reservadoDuro: resDuro,
+          noVendible,
+          umbralStockBajo: umbral,
+        });
+      }
+    }
+  }
+  return items;
+};
+
+const CODIGOS_DEMO_ANTIGUOS = new Set(['TRL-0084', 'TRL-0083', 'TRL-0082']);
+
+export const getStoredTraslados = (): TrasladoDTO[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('forma_admin_traslados');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const limpios = parsed.filter((t: TrasladoDTO) => !CODIGOS_DEMO_ANTIGUOS.has(t?.codigo));
+    if (limpios.length !== parsed.length) {
+      localStorage.setItem('forma_admin_traslados', JSON.stringify(limpios));
+    }
+    return limpios;
+  } catch {
+    return [];
+  }
+};
+
+const saveStoredTraslados = (lista: TrasladoDTO[]): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('forma_admin_traslados', JSON.stringify(lista));
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+};
+
+export const createSolicitudTrasladoLocal = (
+  payload: CrearSolicitudTrasladoLocalDto
+): TrasladoDTO => {
+  const actuales = getStoredTraslados();
+  const nextNumber = actuales.length + 1;
+  const nowIso = new Date().toISOString();
+  const despachar = Boolean(payload.despacharInmediatamente);
+
+  const nuevo: TrasladoDTO = {
+    id: Date.now(),
+    codigo: `TRL-${String(nextNumber).padStart(4, '0')}`,
+    origenId: payload.origenId,
+    origenNombre: payload.origenNombre,
+    destinoId: payload.destinoId,
+    destinoNombre: payload.destinoNombre,
+    estado: despachar ? 'ENVIADO' : 'APROBADO',
+    fechaSolicitud: nowIso,
+    ...(despachar ? { fechaEnvio: nowIso } : {}),
+    observaciones: payload.observaciones,
+    lineas: payload.lineas.map((l, idx) => ({
+      id: Date.now() + idx + 1,
+      varianteId: l.varianteId,
+      sku: l.sku,
+      nombreProducto: l.nombreProducto,
+      cantidadSolicitada: l.cantidadSolicitada,
+      cantidadAprobada: l.cantidadSolicitada,
+      cantidadEnviada: despachar ? l.cantidadSolicitada : 0,
+      recibidaBuena: 0,
+      recibidaDanada: 0,
+    })),
+  };
+
+  saveStoredTraslados([nuevo, ...actuales]);
+  return nuevo;
+};
+
+export const fetchInventario = async (
+  filtro: InventarioFiltro = {}
+): Promise<InventarioDTO[]> => {
   const params = new URLSearchParams();
   if (filtro.categoria) params.append('categoria', filtro.categoria);
   if (filtro.sku) params.append('sku', filtro.sku);
   if (filtro.stockBajo) params.append('stockBajo', 'true');
 
   const query = params.toString();
-  // FIX: ruta sin /admin (apiClient añade /api)
-  const response = await apiRequest<{ datos: InventarioDTO[] }>(
-    `/inventario${query ? `?${query}` : ''}`
-  );
-  return response.datos;
+  try {
+    const response = await apiRequest<{ datos: InventarioDTO[] }>(
+      `/inventario${query ? `?${query}` : ''}`
+    );
+    if (response && Array.isArray(response.datos)) {
+      return response.datos;
+    }
+  } catch {
+    // Modo local / offline de contingencia con catálogo sincronizado
+  }
+  return getLocalInventario(filtro);
 };
 
 // ============================================
 // Funciones de Compras
 // ============================================
 export const fetchOrdenesCompra = async (): Promise<OrdenCompraDTO[]> => {
-  // FIX: /compras (sin /admin)
   const response = await apiRequest<{ datos: OrdenCompraDTO[] }>('/compras');
   return response.datos;
 };
@@ -177,7 +331,6 @@ export const createOrdenCompra = async (
   payload: CrearOrdenCompraDto,
   idempotencyKey: string
 ): Promise<OrdenCompraDTO> => {
-  // FIX: /compras (sin /admin)
   const response = await apiRequest<{ datos: OrdenCompraDTO }>('/compras', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -191,7 +344,6 @@ export const recibirOrdenCompra = async (
   payload: RecepcionCompraDto,
   idempotencyKey: string
 ): Promise<OrdenCompraDTO> => {
-  // FIX: /compras/:id/recepcionar (sin /admin)
   const response = await apiRequest<{ datos: OrdenCompraDTO }>(
     `/compras/${compraId}/recepcionar`,
     {
@@ -208,62 +360,139 @@ export const recibirOrdenCompra = async (
 // ============================================
 export const fetchTraslados = async (estado?: EstadoTraslado): Promise<TrasladoDTO[]> => {
   const query = estado ? `?estado=${estado}` : '';
-  // FIX: /traslados (sin /admin)
-  const response = await apiRequest<{ datos: TrasladoDTO[] }>(`/traslados${query}`);
-  return response.datos;
+  try {
+    const response = await apiRequest<{ datos: TrasladoDTO[] }>(`/traslados${query}`);
+    if (response && Array.isArray(response.datos)) {
+      return response.datos;
+    }
+  } catch {
+    // Fallback a traslados reales creados en localStorage
+  }
+  const all = getStoredTraslados();
+  if (estado) return all.filter((t) => t.estado === estado);
+  return all;
 };
 
 export const despacharTraslado = async (
   payload: DespachoTrasladoDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  // FIX: /traslados/:id/despachar con body { lineas }
-  const response = await apiRequest<{ datos: TrasladoDTO }>(
-    `/traslados/${payload.trasladoId}/despachar`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ lineas: payload.lineas }),
-      headers: { 'Idempotency-Key': idempotencyKey },
-    }
-  );
-  return response.datos;
+  try {
+    const response = await apiRequest<{ datos: TrasladoDTO }>(
+      `/traslados/${payload.trasladoId}/despachar`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ lineas: payload.lineas }),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }
+    );
+    return response.datos;
+  } catch (err) {
+    const actuales = getStoredTraslados();
+    const target = actuales.find((t) => t.id === payload.trasladoId);
+    if (!target) throw err;
+
+    const actualizado: TrasladoDTO = {
+      ...target,
+      estado: 'ENVIADO',
+      fechaEnvio: new Date().toISOString(),
+      lineas: target.lineas.map((l) => {
+        const enviada = payload.lineas.find((pl) => pl.lineaId === l.id);
+        return enviada ? { ...l, cantidadEnviada: enviada.cantidadEnviada } : l;
+      }),
+    };
+    saveStoredTraslados(actuales.map((t) => (t.id === payload.trasladoId ? actualizado : t)));
+    return actualizado;
+  }
 };
 
 export const recibirTraslado = async (
   payload: RecepcionTrasladoDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  // FIX: /traslados/:id/recepcionar
-  const response = await apiRequest<{ datos: TrasladoDTO }>(
-    `/traslados/${payload.trasladoId}/recepcionar`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        lineas: payload.lineas,
-        observaciones: payload.observaciones,
-      }),
-      headers: { 'Idempotency-Key': idempotencyKey },
-    }
-  );
-  return response.datos;
+  try {
+    const response = await apiRequest<{ datos: TrasladoDTO }>(
+      `/traslados/${payload.trasladoId}/recepcionar`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          lineas: payload.lineas,
+          observaciones: payload.observaciones,
+        }),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }
+    );
+    return response.datos;
+  } catch (err) {
+    const actuales = getStoredTraslados();
+    const target = actuales.find((t) => t.id === payload.trasladoId);
+    if (!target) throw err;
+
+    let hayNovedad = false;
+    const nuevasLineas = target.lineas.map((l) => {
+      const rec = payload.lineas.find((pl) => pl.lineaId === l.id);
+      if (!rec) return l;
+      const totalRecibido = rec.recibidaBuena + rec.recibidaDanada;
+      if (
+        totalRecibido < l.cantidadEnviada ||
+        rec.recibidaDanada > 0 ||
+        (rec.excedenteReportado && rec.excedenteReportado > 0)
+      ) {
+        hayNovedad = true;
+      }
+      return {
+        ...l,
+        recibidaBuena: rec.recibidaBuena,
+        recibidaDanada: rec.recibidaDanada,
+      };
+    });
+
+    const actualizado: TrasladoDTO = {
+      ...target,
+      estado: hayNovedad ? 'RECIBIDO_CON_NOVEDAD' : 'RECIBIDO',
+      fechaRecepcion: new Date().toISOString(),
+      observaciones: payload.observaciones || target.observaciones,
+      lineas: nuevasLineas,
+    };
+    saveStoredTraslados(actuales.map((t) => (t.id === payload.trasladoId ? actualizado : t)));
+    return actualizado;
+  }
 };
 
 export const resolverNovedadTraslado = async (
   payload: ResolucionNovedadDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  // FIX: /traslados/:id/resolver-novedad
-  const response = await apiRequest<{ datos: TrasladoDTO }>(
-    `/traslados/${payload.trasladoId}/resolver-novedad`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ resoluciones: payload.resoluciones }),
-      headers: { 'Idempotency-Key': idempotencyKey },
-    }
-  );
-  return response.datos;
-};
+  try {
+    const response = await apiRequest<{ datos: TrasladoDTO }>(
+      `/traslados/${payload.trasladoId}/resolver-novedad`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ resoluciones: payload.resoluciones }),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }
+    );
+    return response.datos;
+  } catch (err) {
+    const actuales = getStoredTraslados();
+    const target = actuales.find((t) => t.id === payload.trasladoId);
+    if (!target) throw err;
 
+    const detalleResolucion = payload.resoluciones
+      .map((r) => `${r.tipo} (${r.cantidad} uds)${r.notas ? `: ${r.notas}` : ''}`)
+      .join(' · ');
+
+    const actualizado: TrasladoDTO = {
+      ...target,
+      estado: 'CERRADO',
+      observaciones: target.observaciones
+        ? `${target.observaciones} | Resolución: ${detalleResolucion}`
+        : `Resolución: ${detalleResolucion}`,
+    };
+    saveStoredTraslados(actuales.map((t) => (t.id === payload.trasladoId ? actualizado : t)));
+    return actualizado;
+  }
+};
 
 // ============================================
 // DTOs y Funciones de Vendedores y Sedes (RN-ROL-03, RN-ROL-04, RN-ROL-05)

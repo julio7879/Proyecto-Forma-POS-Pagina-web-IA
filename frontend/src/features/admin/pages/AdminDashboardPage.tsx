@@ -1,5 +1,5 @@
 // frontend/src/features/admin/pages/AdminDashboardPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp,
@@ -13,23 +13,42 @@ import {
   CheckCircle2,
   Store,
   RefreshCw,
+  Clock,
+  Receipt,
 } from 'lucide-react';
+import {
+  getPosRegisteredSales,
+  getPosRegisteredExchanges,
+  getAllStockDeltas,
+} from '../../pos/utils/posLedgerSync';
+import { getWebOrders, mismaSede, WEB_ORDERS_EVENT } from '../../pos/utils/webOrdersStore';
+import {
+  getSesionAbierta,
+  resumenSesion,
+  CAJA_EVENT,
+  SesionCaja,
+} from '../../pos/utils/cajaStore';
+import { PRODUCTOS_SEMILLA } from '../../storefront/services/catalogService';
 import { SedeAdminFiltro, SEDES_ADMIN_OPTIONS, SEDES_LABELS } from '../../../layouts/AdminLayout';
+import { PageHeader } from '../components/PageHeader';
 
 interface AlertaInventarioItem {
   sku: string;
   nombre: string;
+  tallaColor: string;
   disponible: number;
   umbral: number;
   estado: 'critico' | 'bajo';
 }
 
-interface TrasladoRecienteItem {
+interface MovimientoRecienteItem {
   id: string;
-  origen: string;
-  destino: string;
-  unidades: number;
+  tipo: 'VENTA_POS' | 'PEDIDO_WEB' | 'TRASLADO';
+  referencia: string;
+  titulo: string;
+  detalle: string;
   estado: string;
+  valorTexto: string;
   fecha: string;
 }
 
@@ -38,15 +57,18 @@ export interface KpiSedeData {
   nombreSede: string;
   ciudad: string;
   badge: string;
+  ventasNetasCop: number;
   ventasNetasTexto: string;
   ventasBrutasTexto: string;
   devolucionesTexto: string;
   descuentosTexto: string;
   variacionTexto: string;
   porcentajeParticipacion: number;
+  unidadesInventario: number;
   unidadesInventarioTexto: string;
   valorizadoInventarioTexto: string;
   productosResumen: string;
+  pedidosActivosCount: number;
   pedidosActivosTexto: string;
   pedidosEmpaque: number;
   pedidosDespacho: number;
@@ -54,318 +76,55 @@ export interface KpiSedeData {
   cajaDetalle: string;
   cajaAbierta: boolean;
   alertasInventario: AlertaInventarioItem[];
-  trasladosRecientes: TrasladoRecienteItem[];
+  movimientosRecientes: MovimientoRecienteItem[];
 }
 
-/**
- * Datos agregados por sede para visualización instantánea y reactiva
- */
-const SEDES_DASHBOARD_DATA: Record<SedeAdminFiltro, KpiSedeData> = {
+interface SedeMetadata {
+  sedeKey: SedeAdminFiltro;
+  nombreSede: string;
+  ciudad: string;
+  badge: string;
+}
+
+const SEDES_METADATA: Record<SedeAdminFiltro, SedeMetadata> = {
   'Todas las Sedes (Consolidado)': {
     sedeKey: 'Todas las Sedes (Consolidado)',
     nombreSede: 'Consolidado Nacional',
     ciudad: '5 Ubicaciones Operativas',
     badge: 'Consolidado Global',
-    ventasNetasTexto: '$48.920.000 COP',
-    ventasBrutasTexto: '$54.120.000 COP',
-    devolucionesTexto: '-$1.850.000 COP',
-    descuentosTexto: '-$3.350.000 COP',
-    variacionTexto: '+14.8% vs mes anterior',
-    porcentajeParticipacion: 100,
-    unidadesInventarioTexto: '3.140 Unidades',
-    valorizadoInventarioTexto: '$612.450.000 COP',
-    productosResumen: '133 Productos • 628 Variantes activas',
-    pedidosActivosTexto: '18 Pedidos Activos',
-    pedidosEmpaque: 11,
-    pedidosDespacho: 7,
-    cajaEstado: '4/4 Sedes Abiertas',
-    cajaDetalle: 'Base $200.000 COP c/u • Cuadre 100%',
-    cajaAbierta: true,
-    alertasInventario: [
-      {
-        sku: 'CHA-DEN-M',
-        nombre: 'Chaqueta Denim Artesanal',
-        disponible: 3,
-        umbral: 5,
-        estado: 'bajo',
-      },
-      {
-        sku: 'BOT-SAN-38',
-        nombre: 'Botín Chelsea Cuero Guane',
-        disponible: 1,
-        umbral: 4,
-        estado: 'critico',
-      },
-      {
-        sku: 'VES-SED-S',
-        nombre: 'Vestido Seda Ancestral Champaña',
-        disponible: 2,
-        umbral: 5,
-        estado: 'critico',
-      },
-    ],
-    trasladosRecientes: [
-      {
-        id: 'TRL-0084',
-        origen: 'Bodega Central',
-        destino: 'Punto Bucaramanga',
-        unidades: 12,
-        estado: 'En Tránsito',
-        fecha: 'Hoy 10:25 AM',
-      },
-      {
-        id: 'TRL-0083',
-        origen: 'Punto Centro',
-        destino: 'Punto Caobos',
-        unidades: 6,
-        estado: 'Recibido',
-        fecha: 'Hoy 09:40 AM',
-      },
-      {
-        id: 'TRL-0082',
-        origen: 'Bodega Central',
-        destino: 'Punto Ocaña',
-        unidades: 8,
-        estado: 'En Preparación',
-        fecha: 'Ayer 05:15 PM',
-      },
-    ],
   },
   'Punto Centro': {
     sedeKey: 'Punto Centro',
     nombreSede: 'Punto Centro (Cúcuta)',
-    ciudad: 'Cúcuta Centro',
-    badge: 'Sede Líder',
-    ventasNetasTexto: '$16.450.000 COP',
-    ventasBrutasTexto: '$18.200.000 COP',
-    devolucionesTexto: '-$600.000 COP',
-    descuentosTexto: '-$1.150.000 COP',
-    variacionTexto: '+18.2% vs mes anterior',
-    porcentajeParticipacion: 34,
-    unidadesInventarioTexto: '740 Unidades',
-    valorizadoInventarioTexto: '$148.900.000 COP',
-    productosResumen: '133 Productos • 162 Variantes',
-    pedidosActivosTexto: '6 Pedidos Asignados',
-    pedidosEmpaque: 4,
-    pedidosDespacho: 2,
-    cajaEstado: 'Caja Abierta (CAJ-401)',
-    cajaDetalle: 'Base $200.000 COP • Valentina Ríos',
-    cajaAbierta: true,
-    alertasInventario: [
-      {
-        sku: 'CHA-DEN-M',
-        nombre: 'Chaqueta Denim Artesanal',
-        disponible: 1,
-        umbral: 3,
-        estado: 'critico',
-      },
-      {
-        sku: 'CAM-LIN-L',
-        nombre: 'Camisa Lino Orgánico Barichara',
-        disponible: 2,
-        umbral: 4,
-        estado: 'bajo',
-      },
-    ],
-    trasladosRecientes: [
-      {
-        id: 'TRL-0083',
-        origen: 'Punto Centro',
-        destino: 'Punto Caobos',
-        unidades: 6,
-        estado: 'Despachado',
-        fecha: 'Hoy 09:40 AM',
-      },
-      {
-        id: 'TRL-0079',
-        origen: 'Bodega Central',
-        destino: 'Punto Centro',
-        unidades: 15,
-        estado: 'Recibido',
-        fecha: 'Ayer 04:30 PM',
-      },
-    ],
+    ciudad: 'Cúcuta Centro Comercial',
+    badge: 'Norte de Santander',
   },
   'Punto Caobos': {
     sedeKey: 'Punto Caobos',
     nombreSede: 'Punto Caobos (Cúcuta)',
-    ciudad: 'Cúcuta Caobos',
-    badge: 'Boutique VIP',
-    ventasNetasTexto: '$14.180.000 COP',
-    ventasBrutasTexto: '$15.680.000 COP',
-    devolucionesTexto: '-$520.000 COP',
-    descuentosTexto: '-$980.000 COP',
-    variacionTexto: '+15.4% vs mes anterior',
-    porcentajeParticipacion: 29,
-    unidadesInventarioTexto: '685 Unidades',
-    valorizadoInventarioTexto: '$136.200.000 COP',
-    productosResumen: '133 Productos • 158 Variantes',
-    pedidosActivosTexto: '5 Pedidos Asignados',
-    pedidosEmpaque: 3,
-    pedidosDespacho: 2,
-    cajaEstado: 'Caja Abierta (CAJ-402)',
-    cajaDetalle: 'Base $200.000 COP • Mateo Peñaranda',
-    cajaAbierta: true,
-    alertasInventario: [
-      {
-        sku: 'VES-SED-S',
-        nombre: 'Vestido Seda Ancestral Champaña',
-        disponible: 1,
-        umbral: 3,
-        estado: 'critico',
-      },
-      {
-        sku: 'BOL-CUE-02',
-        nombre: 'Bolso Tote Sastrería Vinotinto',
-        disponible: 2,
-        umbral: 4,
-        estado: 'bajo',
-      },
-    ],
-    trasladosRecientes: [
-      {
-        id: 'TRL-0083',
-        origen: 'Punto Centro',
-        destino: 'Punto Caobos',
-        unidades: 6,
-        estado: 'Recibido',
-        fecha: 'Hoy 09:40 AM',
-      },
-    ],
+    ciudad: 'Cúcuta Los Caobos / Ventura',
+    badge: 'Zona Rosa',
   },
   'Punto Bucaramanga': {
     sedeKey: 'Punto Bucaramanga',
     nombreSede: 'Punto Bucaramanga',
     ciudad: 'Bucaramanga Cabecera',
     badge: 'Santander',
-    ventasNetasTexto: '$11.240.000 COP',
-    ventasBrutasTexto: '$12.400.000 COP',
-    devolucionesTexto: '-$420.000 COP',
-    descuentosTexto: '-$740.000 COP',
-    variacionTexto: '+12.1% vs mes anterior',
-    porcentajeParticipacion: 23,
-    unidadesInventarioTexto: '590 Unidades',
-    valorizadoInventarioTexto: '$118.450.000 COP',
-    productosResumen: '133 Productos • 154 Variantes',
-    pedidosActivosTexto: '4 Pedidos Asignados',
-    pedidosEmpaque: 2,
-    pedidosDespacho: 2,
-    cajaEstado: 'Caja Abierta (CAJ-403)',
-    cajaDetalle: 'Base $200.000 COP • Camila Mantilla',
-    cajaAbierta: true,
-    alertasInventario: [
-      {
-        sku: 'BOT-SAN-38',
-        nombre: 'Botín Chelsea Cuero Guane',
-        disponible: 1,
-        umbral: 3,
-        estado: 'critico',
-      },
-    ],
-    trasladosRecientes: [
-      {
-        id: 'TRL-0084',
-        origen: 'Bodega Central',
-        destino: 'Punto Bucaramanga',
-        unidades: 12,
-        estado: 'En Tránsito',
-        fecha: 'Hoy 10:25 AM',
-      },
-    ],
   },
   'Punto Ocaña': {
     sedeKey: 'Punto Ocaña',
     nombreSede: 'Punto Ocaña',
     ciudad: 'Ocaña Centro Histórico',
     badge: 'Provincia',
-    ventasNetasTexto: '$7.050.000 COP',
-    ventasBrutasTexto: '$7.840.000 COP',
-    devolucionesTexto: '-$310.000 COP',
-    descuentosTexto: '-$480.000 COP',
-    variacionTexto: '+9.7% vs mes anterior',
-    porcentajeParticipacion: 14,
-    unidadesInventarioTexto: '445 Unidades',
-    valorizadoInventarioTexto: '$88.100.000 COP',
-    productosResumen: '133 Productos • 154 Variantes',
-    pedidosActivosTexto: '2 Pedidos Asignados',
-    pedidosEmpaque: 1,
-    pedidosDespacho: 1,
-    cajaEstado: 'Caja Abierta (CAJ-404)',
-    cajaDetalle: 'Base $200.000 COP • Andrés Pacheco',
-    cajaAbierta: true,
-    alertasInventario: [
-      {
-        sku: 'ART-WAY-04',
-        nombre: 'Mochila Wayuu Hilo Dorado',
-        disponible: 2,
-        umbral: 3,
-        estado: 'bajo',
-      },
-    ],
-    trasladosRecientes: [
-      {
-        id: 'TRL-0082',
-        origen: 'Bodega Central',
-        destino: 'Punto Ocaña',
-        unidades: 8,
-        estado: 'En Preparación',
-        fecha: 'Ayer 05:15 PM',
-      },
-    ],
   },
   'Bodega Central': {
     sedeKey: 'Bodega Central',
     nombreSede: 'Bodega Central',
     ciudad: 'Cúcuta Zona Franca',
     badge: 'Custodia & Despacho',
-    ventasNetasTexto: '$0 COP',
-    ventasBrutasTexto: '$0 COP',
-    devolucionesTexto: '$0 COP',
-    descuentosTexto: '$0 COP',
-    variacionTexto: 'Centro Logístico Pulmón',
-    porcentajeParticipacion: 0,
-    unidadesInventarioTexto: '680 Unidades',
-    valorizadoInventarioTexto: '$120.800.000 COP',
-    productosResumen: '133 Productos • Stock de Reserva',
-    pedidosActivosTexto: '1 Pedido en Custodia',
-    pedidosEmpaque: 0,
-    pedidosDespacho: 1,
-    cajaEstado: 'Sin Caja Mostrador',
-    cajaDetalle: 'Exclusivo para abastecimiento e inventario',
-    cajaAbierta: false,
-    alertasInventario: [
-      {
-        sku: 'BOT-SAN-38',
-        nombre: 'Botín Chelsea Cuero Guane',
-        disponible: 4,
-        umbral: 10,
-        estado: 'bajo',
-      },
-    ],
-    trasladosRecientes: [
-      {
-        id: 'TRL-0084',
-        origen: 'Bodega Central',
-        destino: 'Punto Bucaramanga',
-        unidades: 12,
-        estado: 'En Tránsito',
-        fecha: 'Hoy 10:25 AM',
-      },
-      {
-        id: 'TRL-0082',
-        origen: 'Bodega Central',
-        destino: 'Punto Ocaña',
-        unidades: 8,
-        estado: 'En Preparación',
-        fecha: 'Ayer 05:15 PM',
-      },
-    ],
   },
 };
 
-/**
- * 4 Sedes Comerciales Físicas para tarjetas interactivas de rendimiento
- */
 const SEDES_COMERCIALES: SedeAdminFiltro[] = [
   'Punto Centro',
   'Punto Caobos',
@@ -373,14 +132,315 @@ const SEDES_COMERCIALES: SedeAdminFiltro[] = [
   'Punto Ocaña',
 ];
 
+const formatCOP = (n: number): string => {
+  const entero = Math.trunc(Math.abs(n));
+  const formatted = new Intl.NumberFormat('es-CO', {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(entero);
+  return `${n < 0 ? '-' : ''}$${formatted} COP`;
+};
+
+const calcularStockVarianteEnSede = (
+  v: {
+    sku: string;
+    stockDisponible: number;
+    stockPorSede?: Record<string, number>;
+  },
+  sedeKey: SedeAdminFiltro,
+  deltas: Record<string, number>
+): number => {
+  const delta = deltas[v.sku.toUpperCase()] || 0;
+  const stockCentro = Math.max(0, (v.stockPorSede?.['Punto Centro'] ?? 0) + delta);
+  const stockCaobos = Math.max(0, v.stockPorSede?.['Punto Caobos'] ?? 0);
+  const stockOcana = Math.max(0, v.stockPorSede?.['Punto Ocaña'] ?? 0);
+  const stockBucaramanga = Math.max(0, v.stockPorSede?.['Punto Bucaramanga'] ?? 0);
+  const sumaTiendasBase =
+    (v.stockPorSede?.['Punto Centro'] ?? 0) +
+    (v.stockPorSede?.['Punto Caobos'] ?? 0) +
+    (v.stockPorSede?.['Punto Ocaña'] ?? 0) +
+    (v.stockPorSede?.['Punto Bucaramanga'] ?? 0);
+  const stockBodega = Math.max(
+    0,
+    v.stockPorSede?.['Bodega Central'] ?? Math.max(0, (v.stockDisponible || 0) - sumaTiendasBase)
+  );
+
+  if (sedeKey === 'Punto Centro') return stockCentro;
+  if (sedeKey === 'Punto Caobos') return stockCaobos;
+  if (sedeKey === 'Punto Ocaña') return stockOcana;
+  if (sedeKey === 'Punto Bucaramanga') return stockBucaramanga;
+  if (sedeKey === 'Bodega Central') return stockBodega;
+  return stockCentro + stockCaobos + stockOcana + stockBucaramanga + stockBodega;
+};
+
+const calcularVentasNetasPorSede = (sedeKey: SedeAdminFiltro) => {
+  const sales = typeof window !== 'undefined' ? getPosRegisteredSales() : [];
+  const exchanges = typeof window !== 'undefined' ? getPosRegisteredExchanges() : [];
+  const webOrders = typeof window !== 'undefined' ? getWebOrders() : [];
+
+  const isAll = sedeKey === 'Todas las Sedes (Consolidado)';
+  const sedeSales = sales.filter((s) => isAll || mismaSede(s.sede, sedeKey));
+  const sedeOrders = webOrders.filter((o) => isAll || mismaSede(o.sedeAsignada, sedeKey));
+  const sedeExchanges = exchanges.filter((e) => isAll || mismaSede(e.sede || 'Punto Centro', sedeKey));
+
+  const ventasPosCop = sedeSales.reduce(
+    (acc, s) => acc + Math.trunc(s.totalCop ?? (s as any).totalPagarCOP ?? 0),
+    0
+  );
+  const paidWebOrders = sedeOrders.filter((o) => o.estadoCobro === 'PAGADO');
+  const pedidosWebPagadosCop = paidWebOrders.reduce(
+    (acc, o) => acc + Math.trunc(o.totalCOP || 0),
+    0
+  );
+  const excedentesCambiosCop = sedeExchanges.reduce(
+    (acc, ex) =>
+      acc +
+      (ex.tipoLiquidacion === 'EXCEDENTE_COBRADO' && ex.diferenciaCop > 0
+        ? Math.trunc(ex.diferenciaCop)
+        : 0),
+    0
+  );
+  const devolucionesCop = sedeExchanges.reduce(
+    (acc, ex) =>
+      acc +
+      (ex.tipoLiquidacion === 'REINTEGRO_A_FAVOR'
+        ? Math.abs(Math.trunc(ex.diferenciaCop || ex.valorDevueltoCop || 0))
+        : 0),
+    0
+  );
+
+  const ventasBrutasCop = ventasPosCop + pedidosWebPagadosCop + excedentesCambiosCop;
+  const ventasNetasCop = Math.max(0, ventasBrutasCop - devolucionesCop);
+
+  return {
+    sedeSales,
+    sedeOrders,
+    paidWebOrders,
+    sedeExchanges,
+    ventasPosCop,
+    pedidosWebPagadosCop,
+    devolucionesCop,
+    ventasBrutasCop,
+    ventasNetasCop,
+  };
+};
+
+const computeDynamicData = (
+  sedeKey: SedeAdminFiltro,
+  totalConsolidadoNeto: number
+): KpiSedeData => {
+  const meta = SEDES_METADATA[sedeKey] || SEDES_METADATA['Todas las Sedes (Consolidado)'];
+  const isAll = sedeKey === 'Todas las Sedes (Consolidado)';
+
+  // 1. Ventas Netas y Devoluciones Reales
+  const {
+    sedeSales,
+    sedeOrders,
+    paidWebOrders,
+    devolucionesCop,
+    ventasBrutasCop,
+    ventasNetasCop,
+  } = calcularVentasNetasPorSede(sedeKey);
+
+  const porcentajeParticipacion = isAll
+    ? ventasNetasCop > 0
+      ? 100
+      : 0
+    : totalConsolidadoNeto > 0
+    ? Math.round((ventasNetasCop / totalConsolidadoNeto) * 100)
+    : 0;
+
+  const variacionTexto =
+    ventasNetasCop > 0
+      ? `${sedeSales.length} venta(s) POS • ${paidWebOrders.length} web pagado(s)`
+      : 'Sin ventas registradas en este corte';
+
+  // 2. Inventario Físico Real desde PRODUCTOS_SEMILLA + getAllStockDeltas()
+  const deltas = typeof window !== 'undefined' ? getAllStockDeltas() : {};
+  let totalUnidades = 0;
+  let totalValorizadoCop = 0;
+  let totalVariantes = 0;
+  const todasVariantesEvaluadas: AlertaInventarioItem[] = [];
+
+  for (const prod of PRODUCTOS_SEMILLA) {
+    for (const v of prod.variantes) {
+      totalVariantes += 1;
+      const disponible = calcularStockVarianteEnSede(v, sedeKey, deltas);
+      totalUnidades += disponible;
+      totalValorizadoCop += disponible * Math.trunc(v.precioVentaCop || 0);
+
+      todasVariantesEvaluadas.push({
+        sku: v.sku,
+        nombre: prod.nombre,
+        tallaColor: `${v.talla} · ${v.color}`,
+        disponible,
+        umbral: 4,
+        estado: disponible <= 1 ? 'critico' : 'bajo',
+      });
+    }
+  }
+
+  todasVariantesEvaluadas.sort((a, b) => a.disponible - b.disponible);
+  const variantesBajoUmbral = todasVariantesEvaluadas.filter((item) => item.disponible <= 4);
+  const alertasInventario = (
+    variantesBajoUmbral.length > 0 ? variantesBajoUmbral : todasVariantesEvaluadas
+  ).slice(0, 5);
+
+  const unidadesFormateadas = new Intl.NumberFormat('es-CO').format(totalUnidades);
+
+  // 3. Pedidos Web Activos Reales
+  const activeOrders = sedeOrders.filter((o) => {
+    const estado = o.estado || (o as any).estadoActual || 'RECIBIDO';
+    return !['ENTREGADO', 'NO_ENTREGADO', 'CANCELADO'].includes(estado);
+  });
+  const pedidosEmpaque = activeOrders.filter((o) => {
+    const estado = o.estado || (o as any).estadoActual || 'RECIBIDO';
+    return ['RECIBIDO', 'CONFIRMADO', 'EN_PREPARACION'].includes(estado);
+  }).length;
+  const pedidosDespacho = activeOrders.filter((o) => {
+    const estado = o.estado || (o as any).estadoActual || 'RECIBIDO';
+    return ['LISTO_DESPACHO', 'DESPACHADO', 'EN_ENTREGA'].includes(estado);
+  }).length;
+
+  // 4. Estado de Caja Real desde cajaStore
+  let cajaEstado = 'Caja Cerrada';
+  let cajaDetalle = 'Sin turno activo en este punto';
+  let cajaAbierta = false;
+
+  if (isAll) {
+    const abiertas: SesionCaja[] = SEDES_COMERCIALES.map((s) => getSesionAbierta(s)).filter(
+      (s): s is SesionCaja => Boolean(s)
+    );
+    const efectivoEsperadoTotal = abiertas.reduce(
+      (acc, s) => acc + resumenSesion(s).efectivoEsperadoCop,
+      0
+    );
+    cajaAbierta = abiertas.length > 0;
+    cajaEstado = `${abiertas.length}/4 Sedes Abiertas`;
+    cajaDetalle =
+      abiertas.length > 0
+        ? `Efectivo esperado en gavetas: ${formatCOP(efectivoEsperadoTotal)}`
+        : 'Efectivo en gavetas: $0 COP • Sin turnos abiertos';
+  } else if (sedeKey === 'Bodega Central') {
+    cajaAbierta = false;
+    cajaEstado = 'Sin Caja Mostrador';
+    cajaDetalle = 'Exclusivo para abastecimiento e inventario';
+  } else {
+    const sesion = getSesionAbierta(sedeKey);
+    if (sesion) {
+      cajaAbierta = true;
+      cajaEstado = `Caja Abierta (${sesion.id})`;
+      cajaDetalle = `Base ${formatCOP(sesion.baseInicialCop)} • ${sesion.vendedor}`;
+    } else {
+      cajaAbierta = false;
+      cajaEstado = 'Caja Cerrada';
+      cajaDetalle = 'Sin turno activo en este punto';
+    }
+  }
+
+  // 5. Actividad Reciente y Movimientos en Vivo (100% reales)
+  const movimientosRecientes: MovimientoRecienteItem[] = [];
+
+  for (const s of sedeSales.slice(0, 4)) {
+    const monto = Math.trunc(s.totalCop ?? (s as any).totalPagarCOP ?? 0);
+    movimientosRecientes.push({
+      id: `vta-${s.id || s.consecutivo}`,
+      tipo: 'VENTA_POS',
+      referencia: s.consecutivo,
+      titulo: `Venta POS • ${s.vendedor || 'Vendedor'}`,
+      detalle: `${s.sede || 'Punto de Venta'} • ${s.cliente || 'Consumidor Final'}`,
+      estado: s.medioPago || s.metodoPago || 'EFECTIVO',
+      valorTexto: formatCOP(monto),
+      fecha: s.fechaCorta || s.fechaHora || 'Hoy',
+    });
+  }
+
+  for (const o of sedeOrders.slice(0, 4)) {
+    const estado = o.estado || (o as any).estadoActual || 'RECIBIDO';
+    movimientosRecientes.push({
+      id: `web-${o.codigo}`,
+      tipo: 'PEDIDO_WEB',
+      referencia: o.codigo,
+      titulo: `Pedido Web • ${o.cliente || 'Cliente Web'}`,
+      detalle: `Sede: ${o.sedeAsignada} • Cobro: ${o.estadoCobro}`,
+      estado,
+      valorTexto: formatCOP(o.totalCOP || 0),
+      fecha: o.metodoPagoTexto || o.metodoPago || 'Tienda Web',
+    });
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const rawTraslados = localStorage.getItem('forma_admin_traslados');
+      if (rawTraslados) {
+        const parsedTraslados = JSON.parse(rawTraslados);
+        if (Array.isArray(parsedTraslados)) {
+          for (const t of parsedTraslados) {
+            const origen = t.origenNombre || t.origen || 'Bodega Central';
+            const destino = t.destinoNombre || t.destino || 'Punto de Venta';
+            if (isAll || mismaSede(origen, sedeKey) || mismaSede(destino, sedeKey)) {
+              const unidades = Array.isArray(t.lineas)
+                ? t.lineas.reduce(
+                    (acc: number, l: any) =>
+                      acc + (l.cantidadEnviada || l.cantidadAprobada || l.cantidadSolicitada || 0),
+                    0
+                  )
+                : t.unidades || 0;
+              movimientosRecientes.push({
+                id: `trl-${t.codigo || t.id}`,
+                tipo: 'TRASLADO',
+                referencia: t.codigo || `${t.id}`,
+                titulo: `${origen} ➔ ${destino}`,
+                detalle: 'Traslado de mercancía entre sedes',
+                estado: t.estado || 'ENVIADO',
+                valorTexto: `${unidades} prendas`,
+                fecha: t.fechaSolicitud || t.fecha || 'Reciente',
+              });
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore malformed storage
+    }
+  }
+
+  return {
+    sedeKey,
+    nombreSede: meta.nombreSede,
+    ciudad: meta.ciudad,
+    badge: meta.badge,
+    ventasNetasCop,
+    ventasNetasTexto: formatCOP(ventasNetasCop),
+    ventasBrutasTexto: formatCOP(ventasBrutasCop),
+    devolucionesTexto: devolucionesCop > 0 ? `-${formatCOP(devolucionesCop)}` : '$0 COP',
+    descuentosTexto: '$0 COP',
+    variacionTexto,
+    porcentajeParticipacion,
+    unidadesInventario: totalUnidades,
+    unidadesInventarioTexto: `${unidadesFormateadas} Unidades`,
+    valorizadoInventarioTexto: formatCOP(totalValorizadoCop),
+    productosResumen: `${PRODUCTOS_SEMILLA.length} Productos • ${totalVariantes} Variantes activas`,
+    pedidosActivosCount: activeOrders.length,
+    pedidosActivosTexto: `${activeOrders.length} Pedidos Activos`,
+    pedidosEmpaque,
+    pedidosDespacho,
+    cajaEstado,
+    cajaDetalle,
+    cajaAbierta,
+    alertasInventario,
+    movimientosRecientes: movimientosRecientes.slice(0, 6),
+  };
+};
+
 export const AdminDashboardPage: React.FC = () => {
-  // Sincronización reactiva del selector de sede
   const [sedeActiva, setSedeActiva] = useState<SedeAdminFiltro>(() => {
     const saved = localStorage.getItem('forma_admin_sede') as SedeAdminFiltro | null;
     return saved && SEDES_ADMIN_OPTIONS.includes(saved)
       ? saved
       : 'Todas las Sedes (Consolidado)';
   });
+  const [liveTick, setLiveTick] = useState(0);
 
   useEffect(() => {
     const syncFromGlobal = () => {
@@ -388,12 +448,19 @@ export const AdminDashboardPage: React.FC = () => {
       if (saved && SEDES_ADMIN_OPTIONS.includes(saved)) {
         setSedeActiva(saved);
       }
+      setLiveTick((t) => t + 1);
     };
     window.addEventListener('forma-admin-sede-change', syncFromGlobal);
     window.addEventListener('storage', syncFromGlobal);
+    window.addEventListener('forma-pos-ledger-update', syncFromGlobal);
+    window.addEventListener(WEB_ORDERS_EVENT, syncFromGlobal);
+    window.addEventListener(CAJA_EVENT, syncFromGlobal);
     return () => {
       window.removeEventListener('forma-admin-sede-change', syncFromGlobal);
       window.removeEventListener('storage', syncFromGlobal);
+      window.removeEventListener('forma-pos-ledger-update', syncFromGlobal);
+      window.removeEventListener(WEB_ORDERS_EVENT, syncFromGlobal);
+      window.removeEventListener(CAJA_EVENT, syncFromGlobal);
     };
   }, []);
 
@@ -403,47 +470,52 @@ export const AdminDashboardPage: React.FC = () => {
     window.dispatchEvent(new Event('forma-admin-sede-change'));
   };
 
-  const kpi = SEDES_DASHBOARD_DATA[sedeActiva] || SEDES_DASHBOARD_DATA['Todas las Sedes (Consolidado)'];
+  const totalConsolidadoNeto = useMemo(
+    () => calcularVentasNetasPorSede('Todas las Sedes (Consolidado)').ventasNetasCop,
+    [liveTick]
+  );
+
+  const kpi = useMemo(
+    () => computeDynamicData(sedeActiva, totalConsolidadoNeto),
+    [sedeActiva, totalConsolidadoNeto, liveTick]
+  );
+
+  const datosSedesComerciales = useMemo(
+    () =>
+      SEDES_COMERCIALES.map((sedeKey) =>
+        computeDynamicData(sedeKey, totalConsolidadoNeto)
+      ),
+    [totalConsolidadoNeto, liveTick]
+  );
 
   return (
     <div className="space-y-6 pb-8">
       {/* =========================================================================
-          ENCABEZADO EJECUTIVO Y SELECTOR REACTIVO POR SEDE (PÍLDORAS)
+          1. ENCABEZADO EJECUTIVO COMPACTO + PÍLDORAS DE FILTRO POR SUCURSAL
           ========================================================================= */}
-      <section className="glass-mirror-card rounded-3xl p-5 sm:p-6 bg-white/75 backdrop-blur-xl border border-white/90 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#661521]">
-              Panel Ejecutivo Central
-            </span>
-            <span className="text-[10px] text-[#50322A]/60 font-semibold">•</span>
-            <span className="text-[10px] font-bold text-[#50322A]">
-              {kpi.nombreSede}
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-display font-bold text-[#351912]">
-            Resumen General de Rendimiento
-          </h2>
-          <p className="text-xs text-[#50322A]/80 font-medium">
-            Visualización en tiempo real de facturación neta, inventario, pedidos web y arqueo de caja.
-          </p>
-        </div>
-
-        {/* Botón rápido para volver a consolidado si hay un filtro aplicado */}
-        {sedeActiva !== 'Todas las Sedes (Consolidado)' && (
-          <button
-            type="button"
-            onClick={() => seleccionarSede('Todas las Sedes (Consolidado)')}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#661521] hover:bg-[#4A0E17] text-white text-xs font-bold transition-all shadow-sm shrink-0"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-[#D19650]" />
-            <span>Ver Todas las Sedes</span>
-          </button>
-        )}
-      </section>
+      <PageHeader
+        title="Resumen General de Rendimiento"
+        subtitle="Visualización en tiempo real de facturación neta, inventario físico, pedidos web y estado de caja."
+        badge={`Panel Ejecutivo Central • ${kpi.nombreSede}`}
+        actions={
+          sedeActiva !== 'Todas las Sedes (Consolidado)' ? (
+            <button
+              type="button"
+              onClick={() => seleccionarSede('Todas las Sedes (Consolidado)')}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#741C2B] hover:bg-[#5A1420] text-white text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[#C49A68]" />
+              <span>Ver Todas las Sedes</span>
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* SELECTOR DE PÍLDORAS POR SEDE (INTERACTIVO Y AL INSTANTE) */}
-      <section aria-label="Filtro rápido por sede" className="flex items-center gap-2 overflow-x-auto pb-1">
+      <section
+        aria-label="Filtro rápido por sede"
+        className="flex items-center gap-2 overflow-x-auto pb-1"
+      >
         {SEDES_ADMIN_OPTIONS.map((sede) => {
           const isSelected = sedeActiva === sede;
           return (
@@ -452,10 +524,10 @@ export const AdminDashboardPage: React.FC = () => {
               type="button"
               data-testid={`pildora-sede-${sede}`}
               onClick={() => seleccionarSede(sede)}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border cursor-pointer ${
                 isSelected
-                  ? 'bg-[#661521] text-white shadow-md shadow-[#661521]/20 border border-[#D19650]/40'
-                  : 'glass-mirror-pill bg-white/70 text-[#351912] hover:bg-white hover:text-[#661521] hover:border-[#D19650]/40'
+                  ? 'bg-[#741C2B] text-white border-[#741C2B] shadow-2xs'
+                  : 'bg-white border-[#E7E0D8] text-[#292827] hover:bg-[#F5F3EF] hover:border-[#C49A68]/60'
               }`}
             >
               {SEDES_LABELS[sede]}
@@ -465,74 +537,80 @@ export const AdminDashboardPage: React.FC = () => {
       </section>
 
       {/* =========================================================================
-          4 TARJETAS KPI EJECUTIVAS CLARAS
+          2. BLOQUE DE 4 INDICADORES PRINCIPALES (LIMPIOS Y EN VIVO)
           ========================================================================= */}
       <section
         aria-label="Indicadores Clave de Desempeño"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        {/* KPI 1: Ventas Netas del Periodo */}
-        <article className="glass-mirror-card rounded-3xl p-5 bg-white/80 backdrop-blur-xl border border-white/90 shadow-sm flex flex-col justify-between hover:border-[#D19650]/60 transition-all">
+        {/* KPI 1: Ventas Netas */}
+        <article className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs flex flex-col justify-between hover:border-[#C49A68]/60 transition-all">
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#50322A]">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E]">
                 Ventas Netas
               </span>
-              <div className="w-8 h-8 rounded-xl bg-[#661521]/10 text-[#661521] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#741C2B]/10 text-[#741C2B] flex items-center justify-center">
                 <TrendingUp className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-mono-tabular font-extrabold text-[#171717]">
+            <div
+              data-testid="kpi-ventas-netas"
+              className="text-2xl font-mono-tabular font-extrabold text-[#292827] tabular-nums"
+            >
               {kpi.ventasNetasTexto}
             </div>
-            <div className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5 border border-emerald-200">
-              <ArrowUpRight className="w-3 h-3" />
+            <div className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#741C2B] bg-[#F5F3EF] px-2 py-0.5 rounded-md mt-1.5 border border-[#E7E0D8]">
+              <ArrowUpRight className="w-3 h-3 text-[#C49A68]" />
               <span>{kpi.variacionTexto}</span>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#50322A]/10 text-[11px] font-mono-tabular text-[#50322A] space-y-1">
+          <div className="mt-4 pt-3 border-t border-[#E7E0D8] text-[11px] font-mono-tabular text-[#77736E] space-y-1">
             <div className="flex justify-between">
-              <span className="text-[#50322A]/70">Ventas Brutas:</span>
-              <span className="font-bold text-[#171717]">{kpi.ventasBrutasTexto}</span>
+              <span>Ventas Brutas:</span>
+              <span className="font-bold text-[#292827] tabular-nums">{kpi.ventasBrutasTexto}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#50322A]/70">Devoluciones:</span>
-              <span className="font-bold text-[#661521]">{kpi.devolucionesTexto}</span>
+              <span>Devoluciones:</span>
+              <span className="font-bold text-[#741C2B] tabular-nums">{kpi.devolucionesTexto}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#50322A]/70">Descuentos:</span>
-              <span className="font-bold text-amber-900">{kpi.descuentosTexto}</span>
+              <span>Descuentos:</span>
+              <span className="font-bold text-[#77736E] tabular-nums">{kpi.descuentosTexto}</span>
             </div>
           </div>
         </article>
 
         {/* KPI 2: Inventario Físico */}
-        <article className="glass-mirror-card rounded-3xl p-5 bg-white/80 backdrop-blur-xl border border-white/90 shadow-sm flex flex-col justify-between hover:border-[#D19650]/60 transition-all">
+        <article className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs flex flex-col justify-between hover:border-[#C49A68]/60 transition-all">
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#50322A]">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E]">
                 Inventario Físico
               </span>
-              <div className="w-8 h-8 rounded-xl bg-[#D19650]/20 text-[#50322A] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#C49A68]/20 text-[#741C2B] flex items-center justify-center">
                 <Package className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-mono-tabular font-extrabold text-[#171717]">
+            <div
+              data-testid="kpi-inventario-unidades"
+              className="text-2xl font-mono-tabular font-extrabold text-[#292827] tabular-nums"
+            >
               {kpi.unidadesInventarioTexto}
             </div>
-            <div className="text-xs font-bold text-[#661521] mt-1 font-mono-tabular">
+            <div className="text-xs font-bold text-[#741C2B] mt-1 font-mono-tabular tabular-nums">
               Valorizado: {kpi.valorizadoInventarioTexto}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#50322A]/10 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[#50322A]">
+          <div className="mt-4 pt-3 border-t border-[#E7E0D8] flex items-center justify-between">
+            <span className="text-[11px] font-medium text-[#77736E]">
               {kpi.productosResumen}
             </span>
             <Link
               to="/admin/inventario"
-              className="text-[11px] font-extrabold text-[#661521] hover:underline flex items-center gap-0.5"
+              className="text-[11px] font-extrabold text-[#741C2B] hover:underline flex items-center gap-0.5"
             >
               <span>Ver</span>
               <ArrowRight className="w-3 h-3" />
@@ -541,94 +619,111 @@ export const AdminDashboardPage: React.FC = () => {
         </article>
 
         {/* KPI 3: Pedidos Web Activos */}
-        <article className="glass-mirror-card rounded-3xl p-5 bg-white/80 backdrop-blur-xl border border-white/90 shadow-sm flex flex-col justify-between hover:border-[#D19650]/60 transition-all">
+        <article className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs flex flex-col justify-between hover:border-[#C49A68]/60 transition-all">
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#50322A]">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E]">
                 Pedidos Web Activos
               </span>
-              <div className="w-8 h-8 rounded-xl bg-[#661521]/10 text-[#661521] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#741C2B]/10 text-[#741C2B] flex items-center justify-center">
                 <ShoppingBag className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-mono-tabular font-extrabold text-[#171717]">
+            <div
+              data-testid="kpi-pedidos-activos"
+              className="text-2xl font-mono-tabular font-extrabold text-[#292827] tabular-nums"
+            >
               {kpi.pedidosActivosTexto}
             </div>
-            <div className="text-xs font-medium text-[#50322A] mt-1">
+            <div className="text-xs font-medium text-[#77736E] mt-1 tabular-nums">
               {kpi.pedidosEmpaque} en empaque • {kpi.pedidosDespacho} en despacho
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#50322A]/10 flex items-center justify-between text-[11px]">
-            <span className="font-bold text-[#50322A]">Gestión de Alistamiento</span>
-            <span className="text-emerald-800 font-extrabold">Al día</span>
+          <div className="mt-4 pt-3 border-t border-[#E7E0D8] flex items-center justify-between text-[11px]">
+            <span className="font-bold text-[#77736E]">Gestión de Alistamiento</span>
+            <Link
+              to="/admin/pedidos-web"
+              className="text-[#741C2B] font-extrabold hover:underline flex items-center gap-0.5"
+            >
+              <span>Gestionar</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
         </article>
 
         {/* KPI 4: Estado de Caja */}
-        <article className="glass-mirror-card rounded-3xl p-5 bg-white/80 backdrop-blur-xl border border-white/90 shadow-sm flex flex-col justify-between hover:border-[#D19650]/60 transition-all">
+        <article className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs flex flex-col justify-between hover:border-[#C49A68]/60 transition-all">
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#50322A]">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#77736E]">
                 Estado de Caja
               </span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#F5F3EF] text-[#741C2B] border border-[#E7E0D8] flex items-center justify-center">
                 <Vault className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-xl sm:text-2xl font-display font-bold text-[#171717]">
+            <div
+              data-testid="kpi-estado-caja"
+              className="text-xl sm:text-2xl font-display font-bold text-[#292827]"
+            >
               {kpi.cajaEstado}
             </div>
-            <div className="text-xs font-medium text-[#50322A] mt-1">
+            <div className="text-xs font-medium text-[#77736E] mt-1">
               {kpi.cajaDetalle}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#50322A]/10 flex items-center justify-between text-[11px]">
-            <span className="inline-flex items-center gap-1 font-bold text-emerald-800">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Arqueo Verificado</span>
+          <div className="mt-4 pt-3 border-t border-[#E7E0D8] flex items-center justify-between text-[11px]">
+            <span className="inline-flex items-center gap-1 font-bold text-[#292827]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#C49A68]" />
+              <span>{kpi.cajaAbierta ? 'Turno en operación' : 'Sin turno abierto'}</span>
             </span>
-            <span className="font-mono-tabular font-bold text-[#50322A]">Base OK</span>
+            <Link
+              to="/admin/cajas"
+              className="font-extrabold text-[#741C2B] hover:underline flex items-center gap-0.5"
+            >
+              <span>Arqueos</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
         </article>
       </section>
 
       {/* =========================================================================
-          TARJETAS DE RENDIMIENTO POR SEDE (INTERACTIVAS CON CLIC PARA FILTRAR)
+          3. BLOQUE DE COMPARACIÓN ENTRE SUCURSALES (4 TARJETAS COMPACTAS)
           ========================================================================= */}
       <section aria-label="Rendimiento por sede física" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base sm:text-lg font-display font-bold text-[#351912]">
-            Rendimiento Comercial por Sede
-          </h3>
-          <span className="text-xs text-[#50322A]/70 font-medium">
-            Haga clic en una sede para filtrar todo el panel
+          <h2 className="text-base sm:text-lg font-display font-bold text-[#292827]">
+            Comparación Comercial entre Sucursales
+          </h2>
+          <span className="text-xs text-[#77736E] font-medium">
+            Seleccione una tarjeta para inspeccionar la sede
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {SEDES_COMERCIALES.map((sedeKey) => {
-            const dataSede = SEDES_DASHBOARD_DATA[sedeKey];
-            const isSelected = sedeActiva === sedeKey;
+          {datosSedesComerciales.map((dataSede) => {
+            const isSelected = sedeActiva === dataSede.sedeKey;
 
             return (
               <div
-                key={sedeKey}
-                data-testid={`tarjeta-sede-${sedeKey}`}
-                onClick={() => seleccionarSede(sedeKey)}
+                key={dataSede.sedeKey}
+                data-testid={`tarjeta-sede-${dataSede.sedeKey}`}
+                onClick={() => seleccionarSede(dataSede.sedeKey)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    seleccionarSede(sedeKey);
+                    seleccionarSede(dataSede.sedeKey);
                   }
                 }}
-                className={`cursor-pointer rounded-2xl p-4 transition-all duration-200 border text-left ${
+                className={`cursor-pointer rounded-2xl p-4 transition-all duration-150 border text-left ${
                   isSelected
-                    ? 'bg-white border-[#661521] shadow-md ring-2 ring-[#661521]/15 -translate-y-0.5'
-                    : 'glass-mirror-card bg-white/70 border-white/90 hover:bg-white hover:border-[#D19650]/60'
+                    ? 'bg-white border-[#741C2B] shadow-sm ring-2 ring-[#741C2B]/15 -translate-y-0.5'
+                    : 'bg-white border-[#E7E0D8] hover:border-[#C49A68]/60 shadow-2xs'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-2">
@@ -636,55 +731,59 @@ export const AdminDashboardPage: React.FC = () => {
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
                         isSelected
-                          ? 'bg-[#661521] text-[#D19650]'
-                          : 'bg-[#50322A]/10 text-[#50322A]'
+                          ? 'bg-[#741C2B] text-[#C49A68]'
+                          : 'bg-[#F5F3EF] text-[#77736E]'
                       }`}
                     >
                       <Store className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-xs font-extrabold text-[#171717] truncate">
+                      <h3 className="text-xs font-extrabold text-[#292827] truncate">
                         {dataSede.nombreSede}
-                      </h4>
-                      <span className="text-[10px] text-[#50322A]/70 block truncate">
+                      </h3>
+                      <span className="text-[10px] text-[#77736E] block truncate">
                         {dataSede.ciudad}
                       </span>
                     </div>
                   </div>
 
                   {isSelected && (
-                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#661521] text-white shrink-0">
-                      Filtrada ✓
+                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#741C2B] text-white shrink-0">
+                      Activa
                     </span>
                   )}
                 </div>
 
                 <div className="mt-3">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#50322A]/70 block">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#77736E] block">
                     Venta Neta
                   </span>
-                  <div className="text-lg font-mono-tabular font-extrabold text-[#661521]">
+                  <div className="text-lg font-mono-tabular font-extrabold text-[#741C2B] tabular-nums">
                     {dataSede.ventasNetasTexto}
                   </div>
                 </div>
 
-                {/* Barra de Participación de Ventas */}
+                {/* Barra de Participación de Ventas Real */}
                 <div className="mt-2.5 space-y-1">
-                  <div className="flex justify-between text-[10px] font-bold text-[#50322A]">
+                  <div className="flex justify-between text-[10px] font-bold text-[#77736E]">
                     <span>Participación</span>
-                    <span className="font-mono-tabular">{dataSede.porcentajeParticipacion}%</span>
+                    <span className="font-mono-tabular text-[#292827] tabular-nums">
+                      {dataSede.porcentajeParticipacion}%
+                    </span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-[#50322A]/10 overflow-hidden">
+                  <div className="w-full h-1.5 rounded-full bg-[#E7E0D8] overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#661521] to-[#D19650]"
-                      style={{ width: `${dataSede.porcentajeParticipacion * 2.5}%` }}
+                      className="h-full rounded-full bg-[#741C2B] transition-all"
+                      style={{ width: `${Math.min(100, dataSede.porcentajeParticipacion)}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="mt-3 pt-2.5 border-t border-[#50322A]/10 flex items-center justify-between text-[10px] text-[#50322A]">
-                  <span>{dataSede.unidadesInventarioTexto}</span>
-                  <span className="font-bold">{dataSede.pedidosActivosTexto}</span>
+                <div className="mt-3 pt-2.5 border-t border-[#E7E0D8] flex items-center justify-between text-[10px] text-[#77736E]">
+                  <span className="tabular-nums">{dataSede.unidadesInventarioTexto}</span>
+                  <span className="font-bold text-[#292827] tabular-nums">
+                    {dataSede.pedidosActivosTexto}
+                  </span>
                 </div>
               </div>
             );
@@ -693,31 +792,31 @@ export const AdminDashboardPage: React.FC = () => {
       </section>
 
       {/* =========================================================================
-          MONITOR DE ALERTAS EJECUTIVAS: STOCK BAJO & TRASLADOS
+          4. BLOQUE INFERIOR EN 2 COLUMNAS: ALERTAS DE STOCK BAJO Y ACTIVIDAD RECIENTE
           ========================================================================= */}
       <section
-        aria-label="Alertas y traslados ejecutivos"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-5"
+        aria-label="Alertas y movimientos recientes"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
       >
-        {/* Panel 1: Alertas de Inventario Bajo */}
-        <div className="glass-mirror-card rounded-3xl p-5 bg-white/75 backdrop-blur-xl border border-white/90 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-[#50322A]/10 pb-3">
+        {/* Columna 1: Alertas de Inventario Bajo */}
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-900 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-xl bg-[#F5F3EF] text-[#741C2B] border border-[#E7E0D8] flex items-center justify-center">
                 <AlertTriangle className="w-3.5 h-3.5" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#351912]">
+                <h3 className="text-sm font-extrabold text-[#292827]">
                   Alertas de Inventario Bajo
                 </h3>
-                <span className="text-[10px] text-[#50322A]/70 font-medium">
-                  {kpi.nombreSede}
+                <span className="text-[10px] text-[#77736E] font-medium">
+                  {kpi.nombreSede} • Variantes con menor disponibilidad
                 </span>
               </div>
             </div>
             <Link
               to="/admin/inventario"
-              className="text-xs font-bold text-[#661521] hover:underline flex items-center gap-1"
+              className="text-xs font-bold text-[#741C2B] hover:underline flex items-center gap-1"
             >
               <span>Gestionar en Kardex</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -725,37 +824,38 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            {kpi.alertasInventario.map((item) => (
+            {kpi.alertasInventario.map((item: AlertaInventarioItem) => (
               <div
                 key={item.sku}
-                className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/70 border border-white hover:border-[#D19650]/40 transition-colors"
+                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] hover:border-[#C49A68]/60 transition-colors"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono-tabular text-xs font-bold text-[#661521]">
+                    <span className="font-mono-tabular text-xs font-bold text-[#741C2B]">
                       {item.sku}
                     </span>
                     <span
-                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${
                         item.estado === 'critico'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-amber-100 text-amber-800'
+                          ? 'bg-[#741C2B]/10 text-[#741C2B]'
+                          : 'bg-[#C49A68]/20 text-[#292827]'
                       }`}
                     >
-                      {item.estado === 'critico' ? 'Crítico' : 'Reorden'}
+                      {item.estado === 'critico' ? 'Agotado / Crítico' : 'Stock Bajo'}
                     </span>
                   </div>
-                  <div className="text-xs font-extrabold text-[#171717] truncate mt-0.5">
+                  <div className="text-xs font-extrabold text-[#292827] truncate mt-0.5">
                     {item.nombre}
                   </div>
+                  <div className="text-[10px] text-[#77736E]">{item.tallaColor}</div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-mono-tabular font-extrabold text-[#171717] block">
+                  <span className="text-xs font-mono-tabular font-extrabold text-[#292827] block tabular-nums">
                     {item.disponible} unds
                   </span>
-                  <span className="text-[10px] text-[#50322A]/70 block">
-                    Mínimo: {item.umbral}
+                  <span className="text-[10px] text-[#77736E] block tabular-nums">
+                    Umbral: {item.umbral}
                   </span>
                 </div>
               </div>
@@ -763,61 +863,91 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Panel 2: Estado de Traslados Entrantes y Salientes */}
-        <div className="glass-mirror-card rounded-3xl p-5 bg-white/75 backdrop-blur-xl border border-white/90 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-[#50322A]/10 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-[#661521]/10 text-[#661521] flex items-center justify-center">
-                <Truck className="w-3.5 h-3.5" />
+        {/* Columna 2: Actividad Reciente (Ventas POS, Pedidos Web y Traslados) */}
+        <div className="rounded-2xl bg-white border border-[#E7E0D8] p-5 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-[#741C2B]/10 text-[#741C2B] flex items-center justify-center">
+                  <Truck className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#292827]">
+                    Actividad y Movimientos en Vivo
+                  </h3>
+                  <span className="text-[10px] text-[#77736E] font-medium">
+                    Ventas POS, órdenes web y traslados registrados
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-[#351912]">
-                  Traslados y Despachos
-                </h3>
-                <span className="text-[10px] text-[#50322A]/70 font-medium">
-                  Movimientos entre sedes
-                </span>
-              </div>
+              <Link
+                to="/admin/traslados"
+                className="text-xs font-bold text-[#741C2B] hover:underline flex items-center gap-1"
+              >
+                <span>Ver Traslados</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
-            <Link
-              to="/admin/traslados"
-              className="text-xs font-bold text-[#661521] hover:underline flex items-center gap-1"
-            >
-              <span>Ver Todos</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+
+            {kpi.movimientosRecientes.length === 0 ? (
+              <div className="p-8 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-center space-y-2">
+                <Clock className="w-7 h-7 text-[#77736E] mx-auto" />
+                <p className="text-xs font-extrabold text-[#292827]">
+                  Sin movimientos operativos registrados en esta vista
+                </p>
+                <p className="text-[11px] text-[#77736E] max-w-sm mx-auto">
+                  Las ventas en Terminal POS, pedidos de Tienda Web y traslados entre sedes se mostrarán aquí automáticamente en tiempo real.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {kpi.movimientosRecientes.map((mov) => (
+                  <div
+                    key={mov.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] hover:border-[#C49A68]/60 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono-tabular text-xs font-bold text-[#292827]">
+                          {mov.referencia.startsWith('#') ? mov.referencia : `#${mov.referencia}`}
+                        </span>
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-white text-[#741C2B] border border-[#E7E0D8]">
+                          {mov.estado}
+                        </span>
+                      </div>
+                      <div className="text-xs font-extrabold text-[#292827] truncate mt-0.5">
+                        {mov.titulo}
+                      </div>
+                      <div className="text-[10px] text-[#77736E] truncate">
+                        {mov.detalle}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-mono-tabular font-extrabold text-[#741C2B] block tabular-nums">
+                        {mov.valorTexto}
+                      </span>
+                      <span className="text-[10px] text-[#77736E] block font-mono-tabular">
+                        {mov.fecha}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            {kpi.trasladosRecientes.map((traslado) => (
-              <div
-                key={traslado.id}
-                className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/70 border border-white hover:border-[#D19650]/40 transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono-tabular text-xs font-bold text-[#351912]">
-                      #{traslado.id}
-                    </span>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
-                      {traslado.estado}
-                    </span>
-                  </div>
-                  <div className="text-xs font-medium text-[#50322A] truncate mt-0.5">
-                    {traslado.origen} ➔ {traslado.destino}
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-mono-tabular font-extrabold text-[#171717] block">
-                    {traslado.unidades} prendas
-                  </span>
-                  <span className="text-[10px] text-[#50322A]/70 block font-mono-tabular">
-                    {traslado.fecha}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="pt-3 border-t border-[#E7E0D8] flex items-center justify-between text-[11px] text-[#77736E]">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Receipt className="w-3.5 h-3.5 text-[#C49A68]" />
+              <span>Sincronización directa con POS y Tienda Web</span>
+            </span>
+            <Link
+              to="/admin/reportes"
+              className="font-extrabold text-[#741C2B] hover:underline"
+            >
+              Ver Reportes →
+            </Link>
           </div>
         </div>
       </section>
