@@ -8,6 +8,7 @@ import type {
   ListarPedidosWebQuery,
   NoPuedoDespacharInput,
   RetornoLogisticoInput,
+  TransicionarPedidoWebInput,
 } from './pedidoWeb.schema.js';
 import { PedidoWebService } from './pedidoWeb.service.js';
 
@@ -107,6 +108,20 @@ export class PedidoWebController {
       const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
       const resultado = await PedidoWebService.procesarDevolucionComercialWeb(id, body, user, idempotencyKey);
       res.status(200).json(resultado);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async transicionarEstado(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = getAuthUser(req);
+      const rawId = req.params.id;
+      const idOrCodigo = !isNaN(Number(rawId)) ? Number(rawId) : String(rawId);
+      const body = req.body as TransicionarPedidoWebInput;
+      const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+      const datos = await PedidoWebService.transicionarEstado(idOrCodigo, body, user, idempotencyKey);
+      res.status(200).json({ ok: true, datos });
     } catch (e) {
       next(e);
     }

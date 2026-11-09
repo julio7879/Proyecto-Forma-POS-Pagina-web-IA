@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   ShoppingBag,
   Trash2,
@@ -32,6 +33,14 @@ export const BolsaPage: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-14rem)] w-full py-4 sm:py-8 animate-in fade-in duration-300">
+      <div className="mb-4">
+        <Breadcrumbs
+          items={[
+            { label: 'Inicio', href: '/' },
+            { label: 'Bolsa de Compras', isCurrent: true },
+          ]}
+        />
+      </div>
       {/* Encabezado Editorial */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#50322A]/10 pb-6">
         <div>
@@ -100,6 +109,7 @@ export const BolsaPage: React.FC = () => {
                         'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80'
                       }
                       alt={item.nombre}
+                      loading="lazy"
                       className="w-20 h-24 sm:w-24 sm:h-32 rounded-2xl object-cover border border-[#50322A]/10 shadow-sm shrink-0 bg-[#E7DED2]/30"
                     />
 

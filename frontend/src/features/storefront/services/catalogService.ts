@@ -542,6 +542,20 @@ const RAW_PRODUCTOS_SEMILLA: ProductoDTO[] = [
       { id: 3401, sku: 'ART-CAN-WER-M', talla: 'Mediano', color: 'Natural & Negro', precioVentaCop: 140000, stockDisponible: 96, stockPorSede: { 'Punto Centro': 16, 'Punto Caobos': 16, 'Punto Ocaña': 14, 'Punto Bucaramanga': 16 } },
     ],
   },
+  {
+    id: 35,
+    nombre: 'Chaqueta Denim Artesanal',
+    slug: 'chaqueta-denim-artesanal',
+    descripcion: 'Confección en dril pesado 100% algodón colombiano con bordados hechos a mano por artesanos locales. Tratamiento de pre-lavado para suavidad duradera y detalles de autor.',
+    categoriaNombre: 'Ropa',
+    reintegrableEnDevolucion: true,
+    imagenesUrls: ['https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=800&q=80'],
+    variantes: [
+      { id: 3501, sku: 'ROP-DNM-001-S', talla: 'S', color: 'Azul Índigo', precioVentaCop: 189000, stockDisponible: 12, stockPorSede: { 'Punto Centro': 4, 'Punto Caobos': 3, 'Punto Ocaña': 2, 'Punto Bucaramanga': 3 } },
+      { id: 3502, sku: 'ROP-DNM-001-M', talla: 'M', color: 'Azul Índigo', precioVentaCop: 189000, stockDisponible: 16, stockPorSede: { 'Punto Centro': 5, 'Punto Caobos': 5, 'Punto Ocaña': 3, 'Punto Bucaramanga': 3 } },
+      { id: 3503, sku: 'ROP-DNM-001-L', talla: 'L', color: 'Azul Índigo', precioVentaCop: 189000, stockDisponible: 10, stockPorSede: { 'Punto Centro': 3, 'Punto Caobos': 3, 'Punto Ocaña': 2, 'Punto Bucaramanga': 2 } },
+    ],
+  },
 ];
 
 export const PRODUCTOS_SEMILLA: ProductoDTO[] = RAW_PRODUCTOS_SEMILLA.map((prod) => ({

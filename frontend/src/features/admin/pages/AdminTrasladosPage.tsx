@@ -97,6 +97,7 @@ export const AdminTrasladosPage: React.FC = () => {
 
   // Modal de creación de nuevo traslado real
   const [isCrearOpen, setIsCrearOpen] = useState(false);
+  const [isCreando, setIsCreando] = useState(false);
   const [origenId, setOrigenId] = useState<number>(1);
   const [destinoId, setDestinoId] = useState<number>(4);
   const [despacharInmediatamente, setDespacharInmediatamente] = useState<boolean>(false);
@@ -165,7 +166,7 @@ export const AdminTrasladosPage: React.FC = () => {
     setLineasNuevas((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleCrearTrasladoSubmit = (e: React.FormEvent) => {
+  const handleCrearTrasladoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorCrear(null);
 
@@ -194,21 +195,28 @@ export const AdminTrasladosPage: React.FC = () => {
     const origenObj = SEDES_LOGISTICAS.find((s) => s.id === origenId) || SEDES_LOGISTICAS[0];
     const destinoObj = SEDES_LOGISTICAS.find((s) => s.id === destinoId) || SEDES_LOGISTICAS[1];
 
-    createSolicitudTrasladoLocal({
-      origenId: origenObj.id,
-      origenNombre: origenObj.nombre,
-      destinoId: destinoObj.id,
-      destinoNombre: destinoObj.nombre,
-      observaciones: observacionesNuevo.trim() || undefined,
-      despacharInmediatamente,
-      lineas: lineasValidas,
-    });
+    try {
+      setIsCreando(true);
+      await createSolicitudTrasladoLocal({
+        origenId: origenObj.id,
+        origenNombre: origenObj.nombre,
+        destinoId: destinoObj.id,
+        destinoNombre: destinoObj.nombre,
+        observaciones: observacionesNuevo.trim() || undefined,
+        despacharInmediatamente,
+        lineas: lineasValidas,
+      });
 
-    setIsCrearOpen(false);
-    setObservacionesNuevo('');
-    setDespacharInmediatamente(false);
-    setLineasNuevas([{ sku: CATALOGO_VARIANTES[0]?.sku || 'ROP-CAM-NEG-S', cantidad: 6 }]);
-    handleRefresh();
+      setIsCrearOpen(false);
+      setObservacionesNuevo('');
+      setDespacharInmediatamente(false);
+      setLineasNuevas([{ sku: CATALOGO_VARIANTES[0]?.sku || 'ROP-CAM-NEG-S', cantidad: 6 }]);
+      handleRefresh();
+    } catch (err: any) {
+      setErrorCrear(err?.message || 'Error al registrar el traslado en el servidor');
+    } finally {
+      setIsCreando(false);
+    }
   };
 
   // Actividad estimada para el drawer
@@ -281,10 +289,10 @@ export const AdminTrasladosPage: React.FC = () => {
               type="button"
               onClick={handleRefresh}
               disabled={isFetching}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] hover:bg-[#F5F3EF] hover:border-[#C49A68] transition-all shadow-xs disabled:opacity-60 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold text-white hover:bg-white/20 transition-all shadow-xs disabled:opacity-60 cursor-pointer"
             >
               <RefreshCw
-                className={`w-3.5 h-3.5 text-[#741C2B] ${isFetching ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 text-[#E5BE90] ${isFetching ? 'animate-spin' : ''}`}
               />
               <span>Actualizar</span>
             </button>
@@ -296,7 +304,7 @@ export const AdminTrasladosPage: React.FC = () => {
       <div
         role="tablist"
         aria-label="Filtrar traslados por estado"
-        className="bg-white p-1.5 rounded-2xl border border-[#E7E0D8] flex items-center gap-1.5 overflow-x-auto shadow-xs"
+        className="backdrop-blur-2xl bg-slate-100/90 dark:bg-white/[0.07] p-1.5 rounded-2xl border border-slate-200 dark:border-white/[0.14] flex items-center gap-1.5 overflow-x-auto shadow-sm"
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab;
@@ -308,16 +316,16 @@ export const AdminTrasladosPage: React.FC = () => {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                 isActive
-                  ? 'bg-[#741C2B] text-white shadow-xs'
-                  : 'text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF]'
+                  ? 'bg-gradient-to-r from-[#741C2B] to-[#912537] text-white shadow-md border border-[#741C2B]/40'
+                  : 'text-[#475569] dark:text-white/70 hover:text-[#0F172A] dark:hover:text-white hover:bg-white dark:hover:bg-white/[0.08]'
               }`}
             >
               <span>{tab}</span>
               <span
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-extrabold ${
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-black ${
                   isActive
                     ? 'bg-white/20 text-white'
-                    : 'bg-[#F5F3EF] text-[#77736E]'
+                    : 'bg-slate-200 dark:bg-white/10 text-[#475569] dark:text-white/70'
                 }`}
               >
                 {counts[tab]}
@@ -333,12 +341,12 @@ export const AdminTrasladosPage: React.FC = () => {
           data-testid="traslados-skeleton"
           aria-label="Cargando traslados"
           aria-busy="true"
-          className="bg-white rounded-2xl border border-[#E7E0D8] overflow-hidden shadow-xs"
+          className="bg-white dark:bg-white/[0.05] rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-xs"
         >
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="h-14 border-b border-[#E7E0D8] animate-pulse bg-neutral-50/50"
+              className="h-14 border-b border-slate-200 dark:border-white/10 animate-pulse bg-slate-100/50 dark:bg-white/[0.02]"
             />
           ))}
         </div>
@@ -346,14 +354,14 @@ export const AdminTrasladosPage: React.FC = () => {
 
       {/* ESTADO 2: Error */}
       {isError && !isLoading && (
-        <div className="bg-rose-50/80 border border-rose-200 p-4 rounded-2xl flex items-center justify-between text-xs font-semibold text-[#C44848] shadow-xs">
+        <div className="bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 p-4 rounded-2xl flex items-center justify-between text-xs font-bold text-rose-800 dark:text-rose-300 shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
             <span>No se pudieron cargar los traslados desde el servidor.</span>
           </div>
           <button
             onClick={() => refetch()}
-            className="px-3.5 py-1.5 bg-[#C44848] text-white rounded-lg font-bold flex items-center gap-1.5 hover:bg-rose-700 transition-all cursor-pointer text-xs"
+            className="px-3.5 py-1.5 bg-[#741C2B] text-white rounded-lg font-bold flex items-center gap-1.5 hover:bg-[#5E1623] transition-all cursor-pointer text-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
             Reintentar
@@ -363,13 +371,13 @@ export const AdminTrasladosPage: React.FC = () => {
 
       {/* ESTADO 3: Empty */}
       {!isLoading && !isError && trasladosFiltrados.length === 0 && (
-        <div className="bg-white border border-[#E7E0D8] text-center py-16 px-6 rounded-2xl shadow-xs space-y-3">
-          <Truck className="w-10 h-10 text-[#C49A68] mx-auto opacity-70" />
+        <div className="backdrop-blur-2xl bg-white/90 dark:bg-white/[0.07] border border-slate-200 dark:border-white/[0.14] text-center py-16 px-6 rounded-3xl shadow-lg space-y-3 text-[#0F172A] dark:text-white">
+          <Truck className="w-10 h-10 text-[#741C2B] dark:text-[#E5BE90] mx-auto opacity-70" />
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-[#292827]">
+            <h3 className="text-base font-black text-[#0F172A] dark:text-white">
               No hay traslados en esta categoría
             </h3>
-            <p className="text-xs text-[#77736E] max-w-md mx-auto">
+            <p className="text-xs text-[#475569] dark:text-white/70 max-w-md mx-auto font-medium">
               {activeTab === 'Todos'
                 ? 'Aún no se han registrado traslados entre sedes. Usa el botón "Nuevo Despacho / Traslado entre Sedes" para registrar un movimiento real.'
                 : `No se encontraron registros con estado "${activeTab}".`}
@@ -379,9 +387,9 @@ export const AdminTrasladosPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsCrearOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#741C2B] hover:bg-[#5E1623] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#741C2B] to-[#912537] hover:from-[#912537] hover:to-[#A32E43] text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer border border-[#741C2B]/40"
             >
-              <Plus className="w-3.5 h-3.5 text-[#C49A68]" />
+              <Plus className="w-3.5 h-3.5 text-white" />
               <span>Crear Primer Traslado</span>
             </button>
           )}
@@ -390,11 +398,11 @@ export const AdminTrasladosPage: React.FC = () => {
 
       {/* ESTADO 4: Tabla de Traslados (Master-Detail) */}
       {!isLoading && !isError && trasladosFiltrados.length > 0 && (
-        <div className="bg-white border border-[#E7E0D8] rounded-2xl overflow-hidden shadow-xs">
+        <div className="backdrop-blur-2xl bg-white/90 dark:bg-white/[0.07] border border-slate-200 dark:border-white/[0.14] rounded-3xl overflow-hidden shadow-lg text-[#0F172A] dark:text-white">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-[#F5F3EF] border-b border-[#E7E0D8] text-[#77736E]">
-                <tr className="text-left font-semibold uppercase tracking-wider text-[11px]">
+              <thead className="bg-slate-50 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10 text-[#475569] dark:text-white/60">
+                <tr className="text-left font-bold uppercase tracking-wider text-[11px]">
                   <th className="px-5 py-3.5">Código</th>
                   <th className="px-5 py-3.5">Ruta Logística</th>
                   <th className="px-5 py-3.5">Estado</th>
@@ -404,7 +412,7 @@ export const AdminTrasladosPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E7E0D8]">
+              <tbody className="divide-y divide-slate-200 dark:divide-white/[0.07]">
                 {trasladosFiltrados.map((t) => {
                   const badgeConfig = ESTADO_BADGE_MAP[t.estado] || {
                     label: t.estado,
@@ -421,20 +429,20 @@ export const AdminTrasladosPage: React.FC = () => {
                       onClick={() => setSelectedTraslado(t)}
                       className={`h-14 transition-colors cursor-pointer ${
                         isSelected
-                          ? 'bg-[#741C2B]/5 border-l-4 border-l-[#741C2B]'
-                          : 'hover:bg-[#F5F3EF]/60'
+                          ? 'bg-[#741C2B]/10 dark:bg-[#741C2B]/35 border-l-4 border-l-[#741C2B] dark:border-l-[#C49A68]'
+                          : 'hover:bg-slate-50 dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <td className="px-5 py-3.5 font-mono font-bold text-[#741C2B]">
+                      <td className="px-5 py-3.5 font-mono font-black text-[#741C2B] dark:text-[#E5BE90]">
                         {t.codigo}
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2 text-xs font-medium text-[#292827]">
-                          <span className="px-2 py-0.5 rounded-md bg-[#F5F3EF] border border-[#E7E0D8] font-bold text-[11px]">
+                        <div className="flex items-center gap-2 text-xs font-bold text-[#0F172A] dark:text-white">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/15 font-bold text-[11px] text-[#0F172A] dark:text-white">
                             {t.origenNombre}
                           </span>
-                          <ArrowRight className="w-3.5 h-3.5 text-[#C49A68] shrink-0" />
-                          <span className="px-2 py-0.5 rounded-md bg-[#F5F3EF] border border-[#E7E0D8] font-bold text-[11px]">
+                          <ArrowRight className="w-3.5 h-3.5 text-[#741C2B] dark:text-[#E5BE90] shrink-0" />
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/15 font-bold text-[11px] text-[#0F172A] dark:text-white">
                             {t.destinoNombre}
                           </span>
                         </div>
@@ -445,14 +453,14 @@ export const AdminTrasladosPage: React.FC = () => {
                           variant={badgeConfig.variant}
                         />
                       </td>
-                      <td className="px-5 py-3.5 font-mono tabular-nums text-[11px] text-[#77736E]">
+                      <td className="px-5 py-3.5 font-mono tabular-nums text-[11px] text-[#475569] dark:text-slate-300 font-medium">
                         {formatFecha(t.fechaSolicitud)}
                       </td>
-                      <td className="px-5 py-3.5 font-mono tabular-nums text-[11px] text-[#77736E]">
+                      <td className="px-5 py-3.5 font-mono tabular-nums text-[11px] text-[#475569] dark:text-slate-300 font-medium">
                         {formatFecha(t.fechaEnvio)}
                       </td>
-                      <td className="px-5 py-3.5 text-center font-mono tabular-nums font-bold text-[#292827]">
-                        <span className="px-2 py-0.5 rounded-full bg-[#F5F3EF] text-[11px] border border-[#E7E0D8]">
+                      <td className="px-5 py-3.5 text-center font-mono tabular-nums font-bold">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-[11px] border border-slate-200 dark:border-white/15 text-[#0F172A] dark:text-white font-bold">
                           {t.lineas.length} {t.lineas.length === 1 ? 'prenda' : 'prendas'}
                         </span>
                       </td>
@@ -467,7 +475,7 @@ export const AdminTrasladosPage: React.FC = () => {
                               aria-label={`Despachar traslado ${t.codigo}`}
                               className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#741C2B] text-white hover:bg-[#5E1623] active:scale-95 transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                             >
-                              <Truck className="w-3 h-3 text-[#C49A68]" />
+                              <Truck className="w-3 h-3 text-white" />
                               Despachar
                             </button>
                           )}
@@ -475,9 +483,9 @@ export const AdminTrasladosPage: React.FC = () => {
                             <button
                               onClick={() => setTrasladoRecepcion(t)}
                               aria-label={`Recibir traslado ${t.codigo}`}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#292827] text-white hover:bg-[#1F1E1D] active:scale-95 transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0F172A] text-white hover:bg-[#1E293B] border border-slate-700 active:scale-95 transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                             >
-                              <PackageCheck className="w-3 h-3 text-[#C49A68]" />
+                              <PackageCheck className="w-3 h-3 text-white" />
                               Recibir
                             </button>
                           )}
@@ -493,7 +501,7 @@ export const AdminTrasladosPage: React.FC = () => {
                           )}
                           <button
                             onClick={() => setSelectedTraslado(t)}
-                            className="p-1.5 rounded-lg text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF] transition-all cursor-pointer"
+                            className="p-1.5 rounded-lg text-[#475569] dark:text-slate-300 hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all cursor-pointer"
                             title="Ver detalles"
                           >
                             <ChevronRight className="w-4 h-4" />
@@ -697,9 +705,17 @@ export const AdminTrasladosPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white font-bold shadow-xs cursor-pointer"
+                  disabled={isCreando}
+                  className="px-4 py-2 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
-                  Registrar Traslado
+                  {isCreando ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#C49A68]" />
+                      <span>Registrando...</span>
+                    </>
+                  ) : (
+                    <span>Registrar Traslado</span>
+                  )}
                 </button>
               </div>
             </form>

@@ -30,6 +30,18 @@ export interface RegistroBienvenidaEmailDTO {
   clienteEmail: string;
 }
 
+export interface PedidoEstadoActualizadoEmailDTO {
+  codigo: string;
+  clienteNombre: string;
+  clienteEmail: string;
+  nuevoEstado: string;
+  nuevoEstadoTexto: string;
+  descripcionEstado?: string | undefined;
+  sedeAsignada?: string | undefined;
+  guiaTransportadora?: string | undefined;
+  transportadora?: string | undefined;
+}
+
 export interface ResultadoEnvioEmail {
   ok: boolean;
   mensaje: string;
@@ -174,7 +186,7 @@ export class EmailService implements NotificacionPort {
     const transporter = await this.getTransporter();
     const from = process.env.EMAIL_FROM || '"FORMA Alta Costura" <pedidos@forma.com>';
     const baseUrl = process.env.STOREFRONT_URL || 'http://localhost:5173';
-    const trackingUrl = `${baseUrl}/soporte?codigo=${encodeURIComponent(datos.codigo)}`;
+    const trackingUrl = `${baseUrl}/rastreo?codigo=${encodeURIComponent(datos.codigo)}`;
 
     // Cálculo y validación de desglose financiero en COP entero (RN-GEN-04)
     const total = Math.round(datos.totalCOP);
@@ -546,6 +558,131 @@ export class EmailService implements NotificacionPort {
     return {
       ok: true,
       mensaje: 'Correo de bienvenida enviado exitosamente',
+      messageId: info.messageId,
+      previewUrl,
+    };
+  }
+
+  /**
+   * Notificación por correo de cambio de estado de pedido web en alta costura
+   */
+  async enviarActualizacionEstadoPedido(
+    datos: PedidoEstadoActualizadoEmailDTO
+  ): Promise<ResultadoEnvioEmail> {
+    const transporter = await this.getTransporter();
+    const from = process.env.EMAIL_FROM || '"Tienda FORMA" <julioveg567@gmail.com>';
+    const baseUrl = process.env.STOREFRONT_URL || 'http://localhost:5173';
+    const rastreoUrl = `${baseUrl}/rastreo?codigo=${encodeURIComponent(datos.codigo)}`;
+
+    const htmlBody = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Actualización de Pedido #${datos.codigo} - Tienda FORMA</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #F7F4EE; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #171717;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F7F4EE; padding: 32px 12px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; border: 1px solid #E7DED2; box-shadow: 0 10px 25px rgba(102, 21, 33, 0.06);">
+                
+                <!-- Encabezado Alta Costura FORMA -->
+                <tr>
+                  <td style="background-color: #661521; padding: 36px 24px; text-align: center;">
+                    <h1 style="color: #FFFFFF; margin: 0; font-size: 28px; letter-spacing: 4px; font-weight: 700;">T I E N D A   F O R M A</h1>
+                    <p style="color: #D19650; margin: 6px 0 0 0; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600;">
+                      Actualización Oficial de Pedido
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Contenido Principal -->
+                <tr>
+                  <td style="padding: 40px 32px;">
+                    <div style="background-color: #FDF9F5; border-left: 4px solid #D19650; padding: 18px 20px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+                      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #855829; font-weight: 700;">Novedad de Despacho</span>
+                      <h2 style="margin: 4px 0 0 0; font-size: 18px; color: #50322A; font-weight: 700;">
+                        Tu pedido #${datos.codigo} ahora está: <span style="color: #661521;">${datos.nuevoEstadoTexto}</span>
+                      </h2>
+                    </div>
+
+                    <p style="font-size: 14px; line-height: 1.6; color: #374151; margin: 0 0 16px 0;">
+                      Estimado(a) <strong>${datos.clienteNombre}</strong>,
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.6; color: #4B5563; margin: 0 0 20px 0;">
+                      ${datos.descripcionEstado || 'Te notificamos que tu pedido ha avanzado satisfactoriamente en nuestro flujo de preparación y logística.'}
+                    </p>
+
+                    <!-- Tarjeta de Detalles del Despacho -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAFAF9; border-radius: 12px; padding: 16px; margin-bottom: 28px; border: 1px solid #E7DED2;">
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #6B7280;">Sede de Alistamiento:</td>
+                        <td style="padding: 6px 0; font-size: 13px; color: #1F2937; font-weight: 600; text-align: right;">${datos.sedeAsignada || 'Punto Centro (Cúcuta)'}</td>
+                      </tr>
+                      ${datos.transportadora ? `
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #6B7280;">Transportadora:</td>
+                        <td style="padding: 6px 0; font-size: 13px; color: #1F2937; font-weight: 600; text-align: right;">${datos.transportadora}</td>
+                      </tr>` : ''}
+                      ${datos.guiaTransportadora ? `
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #6B7280;">Número de Guía:</td>
+                        <td style="padding: 6px 0; font-size: 13px; color: #661521; font-weight: 700; font-family: monospace; text-align: right;">${datos.guiaTransportadora}</td>
+                      </tr>` : ''}
+                    </table>
+
+                    <!-- Botón de Trazabilidad -->
+                    <div style="text-align: center; margin: 32px 0;">
+                      <a href="${rastreoUrl}" style="background-color: #661521; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 13px; font-weight: 700; letter-spacing: 1px; display: inline-block;">
+                        Ver Trazabilidad en Tiempo Real
+                      </a>
+                    </div>
+
+                    <p style="font-size: 12px; color: #9CA3AF; text-align: center; margin: 24px 0 0 0;">
+                      Puedes consultar en cualquier momento el estado de tu pedido ingresando a la sección <a href="${rastreoUrl}" style="color: #D19650; text-decoration: underline;">Mi Cuenta / Trazabilidad</a>.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Pie de Página Institucional -->
+                <tr>
+                  <td style="background-color: #1A1A1A; padding: 24px; text-align: center; color: #9CA3AF; font-size: 11px; line-height: 1.5;">
+                    <strong style="color: #E7DED2; letter-spacing: 1.5px;">FORMA S.A.S. — TIENDA OFICIAL</strong><br />
+                    Atención al cliente: soporte@forma.com<br />
+                    © ${new Date().getFullYear()} FORMA. Todos los derechos reservados.
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const info = await transporter.sendMail({
+      from,
+      to: datos.clienteEmail,
+      subject: `Actualización de Pedido #${datos.codigo}: ${datos.nuevoEstadoTexto} - Tienda FORMA`,
+      html: htmlBody,
+    });
+
+    let previewUrl: string | null = null;
+    try {
+      const etherealUrl = nodemailer.getTestMessageUrl(info);
+      if (etherealUrl) {
+        previewUrl = etherealUrl;
+      }
+    } catch {
+      previewUrl = null;
+    }
+
+    return {
+      ok: true,
+      mensaje: 'Notificación de cambio de estado enviada exitosamente',
       messageId: info.messageId,
       previewUrl,
     };

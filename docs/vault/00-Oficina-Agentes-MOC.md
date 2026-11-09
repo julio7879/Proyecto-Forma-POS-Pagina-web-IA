@@ -29,8 +29,11 @@ flowchart LR
     C -->|"Contrato Backend"| D["⚙️ @Forja-Backend<br/>(Node/Prisma)"]
     C -->|"Contrato Frontend"| E["🎨 @Vitral-UI<br/>(React/Tailwind)"]
     C -.->|"Arquitectura"| F["🏛️ @Arquitecto-Dominio"]
+    C -.->|"Ley E-Commerce"| UX["📐 @Arquitecto-UX-Storefront<br/>(Navegación & Conversión)"]
+    UX -->|"Pautas Storefront"| E
     D --> G["🐕 @Sabueso-Hunter<br/>(Auditoría Adversarial)"]
     E --> G
+    UX --> G
     G --> H["⚖️ @Juez-Esceptico<br/>(Refutador Falsas Alarmas)"]
     H -->|"🔴 Bug Real"| D
     H -->|"🟢 Blindado"| I["🎖️ @Centinela-QA<br/>(Tests & GitFlow)"]
@@ -61,7 +64,7 @@ flowchart LR
   - **Skills:** `pos-clean-architecture`, `domain-modeling`, `codebase-design`
   - **Relacionado:** [[ARQ-03-Patrones-Arquitectura-y-Diseno]] | [[ARQ-05-Estructura-Carpetas-y-Tres-Portales]]
 
-### ⚙️ Área 2: Construcción (Backend & Frontend)
+### ⚙️ Área 2: Construcción (Backend, Frontend & UX Storefront)
 - **Agente:** `@Forja-Backend`
   - **Función:** Construcción de endpoints, servicios, migraciones y queries en Node.js, Express y Prisma aplicando las 7 invariantes (Dinero entero COP, Hora Colombia, Kardex inmutable, anti-deadlock, doble reserva, idempotencia).
   - **Skills:** `pos-postgres-concurrency-optimizer`, `pos-kardex-transaction`, `pos-ecommerce-checkout-machine`, `pos-financial-ledger-audit`, `postgresql-best-practices`
@@ -70,6 +73,10 @@ flowchart LR
   - **Función:** Maquetación e interacción de los 3 portales: Storefront (Apple Liquid Glass), Terminal POS (táctil, rápido, cero scroll) y Admin Dashboard (tablas densas, reportes).
   - **Skills:** `pos-storefront-ui-designer`, `ui-ux-pro-max`, `storefront-best-practices`, `pos-sales-ui-design`, `react-shadcn-admin`, `stitch`, `frontend-design`
   - **Regla Inquebrantable:** `RN-GEN-01`: Cero cálculo de precios, stock o fletes en cliente.
+- **Agente:** `@Arquitecto-UX-Storefront`
+  - **Función:** Arquitectura de Navegación, Jerarquía Visual y Conversión E-Commerce para el Storefront (Portal 1). Garantiza la Ley Canónica de E-Commerce: 14 mandamientos normativos, migas de pan (Breadcrumbs GPS), buscador predictivo, hero banner compacto con ofertas visibles de primera vista (*above the fold*), PDP inmersivo con galerías multi-ángulo/zoom/360°, opiniones con estrellas, carrito transparente, checkout con indicador de progreso, filtros multi-criterio y alternancia Cuadrícula/Lista.
+  - **Skills:** `pos-ecommerce-ux-law`, `storefront-best-practices`, `ui-ux-pro-max`, `frontend-design`
+  - **Relacionado:** [[ARQ-07-Ley-Diseno-Ecommerce-Navegacion-UIUX]] | [[AGE-09-Arquitecto-UX-Storefront]] | [[SKI-pos-ecommerce-ux-law]]
 
 ### 🔍 Área 3: Seguridad y Auditoría Adversarial
 - **Agente:** `@Sabueso-Hunter`

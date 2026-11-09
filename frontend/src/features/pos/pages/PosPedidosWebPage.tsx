@@ -20,6 +20,8 @@ import {
   transicionarPedidoWeb,
   updateWebOrder,
   nuevoEvento,
+  sedeTieneStockParaPedido,
+  obtenerStockSede,
   WEB_ORDERS_EVENT,
   type PedidoWebRecord,
   type EstadoPedidoWeb,
@@ -391,6 +393,17 @@ export const PosPedidosWebPage: React.FC = () => {
                               {pedido.estadoCobro === 'PAGADO' ? 'Transferencia · Pagado' : 'Transferencia · Por Verificar'}
                             </span>
                           )}
+
+                          {/* Disponibilidad de inventario físico en la sede */}
+                          {sedeTieneStockParaPedido(sedeActiva, pedido.productos) ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 whitespace-nowrap">
+                              ✓ Stock disponible en sede
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-900 border border-rose-300 whitespace-nowrap">
+                              ⚠ Sin stock en sede · Mercancía en Central
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-800 font-bold">
                           <span className="whitespace-nowrap">{pedido.cliente}</span>
@@ -448,6 +461,13 @@ export const PosPedidosWebPage: React.FC = () => {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              const stockOk = sedeTieneStockParaPedido(sedeActiva, pedido.productos);
+                              if (!stockOk) {
+                                setAlertaBloqueo(
+                                  `No es posible tomar este pedido en ${sedeActiva}: no cuenta con stock disponible de las prendas solicitadas. Mercancía disponible en Centro de Producción (Bodega Central).`
+                                );
+                                return;
+                              }
                               handleAvanzarEstado(pedido.codigo);
                             }}
                             className="px-3 py-1.5 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white text-xs font-black flex items-center gap-1.5 shrink-0 cursor-pointer"
@@ -542,7 +562,16 @@ export const PosPedidosWebPage: React.FC = () => {
                 pedidoSeleccionado.estado === 'CONFIRMADO') && (
                 <button
                   type="button"
-                  onClick={() => handleAvanzarEstado(pedidoSeleccionado.codigo)}
+                  onClick={() => {
+                    const stockOk = sedeTieneStockParaPedido(sedeActiva, pedidoSeleccionado.productos);
+                    if (!stockOk) {
+                      setAlertaBloqueo(
+                        `No es posible tomar este pedido en ${sedeActiva}: no cuenta con stock disponible de las prendas solicitadas. Mercancía disponible en Centro de Producción (Bodega Central).`
+                      );
+                      return;
+                    }
+                    handleAvanzarEstado(pedidoSeleccionado.codigo);
+                  }}
                   className="flex-1 min-h-[46px] px-4 rounded-xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
                   <Package className="w-4 h-4 text-[#D19650]" />
@@ -710,6 +739,21 @@ export const PosPedidosWebPage: React.FC = () => {
                           <span className="font-bold text-[#661521]">
                             Cantidad: {prenda.cantidad} und
                           </span>
+                          {(() => {
+                            const stockSede = obtenerStockSede(prenda.sku, sedeActiva);
+                            const ok = stockSede >= prenda.cantidad;
+                            return (
+                              <span
+                                className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  ok
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                }`}
+                              >
+                                Stock en {sedeActiva.split(' ')[0]}: {stockSede} uds {ok ? '✓' : '⚠ Faltante'}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

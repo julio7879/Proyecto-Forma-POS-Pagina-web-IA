@@ -189,10 +189,14 @@ export const PosVentasHistorialPage: React.FC = () => {
   useEffect(() => {
     const syncAll = () => {
       try {
-        const rawUser = localStorage.getItem('usuario');
+        const rawUser = localStorage.getItem('forma_pos_usuario') || localStorage.getItem('usuario');
         if (rawUser) {
           const u = JSON.parse(rawUser);
-          setVendedorActivo(u.nombreCompleto || u.nombre || 'Carlos Mendoza');
+          if (u.rol !== 'CLIENTE') {
+            setVendedorActivo(u.nombreCompleto || u.nombre || 'Camilo Mendoza');
+          } else {
+            setVendedorActivo('Camilo Mendoza');
+          }
         }
         const rawSede = localStorage.getItem('forma_pos_sede');
         if (rawSede) {

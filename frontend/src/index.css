@@ -33,205 +33,355 @@
 }
 
 /* ============================================================================
-   1. LIENZO AMBIENTAL LÍQUIDO EN CREMA (#E7DED2) + BURBUJAS DE CRISTAL 3D
+   SISTEMA DE CONTRASTE DUAL: MODO DÍA (LIGHT LIQUID GLASS) Y MODO NOCHE (HOMELAB OBSIDIAN)
+   WCAG AAA: Máxima legibilidad, nitidez tipográfica y cero textos desvanecidos
    ============================================================================ */
-.forma-storefront-canvas {
-  background-color: #E7DED2;
+
+/* --- MODO DÍA EJECUTIVO --- */
+.admin-light-canvas {
+  background-color: #F8F6F2;
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.72) 0%, transparent 42%),
-    radial-gradient(circle at 86% 22%, rgba(209, 150, 80, 0.18) 0%, transparent 45%),
-    radial-gradient(circle at 75% 82%, rgba(102, 21, 33, 0.09) 0%, transparent 48%),
-    radial-gradient(circle at 22% 78%, rgba(244, 239, 232, 0.85) 0%, transparent 50%);
+    linear-gradient(118deg, rgba(255, 255, 255, 0.95) 0%, transparent 26%, rgba(255, 255, 255, 0.70) 48%, transparent 62%, rgba(255, 255, 255, 0.85) 84%),
+    radial-gradient(circle at 18% 22%, rgba(116, 28, 43, 0.05) 0%, transparent 48%),
+    radial-gradient(circle at 82% 16%, rgba(196, 154, 104, 0.08) 0%, transparent 44%),
+    radial-gradient(circle at 50% 50%, #FAF8F5 0%, #EDE7DE 100%);
   background-attachment: fixed;
+  color: #111827;
 }
 
-@keyframes floatSlow3D {
-  0%, 100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(12px, -16px, 0) scale(1.03);
-  }
+/* Tipografía de Alto Contraste en Modo Día */
+.admin-light-canvas .text-white {
+  color: #0F172A !important;
 }
 
-@keyframes levitateProduct3D {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-8px) rotate(-0.6deg);
-  }
+.admin-light-canvas .text-white/90,
+.admin-light-canvas .text-white/80 {
+  color: #1E293B !important;
 }
 
-.animate-float-3d {
-  animation: floatSlow3D 10s ease-in-out infinite;
+.admin-light-canvas .text-white/70,
+.admin-light-canvas .text-white/60 {
+  color: #334155 !important;
 }
 
-.animate-levitate-3d {
-  animation: levitateProduct3D 6s ease-in-out infinite;
+.admin-light-canvas .text-white/50,
+.admin-light-canvas .text-white/40,
+.admin-light-canvas .text-slate-400,
+.admin-light-canvas .text-[#77736E] {
+  color: #475569 !important;
 }
 
-/* Burbujas 3D de Cristal Espejo (con reflejos dorados y vinotinto sutiles) */
-.mirror-bubble-3d {
-  position: absolute;
-  z-index: 0;
-  border-radius: 9999px;
-  background: radial-gradient(
-    circle at 30% 28%,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(244, 239, 232, 0.45) 36%,
-    rgba(209, 150, 80, 0.16) 72%,
-    rgba(102, 21, 33, 0.10) 100%
-  );
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow:
-    inset 0 6px 14px rgba(255, 255, 255, 0.95),
-    inset -6px -8px 18px rgba(80, 50, 42, 0.08),
-    0 20px 40px -12px rgba(80, 50, 42, 0.10);
-  pointer-events: none;
-  opacity: 0.12;
-  will-change: transform;
-  transform: translateZ(0);
+/* Transformación de dorados pálidos (#E5BE90 / #C49A68) a Vinotinto Imperial o Bronce en modo día */
+.admin-light-canvas .text-[#E5BE90] {
+  color: #741C2B !important;
+  font-weight: 700;
 }
 
-/* ============================================================================
-   2. CRISTAL ESPEJO ESMERILADO (FROSTED MIRROR LIQUID GLASS)
-   ============================================================================ */
-.glass-mirror-card {
-  position: relative;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(244, 239, 232, 0.56) 55%,
-    rgba(255, 255, 255, 0.68) 100%
-  );
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.98);
-  box-shadow:
-    0 24px 54px -14px rgba(80, 50, 42, 0.12),
-    0 6px 18px -4px rgba(102, 21, 33, 0.05),
-    inset 0 2px 3px rgba(255, 255, 255, 0.95),
-    inset 0 -1px 2px rgba(209, 150, 80, 0.14);
+.admin-light-canvas .text-[#C49A68] {
+  color: #741C2B !important;
+  font-weight: 700;
 }
 
-.glass-mirror-pill {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.84) 0%,
-    rgba(244, 239, 232, 0.64) 100%
-  );
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.92);
-  box-shadow:
-    0 12px 32px -8px rgba(80, 50, 42, 0.10),
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.98);
+/* Paneles de Cristal Esmerilado en Modo Día */
+.admin-light-canvas .admin-glass-panel {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.10) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.04) !important;
+  color: #0F172A !important;
 }
 
-.glass-mirror-drawer {
-  background: linear-gradient(
-    165deg,
-    rgba(244, 239, 232, 0.94) 0%,
-    rgba(231, 222, 210, 0.88) 50%,
-    rgba(244, 239, 232, 0.95) 100%
-  );
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
-  border-left: 1.5px solid rgba(255, 255, 255, 0.92);
-  box-shadow:
-    -24px 0 60px -12px rgba(80, 50, 42, 0.22),
-    inset 2px 0 3px rgba(255, 255, 255, 0.95);
+.admin-light-canvas .admin-glass-pill {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  color: #0F172A !important;
 }
 
-/* Inputs Cápsula con Sombra Interna de Cristal (Stitch Login/Registro) */
-.capsule-mirror-input {
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid rgba(80, 50, 42, 0.14);
-  border-top: 1px solid rgba(255, 255, 255, 0.95);
-  box-shadow:
-    inset 0 2px 5px rgba(80, 50, 42, 0.05),
-    0 2px 8px rgba(255, 255, 255, 0.65);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+.admin-light-canvas .admin-glass-pill:hover {
+  background: #FFFFFF !important;
+  border-color: rgba(116, 28, 43, 0.40) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
 }
 
-.capsule-mirror-input:focus {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: #D19650;
-  box-shadow:
-    0 0 0 3px rgba(209, 150, 80, 0.22),
-    inset 0 1px 2px rgba(255, 255, 255, 1);
-  outline: none;
+/* Background overrides para contenedores que tenían fondos oscuros fijos */
+.admin-light-canvas .bg-[#0C0F16]/75,
+.admin-light-canvas .bg-[#0A0D14]/85,
+.admin-light-canvas .bg-[#0A0D14]/75,
+.admin-light-canvas .bg-[#0A0D14],
+.admin-light-canvas .bg-[#11151E]/65,
+.admin-light-canvas .bg-[#11151E],
+.admin-light-canvas .bg-[#121620]/70,
+.admin-light-canvas .bg-[#141822]/60 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0F172A !important;
 }
 
-/* ============================================================================
-   3. TARJETAS DE PRODUCTO 3D POP-OUT (SOBRESALIENDO DEL BORDE SUPERIOR)
-   ============================================================================ */
-.product-card-3d-shell {
-  position: relative;
-  margin-top: 2.25rem;
-  border-radius: 1.75rem;
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.76) 0%,
-    rgba(244, 239, 232, 0.54) 100%
-  );
-  backdrop-filter: blur(22px) saturate(175%);
-  -webkit-backdrop-filter: blur(22px) saturate(175%);
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.98);
-  box-shadow:
-    0 18px 40px -12px rgba(80, 50, 42, 0.10),
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.95);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+.admin-light-canvas .bg-white/[0.07],
+.admin-light-canvas .bg-white/[0.06],
+.admin-light-canvas .bg-white/[0.05],
+.admin-light-canvas .bg-white/[0.04],
+.admin-light-canvas .bg-white/[0.03],
+.admin-light-canvas .bg-white/10 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }
 
-.product-card-3d-shell:hover {
-  transform: translateY(-6px);
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.88) 0%,
-    rgba(244, 239, 232, 0.72) 100%
-  );
-  border-color: rgba(209, 150, 80, 0.55);
-  box-shadow:
-    0 28px 56px -12px rgba(80, 50, 42, 0.16),
-    0 0 24px -4px rgba(209, 150, 80, 0.20),
-    inset 0 2px 3px rgba(255, 255, 255, 1);
+.admin-light-canvas .border-white/[0.08],
+.admin-light-canvas .border-white/[0.09],
+.admin-light-canvas .border-white/[0.10],
+.admin-light-canvas .border-white/[0.14],
+.admin-light-canvas .border-white/10,
+.admin-light-canvas .border-white/15,
+.admin-light-canvas .border-white/20 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
 }
 
-.product-popout-stage {
-  margin-top: -2.75rem;
-  border-radius: 1.35rem;
-  box-shadow:
-    0 22px 34px -10px rgba(80, 50, 42, 0.26),
-    0 6px 14px -4px rgba(23, 23, 23, 0.14);
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.45s ease;
+/* Inputs, Selects y Formularios en Modo Día */
+.admin-light-canvas select,
+.admin-light-canvas input,
+.admin-light-canvas textarea {
+  color: #0F172A !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
-.product-card-3d-shell:hover .product-popout-stage {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow:
-    0 30px 44px -10px rgba(80, 50, 42, 0.32),
-    0 10px 20px -4px rgba(102, 21, 33, 0.16);
+.admin-light-canvas select option {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
 }
 
-/* Sombra de contacto 3D bajo el producto en el Showcase PDP */
-.spatial-floor-shadow {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(80, 50, 42, 0.36) 0%,
-    rgba(80, 50, 42, 0.14) 45%,
-    transparent 74%
-  );
-  filter: blur(8px);
+/* Compatibilidad paleta neutra en Modo Día (WCAG AAA) */
+.admin-light-canvas [class*="bg-[#F5F3EF]"] {
+  background-color: #F8FAFC !important;
+}
+.admin-light-canvas [class*="border-[#E7E0D8]"] {
+  border-color: #CBD5E1 !important;
+}
+.admin-light-canvas [class*="text-[#77736E]"] {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+.admin-light-canvas [class*="text-[#292827]"] {
+  color: #0F172A !important;
+}
+.admin-light-canvas [class*="placeholder-[#77736E]"]::placeholder {
+  color: #64748B !important;
 }
 
-/* Números tabulares estrictos para importes COP (RN-GEN-04) */
-.font-mono-tabular {
-  font-family: 'JetBrains Mono', monospace;
-  font-variant-numeric: tabular-nums;
+/* Gráficos SVG en Modo Día: Ejes X/Y, horas y grillas con contraste nítido */
+.admin-light-canvas svg text {
+  fill: #1E293B !important;
+  font-weight: 700 !important;
+}
+
+.admin-light-canvas svg text[fill*="rgba(255,255,255"],
+.admin-light-canvas svg text[fill*="#FFFFFF"] {
+  fill: #0F172A !important;
+  font-weight: 700 !important;
+}
+
+.admin-light-canvas svg line[stroke*="rgba(255,255,255"] {
+  stroke: rgba(0, 0, 0, 0.12) !important;
+}
+
+.admin-light-canvas svg circle[stroke*="rgba(255,255,255"] {
+  stroke: rgba(0, 0, 0, 0.10) !important;
+}
+
+/* StatusBadges de Alto Contraste en Modo Día */
+.admin-light-canvas .status-badge-success {
+  background-color: #ECFDF5 !important;
+  color: #065F46 !important;
+  border-color: #6EE7B7 !important;
+  font-weight: 800 !important;
+}
+
+.admin-light-canvas .status-badge-warning {
+  background-color: #FFFBEB !important;
+  color: #92400E !important;
+  border-color: #FCD34D !important;
+  font-weight: 800 !important;
+}
+
+.admin-light-canvas .status-badge-error {
+  background-color: #FEF2F2 !important;
+  color: #991B1B !important;
+  border-color: #FCA5A5 !important;
+  font-weight: 800 !important;
+}
+
+.admin-light-canvas .status-badge-neutral {
+  background-color: #F1F5F9 !important;
+  color: #1E293B !important;
+  border-color: #CBD5E1 !important;
+  font-weight: 700 !important;
+}
+
+.admin-light-canvas .status-badge-champagne {
+  background-color: #FFFDF5 !important;
+  color: #78350F !important;
+  border-color: #FDE68A !important;
+  font-weight: 800 !important;
+}
+
+.admin-light-canvas .status-badge-vino {
+  background-color: #741C2B !important;
+  color: #FFFFFF !important;
+  border-color: #741C2B !important;
+  font-weight: 800 !important;
+}
+
+.admin-light-canvas .status-badge-info {
+  background-color: #F0F9FF !important;
+  color: #075985 !important;
+  border-color: #7DD3FC !important;
+  font-weight: 800 !important;
+}
+
+/* Tablas y filas en Modo Día */
+.admin-light-canvas table th {
+  color: #1E293B !important;
+  background-color: #F1F5F9 !important;
+  border-bottom: 2px solid #E2E8F0 !important;
+  font-weight: 800 !important;
+}
+
+.admin-light-canvas table td {
+  color: #0F172A !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+.admin-light-canvas table tr:hover td {
+  background-color: rgba(241, 245, 249, 0.70) !important;
+}
+
+/* --- MODO NOCHE HOMELAB OBSIDIAN --- */
+.admin-dark-canvas {
+  background-color: #0A0D14;
+  color: #FFFFFF;
+}
+
+.admin-dark-canvas .text-white/60,
+.admin-dark-canvas .text-white/50 {
+  color: #CBD5E1 !important;
+}
+
+.admin-dark-canvas .text-white/40 {
+  color: #94A3B8 !important;
+}
+
+.admin-dark-canvas svg text {
+  fill: #E2E8F0 !important;
+}
+
+.admin-dark-canvas svg line[stroke*="rgba(255,255,255"] {
+  stroke: rgba(255, 255, 255, 0.10) !important;
+}
+
+.admin-dark-canvas .status-badge-success {
+  background-color: rgba(16, 185, 129, 0.20) !important;
+  color: #34D399 !important;
+  border-color: rgba(16, 185, 129, 0.40) !important;
+  font-weight: 700 !important;
+}
+
+.admin-dark-canvas .status-badge-warning {
+  background-color: rgba(245, 158, 11, 0.20) !important;
+  color: #FBBF24 !important;
+  border-color: rgba(245, 158, 11, 0.40) !important;
+  font-weight: 700 !important;
+}
+
+.admin-dark-canvas .status-badge-error {
+  background-color: rgba(239, 68, 68, 0.20) !important;
+  color: #F87171 !important;
+  border-color: rgba(239, 68, 68, 0.40) !important;
+  font-weight: 700 !important;
+}
+
+.admin-dark-canvas .status-badge-neutral {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+  font-weight: 600 !important;
+}
+
+.admin-dark-canvas .status-badge-champagne {
+  background-color: rgba(196, 154, 104, 0.20) !important;
+  color: #E5BE90 !important;
+  border-color: rgba(196, 154, 104, 0.40) !important;
+  font-weight: 700 !important;
+}
+
+.admin-dark-canvas .status-badge-vino {
+  background-color: #741C2B !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+  font-weight: 700 !important;
+}
+
+.admin-dark-canvas .status-badge-info {
+  background-color: rgba(14, 165, 233, 0.20) !important;
+  color: #7DD3FC !important;
+  border-color: rgba(14, 165, 233, 0.40) !important;
+  font-weight: 700 !important;
+}
+
+/* Soporte de paneles y paleta neutra en Modo Noche (Homelab Obsidian) */
+.admin-dark-canvas .rounded-2xl.bg-white,
+.admin-dark-canvas .rounded-3xl.bg-white,
+.admin-dark-canvas section.bg-white,
+.admin-dark-canvas [class*="bg-white"][class*="rounded-2xl"],
+.admin-dark-canvas [class*="bg-white"][class*="rounded-3xl"] {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.admin-dark-canvas [class*="bg-[#F5F3EF]"] {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+.admin-dark-canvas [class*="border-[#E7E0D8]"] {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.admin-dark-canvas [class*="text-[#292827]"] {
+  color: #F8FAFC !important;
+}
+.admin-dark-canvas [class*="text-[#77736E]"] {
+  color: #94A3B8 !important;
+}
+.admin-dark-canvas [class*="placeholder-[#77736E]"]::placeholder {
+  color: #64748B !important;
+}
+
+.admin-dark-canvas select,
+.admin-dark-canvas input[type="text"],
+.admin-dark-canvas input[type="date"],
+.admin-dark-canvas input[type="number"],
+.admin-dark-canvas textarea {
+  background-color: #121620 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.admin-dark-canvas select option {
+  background-color: #121620 !important;
+  color: #FFFFFF !important;
+}
+
+.admin-dark-canvas table th {
+  color: #CBD5E1 !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+
+.admin-dark-canvas table td {
+  color: #F8FAFC !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+.admin-dark-canvas table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }

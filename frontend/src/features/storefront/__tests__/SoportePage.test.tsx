@@ -24,7 +24,7 @@ describe('SoportePage - Centro de Ayuda & WhatsApp Oficial FORMA', () => {
       screen.getByRole('heading', { name: /Soporte Oficial FORMA & WhatsApp Directo/i })
     ).toBeInTheDocument();
 
-    expect(screen.getByText(/\+57 315 800 4210/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+57 322 360 2525/i)).toBeInTheDocument();
     expect(screen.getByText(/soporte@forma\.co/i)).toBeInTheDocument();
 
     const enlacesRastreo = screen.getAllByRole('link', {
@@ -58,7 +58,7 @@ describe('SoportePage - Centro de Ayuda & WhatsApp Oficial FORMA', () => {
     expect(screen.getByText(/Punto Ocaña \(54498\)/i)).toBeInTheDocument();
   });
 
-  it('permite abrir y cerrar preguntas frecuentes en el acordeón', () => {
+  it('permite abrir y cerrar preguntas frecuentes en el acordeón iniciando todas cerradas de forma simétrica (CLI-021)', () => {
     renderSoportePage();
 
     const faqButton = screen.getByRole('button', {
@@ -66,12 +66,18 @@ describe('SoportePage - Centro de Ayuda & WhatsApp Oficial FORMA', () => {
     });
     expect(faqButton).toBeInTheDocument();
 
-    // Por defecto la primera está abierta
+    // Inicialmente todas cerradas de forma simétrica (CLI-021)
+    expect(
+      screen.queryByText(/nuestro sistema busca automáticamente entre nuestras 4 sedes físicas/i)
+    ).not.toBeInTheDocument();
+
+    // Abrir acordeón haciendo clic
+    fireEvent.click(faqButton);
     expect(
       screen.getByText(/nuestro sistema busca automáticamente entre nuestras 4 sedes físicas/i)
     ).toBeInTheDocument();
 
-    // Cerrar acordeón haciendo clic
+    // Cerrar acordeón haciendo clic de nuevo
     fireEvent.click(faqButton);
     expect(
       screen.queryByText(/nuestro sistema busca automáticamente entre nuestras 4 sedes físicas/i)

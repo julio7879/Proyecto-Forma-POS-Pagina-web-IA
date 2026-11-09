@@ -1,5 +1,7 @@
 // frontend/src/features/storefront/CatalogPage.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, useInRouterContext } from 'react-router-dom';
+import { Breadcrumbs } from './components/Breadcrumbs';
 import {
   ProductoDTO,
   VarianteDTO,
@@ -9,9 +11,12 @@ import {
 } from './services/catalogService';
 import { CategoryFilters, CategoryFilterType } from './components/CategoryFilters';
 import { ProductCard } from './components/ProductCard';
+import { CatalogToolbar, ViewMode, SortOption } from './components/CatalogToolbar';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { ProductGridSkeleton } from './components/ProductGridSkeleton';
 import { BentoGridHero } from './components/BentoGridHero';
+import { OffersCarousel } from './components/OffersCarousel';
+import { PROMOCIONES_EVENT } from './services/promocionesStore';
 import { useStorefrontCart } from './context/StorefrontCartContext';
 import { CategoriaSlug } from './types';
 import {
@@ -76,7 +81,7 @@ const ARBOL_CATEGORIAS: RamificacionCategoria[] = [
     tagline: 'Sastrería, lino & tejidos',
     descripcion:
       'Sastrería contemporánea, camisas en algodón peinado, linos nobles y prendas de confección artesanal con identidad colombiana.',
-    subcategorias: ['Todas', 'Chaquetas', 'Cardigans', 'Camisas', 'Vestidos', 'Pantalones'],
+    subcategorias: ['Todas', 'Camisas', 'Pantalones', 'Vestidos', 'Chaquetas'],
     icono: '👔',
   },
   {
@@ -85,16 +90,16 @@ const ARBOL_CATEGORIAS: RamificacionCategoria[] = [
     tagline: 'Cuero genuino & horma confort',
     descripcion:
       'Botines, mocasines, sandalias y calzado elaborado a mano en cuero genuino por maestros zapateros de la región.',
-    subcategorias: ['Todas', 'Botines', 'Sandalias', 'Mocasines', 'Sneakers'],
+    subcategorias: ['Todas', 'Botines', 'Sandalias', 'Mocasines'],
     icono: '👞',
   },
   {
     id: 'Accesorios',
     label: 'Accesorios & Marroquinería',
-    tagline: 'Bolsos, gafas & sombreros',
+    tagline: 'Bolsos, cinturones & joyería',
     descripcion:
-      'Marroquinería fina en cuero vacuno, bolsos estructurados, gorras urbanas y gafas con protección UV.',
-    subcategorias: ['Todas', 'Bolsos', 'Gorras', 'Gafas', 'Cinturones', 'Joyería'],
+      'Marroquinería fina en cuero vacuno, bolsos estructurados, cinturones, gorras urbanas y joyería de autor.',
+    subcategorias: ['Todas', 'Bolsos', 'Cinturones', 'Gorras', 'Joyería'],
     icono: '👜',
   },
   {
@@ -103,16 +108,16 @@ const ARBOL_CATEGORIAS: RamificacionCategoria[] = [
     tagline: 'Extractos andinos & dermo',
     descripcion:
       'Fórmulas botánicas dermo-cosméticas con extractos andinos para el cuidado facial y corporal. Por higiene y seguridad son de uso personal sin cambio.',
-    subcategorias: ['Todas', 'Sérums', 'Labiales', 'Cremas', 'Aceites', 'Tónicos'],
+    subcategorias: ['Todas', 'Sérums', 'Cremas', 'Aceites', 'Tónicos'],
     icono: '🌿',
   },
   {
     id: 'Artesanías',
     label: 'Artesanías de Origen',
-    tagline: 'Wayuu, Mompox & tejeduría',
+    tagline: 'Wayuu, Boyacá & tejeduría',
     descripcion:
-      'Mochilas Wayuu tradicionales, filigrana momposina y piezas ancestrales elaboradas por comunidades maestras del país.',
-    subcategorias: ['Todas', 'Wayuu', 'Filigrana', 'Sombreros', 'Ruanas', 'Cestería'],
+      'Mochilas Wayuu tradicionales, ruanas de lana virgen y sombreros aguadeños finos elaborados por maestros artesanos.',
+    subcategorias: ['Todas', 'Wayuu', 'Sombreros', 'Ruanas'],
     icono: '🏺',
   },
 ];
@@ -139,83 +144,178 @@ export const matchesSubcategory = (prod: ProductoDTO, subcat: string): boolean =
 
   const target = normalizarTexto(subcat);
   let stem = target;
-  if (target.endsWith('es')) {
+  if (target.endsWith('es') && !target.endsWith('tes') && !target.endsWith('ces') && !target.endsWith('les')) {
     stem = target.slice(0, -2);
   } else if (target.endsWith('s')) {
     stem = target.slice(0, -1);
   }
 
-  const haystack = normalizarTexto(`${prod.nombre} ${prod.descripcion} ${prod.slug}`);
+  const haystack = normalizarTexto(`${prod.nombre} ${prod.descripcion} ${prod.slug} ${prod.categoriaNombre}`);
 
-  if (stem === 'camisa') {
-    return haystack.includes('camisa') || haystack.includes('camiseta') || haystack.includes('blusa');
+  // Compatibilidad si la subcategoría es una categoría principal
+  if (target === 'ropa' || stem === 'ropa') return prod.categoriaNombre === 'Ropa';
+  if (target === 'calzado' || stem === 'calzado') return prod.categoriaNombre === 'Calzado';
+  if (target === 'accesorios' || target === 'accesorio' || stem === 'accesori') return prod.categoriaNombre === 'Accesorios';
+  if (target === 'cosmeticos' || target === 'cosmetico' || stem === 'cosmetic') return prod.categoriaNombre === 'Cosméticos';
+  if (target === 'artesanias' || target === 'artesania' || stem === 'artesani') return prod.categoriaNombre === 'Artesanías';
+
+  // Ropa
+  if (stem === 'camisa' || target === 'camisas' || target === 'camisa') {
+    return (
+      haystack.includes('camisa') ||
+      haystack.includes('camiseta') ||
+      haystack.includes('blusa') ||
+      haystack.includes('polo') ||
+      haystack.includes('top')
+    );
   }
-  if (stem === 'bolso') {
+  if (stem === 'pantalon' || target === 'pantalones' || target === 'pantalon') {
+    return (
+      haystack.includes('pantalon') ||
+      haystack.includes('pantalón') ||
+      haystack.includes('jean') ||
+      haystack.includes('wide leg') ||
+      haystack.includes('jogger') ||
+      haystack.includes('bermuda') ||
+      haystack.includes('falda')
+    );
+  }
+  if (stem === 'vestido' || target === 'vestidos' || target === 'vestido') {
+    return haystack.includes('vestido') || haystack.includes('enterizo');
+  }
+  if (stem === 'chaqueta' || target === 'chaquetas' || target === 'chaqueta') {
+    return (
+      haystack.includes('chaqueta') ||
+      haystack.includes('blazer') ||
+      haystack.includes('cardigan') ||
+      haystack.includes('chaleco') ||
+      haystack.includes('gabardina') ||
+      haystack.includes('biker') ||
+      haystack.includes('puffer') ||
+      haystack.includes('buzo')
+    );
+  }
+
+  // Calzado
+  if (stem === 'botin' || target === 'botines' || target === 'botin') {
+    return (
+      haystack.includes('botin') ||
+      haystack.includes('botines') ||
+      haystack.includes('bota') ||
+      haystack.includes('chelsea')
+    );
+  }
+  if (stem === 'sandalia' || target === 'sandalias' || target === 'sandalia') {
+    return haystack.includes('sandalia') || haystack.includes('sandalias');
+  }
+  if (stem === 'mocasin' || target === 'mocasines' || target === 'mocasin') {
+    return (
+      haystack.includes('mocasin') ||
+      haystack.includes('mocasines') ||
+      haystack.includes('oxford') ||
+      haystack.includes('penny') ||
+      haystack.includes('zapato')
+    );
+  }
+
+  // Accesorios
+  if (stem === 'bolso' || target === 'bolsos' || target === 'bolso') {
     return (
       haystack.includes('bolso') ||
       haystack.includes('mochila') ||
+      haystack.includes('tote') ||
+      haystack.includes('crossbody') ||
+      haystack.includes('billetera') ||
+      haystack.includes('bandolera') ||
       haystack.includes('cartera') ||
       haystack.includes('marroquineria')
     );
   }
-  if (stem === 'gorra') {
+  if (stem === 'cinturon' || target === 'cinturones' || target === 'cinturon') {
+    return haystack.includes('cinturon') || haystack.includes('cinturón');
+  }
+  if (stem === 'gorra' || target === 'gorras' || target === 'gorra') {
     return (
       haystack.includes('gorra') ||
       haystack.includes('snapback') ||
       haystack.includes('sombrero') ||
+      haystack.includes('fedora') ||
       haystack.includes('visera')
     );
   }
-  if (stem === 'gafa') {
+  if (stem === 'joyeria' || stem === 'joya' || target === 'joyeria' || target === 'joyas') {
+    return (
+      haystack.includes('collar') ||
+      haystack.includes('arete') ||
+      haystack.includes('argolla') ||
+      haystack.includes('reloj') ||
+      haystack.includes('cadena') ||
+      haystack.includes('oro') ||
+      haystack.includes('plata') ||
+      haystack.includes('joya')
+    );
+  }
+  if (stem === 'gafa' || target === 'gafas' || target === 'gafa') {
     return haystack.includes('gafa') || haystack.includes('lente') || haystack.includes('polarizada');
   }
-  if (stem === 'serum') {
-    return haystack.includes('serum');
+
+  // Cosméticos
+  if (stem === 'serum' || target === 'serums' || target === 'serum') {
+    return haystack.includes('serum') || haystack.includes('sérum') || haystack.includes('suero');
   }
-  if (stem === 'labial') {
-    return haystack.includes('labial');
+  if (stem === 'crema' || target === 'cremas' || target === 'crema') {
+    return (
+      haystack.includes('crema') ||
+      haystack.includes('mascarilla') ||
+      haystack.includes('balsamo') ||
+      haystack.includes('bálsamo') ||
+      haystack.includes('limpiador') ||
+      haystack.includes('hidratante')
+    );
   }
-  if (stem === 'crema') {
-    return haystack.includes('crema');
+  if (target === 'aceites' || target === 'aceite' || stem === 'aceite' || stem === 'aceit') {
+    return (
+      haystack.includes('aceite') ||
+      haystack.includes('oil') ||
+      haystack.includes('labial') ||
+      haystack.includes('sacha inchi')
+    );
   }
-  if (stem === 'aceite') {
-    return haystack.includes('aceite');
+  if (stem === 'tonico' || target === 'tonicos' || target === 'tonico') {
+    return (
+      haystack.includes('tonico') ||
+      haystack.includes('tónico') ||
+      haystack.includes('exfoliante') ||
+      haystack.includes('bruma') ||
+      haystack.includes('agua micelar') ||
+      haystack.includes('fijador') ||
+      haystack.includes('hidrolato')
+    );
   }
-  if (stem === 'tonico') {
-    return haystack.includes('tonico');
+
+  // Artesanías
+  if (stem === 'wayuu' || target === 'wayuu') {
+    return haystack.includes('wayuu') || haystack.includes('mochila');
   }
-  if (stem === 'wayuu') {
-    return haystack.includes('wayuu');
+  if (stem === 'sombrero' || target === 'sombreros' || target === 'sombrero') {
+    return haystack.includes('sombrero') || haystack.includes('aguadeño') || haystack.includes('aguadeno');
   }
-  if (stem === 'filigrana') {
-    return haystack.includes('filigrana');
-  }
-  if (stem === 'sombrero') {
-    return haystack.includes('sombrero');
-  }
-  if (stem === 'ruana') {
-    return haystack.includes('ruana');
-  }
-  if (stem === 'cesteria') {
-    return haystack.includes('cesteria');
-  }
-  if (stem === 'botin') {
-    return haystack.includes('botin') || haystack.includes('bota');
-  }
-  if (stem === 'sandalia') {
-    return haystack.includes('sandalia');
-  }
-  if (stem === 'mocasin') {
-    return haystack.includes('mocasin');
-  }
-  if (stem === 'sneaker') {
-    return haystack.includes('sneaker') || haystack.includes('tenis') || haystack.includes('zapatilla');
+  if (stem === 'ruana' || target === 'ruanas' || target === 'ruana') {
+    return haystack.includes('ruana') || haystack.includes('lana') || haystack.includes('poncho');
   }
 
   return haystack.includes(target) || haystack.includes(stem);
 };
 
-export const CatalogPage: React.FC = () => {
+export interface CatalogPageCoreProps {
+  searchParams?: URLSearchParams;
+  onUpdateSearchParams?: (updater: (prev: URLSearchParams) => URLSearchParams) => void;
+}
+
+export const CatalogPageCore: React.FC<CatalogPageCoreProps> = ({
+  searchParams: propSearchParams,
+  onUpdateSearchParams,
+}) => {
   const { addItem, sedeActiva } = useStorefrontCart();
 
   const [productos, setProductos] = useState<ProductoDTO[]>([]);
@@ -226,10 +326,17 @@ export const CatalogPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilterType>('Todas');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>('Todas');
 
+  // Estados de visualización y ordenamiento (Fig. 11 y Fig. 12 ARQ-07)
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [sortBy, setSortBy] = useState<SortOption>('popular');
+
   // Estados de filtros interactivos
   const [searchQuery, setSearchQuery] = useState('');
   const [soloConStock, setSoloConStock] = useState(false);
   const [precioMaximo, setPrecioMaximo] = useState<number | null>(null);
+  const [selectedTalla, setSelectedTalla] = useState<string | undefined>(undefined);
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
+  const [showFilterPanel, setShowFilterPanel] = useState<boolean>(false);
 
   // Paginación limpia (12 productos por página para evitar scroll infinito)
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -254,7 +361,65 @@ export const CatalogPage: React.FC = () => {
 
   useEffect(() => {
     cargarProductos();
+    window.addEventListener(PROMOCIONES_EVENT, cargarProductos);
+    window.addEventListener('storage', cargarProductos);
+    return () => {
+      window.removeEventListener(PROMOCIONES_EVENT, cargarProductos);
+      window.removeEventListener('storage', cargarProductos);
+    };
   }, []);
+
+  // Sincronizar parámetros de búsqueda o categoría desde la URL (Fig. 1 ARQ-07)
+  useEffect(() => {
+    const currentParams =
+      propSearchParams ||
+      new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+
+    const qParam = currentParams.get('q');
+    const catParam = currentParams.get('categoria');
+    const subcatParam = currentParams.get('subcategoria');
+    const prodParam = currentParams.get('producto');
+
+    if (qParam !== null && qParam !== undefined) {
+      setSearchQuery(qParam);
+      setCurrentPage(1);
+    }
+
+    if (catParam) {
+      const matchCat = (
+        ['Todas', 'Ropa', 'Calzado', 'Accesorios', 'Cosméticos', 'Artesanías'] as CategoryFilterType[]
+      ).find((c) => normalizarTexto(c) === normalizarTexto(catParam));
+
+      if (matchCat) {
+        setSelectedCategory(matchCat);
+
+        if (subcatParam) {
+          const catBranch = ARBOL_CATEGORIAS.find((c) => c.id === matchCat);
+          const matchSub = catBranch?.subcategorias.find(
+            (s) => normalizarTexto(s) === normalizarTexto(subcatParam)
+          );
+          setSelectedSubcategory(matchSub || subcatParam);
+        } else {
+          setSelectedSubcategory('Todas');
+        }
+        setCurrentPage(1);
+      }
+    } else {
+      setSelectedCategory('Todas');
+      setSelectedSubcategory('Todas');
+    }
+
+    if (prodParam) {
+      const prods = productos.length > 0 ? productos : PRODUCTOS_SEMILLA;
+      const prodEncontrado = prods.find(
+        (p) => String(p.id) === prodParam || p.slug === prodParam
+      );
+      if (prodEncontrado) {
+        setSelectedProduct(prodEncontrado);
+        setIsModalOpen(true);
+      }
+    }
+  }, [propSearchParams, productos]);
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
@@ -266,31 +431,59 @@ export const CatalogPage: React.FC = () => {
     setIsModalOpen(true);
   }, []);
 
-  const scrollToCatalogGridIfNeeded = useCallback(() => {
-    const el = document.getElementById('catalogo-grid');
-    if (el && typeof el.scrollIntoView === 'function') {
-      const rect = el.getBoundingClientRect();
-      if (rect.top < 60 || rect.top > window.innerHeight - 120) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  }, []);
-
   const handleSelectCategory = useCallback(
     (cat: CategoryFilterType) => {
       setSelectedCategory(cat);
       setSelectedSubcategory('Todas');
+      setSelectedTalla(undefined);
+      setSelectedColor(undefined);
       setCurrentPage(1);
+
+      if (onUpdateSearchParams) {
+        onUpdateSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          if (cat === 'Todas') {
+            next.delete('categoria');
+            next.delete('subcategoria');
+          } else {
+            next.set('categoria', cat);
+            next.delete('subcategoria');
+          }
+          return next;
+        });
+      }
     },
-    []
+    [onUpdateSearchParams]
   );
 
   const handleSelectSubcategory = useCallback(
     (sub: string) => {
+      // Si estamos en "Todas" y se pulsa una de las categorías principales:
+      const esCatPrincipal = (
+        ['Ropa', 'Calzado', 'Accesorios', 'Cosméticos', 'Artesanías'] as CategoryFilterType[]
+      ).find((c) => normalizarTexto(c) === normalizarTexto(sub));
+
+      if (selectedCategory === 'Todas' && esCatPrincipal) {
+        handleSelectCategory(esCatPrincipal);
+        return;
+      }
+
       setSelectedSubcategory(sub);
       setCurrentPage(1);
+
+      if (onUpdateSearchParams) {
+        onUpdateSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          if (sub === 'Todas') {
+            next.delete('subcategoria');
+          } else {
+            next.set('subcategoria', sub);
+          }
+          return next;
+        });
+      }
     },
-    []
+    [selectedCategory, handleSelectCategory, onUpdateSearchParams]
   );
 
   const handleQuickAdd = useCallback(
@@ -340,9 +533,42 @@ export const CatalogPage: React.FC = () => {
     );
   }, [selectedCategory]);
 
-  // Filtrado reactivo en cliente (Categoría + Subcategoría + Texto + Stock + Rango Precio)
+  // Lista dinámica de tallas disponibles en los productos del catálogo
+  const tallasDisponibles = useMemo(() => {
+    const prods = productos.length > 0 ? productos : PRODUCTOS_SEMILLA;
+    const set = new Set<string>();
+    prods.forEach((p) => {
+      p.variantes.forEach((v) => {
+        if (v.talla && v.talla !== 'UNI') set.add(v.talla);
+      });
+    });
+    const ordenTallas = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '35', '36', '37', '38', '39', '40', '41', '42'];
+    return Array.from(set).sort((a, b) => {
+      const idxA = ordenTallas.indexOf(a);
+      const idxB = ordenTallas.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [productos]);
+
+  // Lista dinámica de colores disponibles en los productos del catálogo
+  const coloresDisponibles = useMemo(() => {
+    const prods = productos.length > 0 ? productos : PRODUCTOS_SEMILLA;
+    const set = new Set<string>();
+    prods.forEach((p) => {
+      p.variantes.forEach((v) => {
+        if (v.color) set.add(v.color.trim());
+      });
+    });
+    return Array.from(set).sort();
+  }, [productos]);
+
+  // Filtrado reactivo en cliente (Categoría + Subcategoría + Texto + Stock + Rango Precio + Talla + Color) + Ordenamiento
   const productosFiltrados = useMemo(() => {
-    return productos.filter((prod) => {
+    const prods = productos.length > 0 ? productos : PRODUCTOS_SEMILLA;
+    const filtrados = prods.filter((prod) => {
       // 1. Filtro por categoría principal
       const coincideCategoria =
         selectedCategory === 'Todas' || prod.categoriaNombre === selectedCategory;
@@ -370,14 +596,64 @@ export const CatalogPage: React.FC = () => {
       const coincidePrecio =
         precioMaximo === null || precioMinimoProducto <= precioMaximo;
 
+      // 6. Filtro por Talla (si está seleccionada)
+      const coincideTalla =
+        !selectedTalla ||
+        prod.variantes.some(
+          (v) => v.talla === selectedTalla && (!soloConStock || v.stockDisponible > 0)
+        );
+
+      // 7. Filtro por Color (si está seleccionado)
+      const coincideColor =
+        !selectedColor ||
+        prod.variantes.some(
+          (v) =>
+            v.color &&
+            normalizarTexto(v.color) === normalizarTexto(selectedColor) &&
+            (!soloConStock || v.stockDisponible > 0)
+        );
+
       return (
         coincideCategoria &&
         coincideSubcat &&
         coincideBusqueda &&
         coincideStock &&
-        coincidePrecio
+        coincidePrecio &&
+        coincideTalla &&
+        coincideColor
       );
     });
+
+    // Ordenamiento interactivo por sortBy (Fig. 11 ARQ-07)
+    const ordenados = [...filtrados];
+    switch (sortBy) {
+      case 'price-asc':
+        ordenados.sort((a, b) => {
+          const pA = Math.min(...a.variantes.map((v) => v.precioVentaCop));
+          const pB = Math.min(...b.variantes.map((v) => v.precioVentaCop));
+          return pA - pB;
+        });
+        break;
+      case 'price-desc':
+        ordenados.sort((a, b) => {
+          const pA = Math.max(...a.variantes.map((v) => v.precioVentaCop));
+          const pB = Math.max(...b.variantes.map((v) => v.precioVentaCop));
+          return pB - pA;
+        });
+        break;
+      case 'recent':
+        ordenados.sort((a, b) => Number(b.id) - Number(a.id));
+        break;
+      case 'rating':
+        ordenados.sort((a, b) => b.variantes.length - a.variantes.length);
+        break;
+      case 'popular':
+      default:
+        // Mantener orden canónico de catálogo
+        break;
+    }
+
+    return ordenados;
   }, [
     productos,
     selectedCategory,
@@ -385,6 +661,9 @@ export const CatalogPage: React.FC = () => {
     searchQuery,
     soloConStock,
     precioMaximo,
+    selectedTalla,
+    selectedColor,
+    sortBy,
   ]);
 
   // Cálculo de Paginación Limpia
@@ -397,7 +676,7 @@ export const CatalogPage: React.FC = () => {
   }, [productosFiltrados, validCurrentPage]);
 
   return (
-    <div className="w-full space-y-10">
+    <div className="w-full space-y-5 sm:space-y-6">
       {/* =====================================================================
           SECCIÓN 1: HERO EDITORIAL & PROPUESTA DE VALOR MULTISEDE
           ===================================================================== */}
@@ -415,10 +694,36 @@ export const CatalogPage: React.FC = () => {
       />
 
       {/* =====================================================================
-          SECCIÓN 2: EXPLORADOR PRINCIPAL CON MENÚ LATERAL IZQUIERDO Y VISTA DEDICADA
+          SECCIÓN 2: CARRUSEL INTERACTIVO DE OFERTAS & PRECIOS DE ATELIER
           ===================================================================== */}
-      <section id="catalogo-grid" className="pt-2 relative">
+      <OffersCarousel
+        productos={productos}
+        categoriaActiva={selectedCategory}
+        onExplorarProducto={(productoId) => {
+          const prod = (productos.length > 0 ? productos : PRODUCTOS_SEMILLA).find(
+            (p) => p.id === productoId
+          );
+          if (prod) {
+            handleOpenDetail(prod);
+          }
+        }}
+      />
+
+      {/* =====================================================================
+          SECCIÓN 3: EXPLORADOR PRINCIPAL CON BARRA DE HERRAMIENTAS Y GRID/LIST TOGGLE
+          ===================================================================== */}
+      <section id="catalogo-grid" className="pt-2 scroll-mt-24 sm:scroll-mt-28 relative">
         <span id="catalogo-oficial" className="sr-only" />
+
+        {/* Migas de Pan (Breadcrumbs GPS de Compra - Fig. 1 ARQ-07) */}
+        <div className="mb-3">
+          <Breadcrumbs
+            categoria={selectedCategory !== 'Todas' ? selectedCategory : undefined}
+            subcategoria={selectedSubcategory !== 'Todas' ? selectedSubcategory : undefined}
+            onCategoriaClick={(cat) => handleSelectCategory(cat as CategoryFilterType)}
+            onSubcategoriaClick={(sub) => handleSelectSubcategory(sub)}
+          />
+        </div>
 
         {/* Encabezado accesible para tests y usuarios */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
@@ -441,7 +746,7 @@ export const CatalogPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Contenedor de ancho completo (sin menú duplicado de Departamentos) */}
+        {/* Contenedor de ancho completo */}
         <div className="w-full space-y-5">
           {/* Barra única de Categorías y Búsqueda (Preserva role="tab" y accesibilidad) */}
           <CategoryFilters
@@ -494,7 +799,7 @@ export const CatalogPage: React.FC = () => {
                       setPrecioMaximo(null);
                       setCurrentPage(1);
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-[#661521] bg-[#661521]/10 hover:bg-[#661521] hover:text-white transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-[#661521] bg-[#661521]/10 hover:bg-[#661521] hover:text-white transition-colors cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Restablecer precio</span>
@@ -519,7 +824,7 @@ export const CatalogPage: React.FC = () => {
                         setPrecioMaximo(rango.max);
                         setCurrentPage(1);
                       }}
-                      className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold transition-all ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                         isActivo
                           ? 'bg-[#661521] text-white shadow-xs'
                           : 'bg-white hover:bg-[#E7DED2] text-[#50322A] border border-[#50322A]/15'
@@ -581,7 +886,7 @@ export const CatalogPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSelectCategory('Todas')}
-                  className="self-start sm:self-auto px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-[#661521] hover:text-white text-[#50322A] border border-[#50322A]/20 transition-all flex items-center gap-1.5 shadow-2xs"
+                  className="self-start sm:self-auto px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-[#661521] hover:text-white text-[#50322A] border border-[#50322A]/20 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   <span>← Ver todas las colecciones</span>
                 </button>
@@ -602,7 +907,7 @@ export const CatalogPage: React.FC = () => {
                           key={sub}
                           type="button"
                           onClick={() => handleSelectSubcategory(sub)}
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                             isSubActive
                               ? 'bg-[#661521] text-white shadow-sm ring-2 ring-[#D19650]'
                               : 'bg-white hover:bg-[#661521]/10 text-[#50322A] border border-[#50322A]/15 shadow-2xs'
@@ -618,144 +923,303 @@ export const CatalogPage: React.FC = () => {
             </div>
           )}
 
-            {/* ESTADO 1: Loading */}
-            {isLoading && <ProductGridSkeleton />}
+          {/* BARRA DE HERRAMIENTAS: Sort By, Toggle Grid/List y Píldoras Activas (Fig. 11 y Fig. 12 ARQ-07) */}
+          <CatalogToolbar
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            totalResults={productosFiltrados.length}
+            selectedCategory={selectedCategory}
+            selectedSubcategory={selectedSubcategory}
+            selectedTalla={selectedTalla}
+            selectedColor={selectedColor}
+            precioMaximo={precioMaximo}
+            soloConStock={soloConStock}
+            onClearTalla={() => {
+              setSelectedTalla(undefined);
+              setCurrentPage(1);
+            }}
+            onClearColor={() => {
+              setSelectedColor(undefined);
+              setCurrentPage(1);
+            }}
+            onClearPrecio={() => {
+              setPrecioMaximo(null);
+              setCurrentPage(1);
+            }}
+            onClearSubcategoria={() => {
+              handleSelectSubcategory('Todas');
+            }}
+            onClearStock={() => {
+              setSoloConStock(false);
+              setCurrentPage(1);
+            }}
+            onClearAll={() => {
+              handleSelectCategory('Todas');
+              setSelectedTalla(undefined);
+              setSelectedColor(undefined);
+              setPrecioMaximo(null);
+              setSoloConStock(false);
+              setSearchQuery('');
+              setCurrentPage(1);
+            }}
+            showFilterPanel={showFilterPanel}
+            onToggleFilterPanel={() => setShowFilterPanel((prev) => !prev)}
+          />
 
-            {/* ESTADO 2: Error */}
-            {error && !isLoading && (
-              <div className="p-4 rounded-2xl bg-[#D19650]/15 border border-[#D19650]/45 flex items-center justify-between text-xs text-[#50322A]">
-                <span>{error}</span>
+          {/* PANEL EXPANDIBLE DE FILTROS AVANZADOS (Tallas y Colores) */}
+          {showFilterPanel && (
+            <div className="glass-mirror-card rounded-2xl p-4 sm:p-5 border border-[#50322A]/15 bg-white/95 backdrop-blur-2xl space-y-4 animate-in fade-in duration-300 shadow-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-[#50322A]/10">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#661521]" />
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#50322A]">
+                    Filtros Avanzados por Talla y Color
+                  </h3>
+                </div>
                 <button
-                  onClick={cargarProductos}
-                  className="px-3.5 py-1.5 bg-[#661521] text-white rounded-full font-bold flex items-center gap-1.5 hover:bg-[#50322A] transition-colors"
+                  type="button"
+                  onClick={() => setShowFilterPanel(false)}
+                  className="p-1 rounded-lg text-[#50322A] hover:bg-[#FAF6EF] transition-colors cursor-pointer"
+                  title="Cerrar panel de filtros"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Reintentar
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            )}
 
-            {/* ESTADO 3: Empty (Sin coincidencias) */}
-            {!isLoading && productosFiltrados.length === 0 && (
-              <div className="text-center py-14 px-4 rounded-[2rem] glass-mirror-card">
-                <PackageX className="w-12 h-12 text-[#661521] mx-auto mb-3" />
-                <h3 className="font-display text-lg font-bold text-[#50322A]">
-                  No se encontraron productos
-                </h3>
-                <p className="text-xs text-[#171717]/70 max-w-sm mx-auto mt-1 mb-5">
-                  No hay productos que coincidan con la categoría «{selectedCategory}», la subcategoría «{selectedSubcategory}» o el término «{searchQuery}».
-                </p>
-                <button
-                  onClick={() => {
-                    setSelectedCategory('Todas');
-                    setSelectedSubcategory('Todas');
-                    setSearchQuery('');
-                    setSoloConStock(false);
-                    setPrecioMaximo(null);
-                    setCurrentPage(1);
-                  }}
-                  className="px-5 py-2.5 bg-[#661521] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#50322A] transition-all shadow-md"
-                >
-                  Restablecer filtros
-                </button>
-              </div>
-            )}
+              {/* Selector de Tallas */}
+              {tallasDisponibles.length > 0 && (
+                <div className="space-y-2">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[#50322A]/70">
+                    Filtrar por Talla:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {tallasDisponibles.map((talla) => {
+                      const isSelected = selectedTalla === talla;
+                      return (
+                        <button
+                          key={talla}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTalla(isSelected ? undefined : talla);
+                            setCurrentPage(1);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-mono ${
+                            isSelected
+                              ? 'bg-[#661521] text-white shadow-xs ring-2 ring-[#D19650]'
+                              : 'bg-white hover:bg-[#FAF6EF] text-[#50322A] border border-[#50322A]/15'
+                          }`}
+                        >
+                          {talla}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-            {/* ESTADO 4: Success (Grilla de Productos Paginada a 12 items por página - Ancho Completo 4 cols) */}
-            {!isLoading && productosFiltrados.length > 0 && (
-              <div className="space-y-8">
+              {/* Selector de Colores */}
+              {coloresDisponibles.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[#50322A]/70">
+                    Filtrar por Color:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {coloresDisponibles.map((color) => {
+                      const isSelected = selectedColor === color;
+                      const cLower = color.toLowerCase();
+                      const swatchBg =
+                        cLower.includes('blanco') ? '#FFFFFF' :
+                        cLower.includes('negro') ? '#1C1311' :
+                        cLower.includes('azul') || cLower.includes('índigo') ? '#1E3A8A' :
+                        cLower.includes('beige') || cLower.includes('crema') || cLower.includes('hueso') ? '#E7DED2' :
+                        cLower.includes('café') || cLower.includes('cafe') || cLower.includes('marrón') ? '#50322A' :
+                        cLower.includes('vino') || cLower.includes('rojo') ? '#741C2B' :
+                        cLower.includes('dorado') || cLower.includes('oro') ? '#C49A68' :
+                        cLower.includes('verde') || cLower.includes('oliva') ? '#15803D' :
+                        cLower.includes('gris') ? '#94A3B8' : '#A8A29E';
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => {
+                            setSelectedColor(isSelected ? undefined : color);
+                            setCurrentPage(1);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isSelected
+                              ? 'bg-[#661521] text-white shadow-xs ring-2 ring-[#D19650]'
+                              : 'bg-white hover:bg-[#FAF6EF] text-[#50322A] border border-[#50322A]/15'
+                          }`}
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-black/25 shrink-0"
+                            style={{ backgroundColor: swatchBg }}
+                            aria-hidden="true"
+                          />
+                          <span>{color}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ESTADO 1: Loading */}
+          {isLoading && <ProductGridSkeleton />}
+
+          {/* ESTADO 2: Error */}
+          {error && !isLoading && (
+            <div className="p-4 rounded-2xl bg-[#D19650]/15 border border-[#D19650]/45 flex items-center justify-between text-xs text-[#50322A]">
+              <span>{error}</span>
+              <button
+                onClick={cargarProductos}
+                className="px-3.5 py-1.5 bg-[#661521] text-white rounded-full font-bold flex items-center gap-1.5 hover:bg-[#50322A] transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Reintentar
+              </button>
+            </div>
+          )}
+
+          {/* ESTADO 3: Empty (Sin coincidencias) */}
+          {!isLoading && productosFiltrados.length === 0 && (
+            <div className="text-center py-14 px-4 rounded-[2rem] glass-mirror-card">
+              <PackageX className="w-12 h-12 text-[#661521] mx-auto mb-3" />
+              <h3 className="font-display text-lg font-bold text-[#50322A]">
+                No se encontraron productos
+              </h3>
+              <p className="text-xs text-[#171717]/70 max-w-sm mx-auto mt-1 mb-5">
+                No hay productos que coincidan con la categoría «{selectedCategory}», la subcategoría «{selectedSubcategory}» o los filtros seleccionados.
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedCategory('Todas');
+                  setSelectedSubcategory('Todas');
+                  setSelectedTalla(undefined);
+                  setSelectedColor(undefined);
+                  setSearchQuery('');
+                  setSoloConStock(false);
+                  setPrecioMaximo(null);
+                  setCurrentPage(1);
+                }}
+                className="px-5 py-2.5 bg-[#661521] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#50322A] transition-all shadow-md cursor-pointer"
+              >
+                Restablecer filtros
+              </button>
+            </div>
+          )}
+
+          {/* ESTADO 4: Success (Grilla o Lista de Productos Paginada a 12 items por página) */}
+          {!isLoading && productosFiltrados.length > 0 && (
+            <div className="space-y-8">
+              {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-2 w-full max-w-full overflow-hidden">
                   {paginatedProductos.map((prod) => (
                     <ProductCard
                       key={prod.id}
                       producto={prod}
+                      viewMode="grid"
                       onOpenDetail={handleOpenDetail}
                       onQuickAdd={handleQuickAdd}
                     />
                   ))}
                 </div>
+              ) : (
+                <div className="space-y-4 pt-2 w-full max-w-full">
+                  {paginatedProductos.map((prod) => (
+                    <ProductCard
+                      key={prod.id}
+                      producto={prod}
+                      viewMode="list"
+                      onOpenDetail={handleOpenDetail}
+                      onQuickAdd={handleQuickAdd}
+                    />
+                  ))}
+                </div>
+              )}
 
-                {/* CONTROLES DE PAGINACIÓN LIMPIA (Evita scroll infinito y listas pesadas) */}
-                {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-[#50322A]/15">
-                    <span className="text-xs text-[#50322A] font-bold">
-                      Mostrando{' '}
-                      <strong className="text-[#661521] font-mono-tabular">
-                        {(validCurrentPage - 1) * ITEMS_PER_PAGE + 1}
-                      </strong>{' '}
-                      -{' '}
-                      <strong className="text-[#661521] font-mono-tabular">
-                        {Math.min(validCurrentPage * ITEMS_PER_PAGE, productosFiltrados.length)}
-                      </strong>{' '}
-                      de{' '}
-                      <strong className="text-[#661521] font-mono-tabular">
-                        {productosFiltrados.length}
-                      </strong>{' '}
-                      piezas
-                    </span>
+              {/* CONTROLES DE PAGINACIÓN LIMPIA (Evita scroll infinito y listas pesadas) */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-[#50322A]/15">
+                  <span className="text-xs text-[#50322A] font-bold">
+                    Mostrando{' '}
+                    <strong className="text-[#661521] font-mono-tabular">
+                      {(validCurrentPage - 1) * ITEMS_PER_PAGE + 1}
+                    </strong>{' '}
+                    -{' '}
+                    <strong className="text-[#661521] font-mono-tabular">
+                      {Math.min(validCurrentPage * ITEMS_PER_PAGE, productosFiltrados.length)}
+                    </strong>{' '}
+                    de{' '}
+                    <strong className="text-[#661521] font-mono-tabular">
+                      {productosFiltrados.length}
+                    </strong>{' '}
+                    piezas
+                  </span>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentPage((prev) => Math.max(1, prev - 1));
-                          scrollToCatalogGridIfNeeded();
-                        }}
-                        disabled={validCurrentPage === 1}
-                        aria-label="Página anterior"
-                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#50322A] hover:bg-[#661521] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all border border-[#50322A]/15 shadow-2xs flex items-center gap-1"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>Anterior</span>
-                      </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentPage((prev) => Math.max(1, prev - 1));
+                      }}
+                      disabled={validCurrentPage === 1}
+                      aria-label="Página anterior"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#50322A] hover:bg-[#661521] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all border border-[#50322A]/15 shadow-2xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Anterior</span>
+                    </button>
 
-                      <div className="flex items-center gap-1 px-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => {
-                          const isCurrent = num === validCurrentPage;
-                          return (
-                            <button
-                              key={num}
-                              type="button"
-                              onClick={() => {
-                                setCurrentPage(num);
-                                scrollToCatalogGridIfNeeded();
-                              }}
-                              aria-label={`Ir a página ${num}`}
-                              aria-current={isCurrent ? 'page' : undefined}
-                              className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
-                                isCurrent
-                                  ? 'bg-[#661521] text-white shadow-sm ring-1 ring-[#D19650]'
-                                  : 'bg-white text-[#50322A] hover:bg-[#E7DED2] border border-[#50322A]/10'
-                              }`}
-                            >
-                              {num}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentPage((prev) => Math.min(totalPages, prev + 1));
-                          scrollToCatalogGridIfNeeded();
-                        }}
-                        disabled={validCurrentPage === totalPages}
-                        aria-label="Página siguiente"
-                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#50322A] hover:bg-[#661521] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all border border-[#50322A]/15 shadow-2xs flex items-center gap-1"
-                      >
-                        <span>Siguiente</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                    <div className="flex items-center gap-1 px-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => {
+                        const isCurrent = num === validCurrentPage;
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(num);
+                            }}
+                            aria-label={`Ir a página ${num}`}
+                            aria-current={isCurrent ? 'page' : undefined}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              isCurrent
+                                ? 'bg-[#661521] text-white shadow-sm ring-1 ring-[#D19650]'
+                                : 'bg-white text-[#50322A] hover:bg-[#E7DED2] border border-[#50322A]/10'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+                      }}
+                      disabled={validCurrentPage === totalPages}
+                      aria-label="Página siguiente"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#50322A] hover:bg-[#661521] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all border border-[#50322A]/15 shadow-2xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Siguiente</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
       {/* =====================================================================
-          SECCIÓN 3: SELLO DE ORIGEN CERTIFICADO & CONFIANZA OMNICANAL
+          SECCIÓN 4: SELLO DE ORIGEN CERTIFICADO & CONFIANZA OMNICANAL
           ===================================================================== */}
       <section
         id="sello-origen"
@@ -863,6 +1327,24 @@ export const CatalogPage: React.FC = () => {
       />
     </div>
   );
+};
+
+const CatalogPageRouterInner: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  return (
+    <CatalogPageCore
+      searchParams={searchParams}
+      onUpdateSearchParams={(updater) => setSearchParams(updater, { replace: false })}
+    />
+  );
+};
+
+export const CatalogPage: React.FC<CatalogPageCoreProps> = (props) => {
+  const inRouter = useInRouterContext();
+  if (inRouter && !props.searchParams) {
+    return <CatalogPageRouterInner />;
+  }
+  return <CatalogPageCore {...props} />;
 };
 
 export default CatalogPage;

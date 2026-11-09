@@ -275,7 +275,7 @@ describe('Auditoría Integral y Simulación Completa del Sistema POS (Frontend)'
         expect(item.stockSede).toBe(0);
       }
 
-      expect(PRODUCTOS_SEMILLA.length).toBe(34);
+      expect(PRODUCTOS_SEMILLA.length).toBe(35);
       for (const prod of PRODUCTOS_SEMILLA) {
         for (const v of prod.variantes) {
           expect(v.stockPorSede?.['Bodega Central']).toBe(v.stockDisponible);

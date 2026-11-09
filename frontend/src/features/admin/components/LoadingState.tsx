@@ -25,24 +25,24 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
           {Array.from({ length: cards }).map((_, i) => (
             <div
               key={`card-skel-${i}`}
-              className="rounded-[14px] bg-[#FFFFFF] border border-[#E7E0D8] p-5 space-y-3 animate-pulse"
+              className="rounded-3xl backdrop-blur-2xl bg-white/[0.07] border border-white/[0.14] p-5 space-y-3 animate-pulse shadow-[0_12px_30px_rgba(0,0,0,0.3)]"
             >
-              <div className="h-3.5 w-28 bg-[#E7E0D8] rounded" />
-              <div className="h-7 w-36 bg-[#E7E0D8]/80 rounded" />
-              <div className="h-3 w-24 bg-[#F5F3EF] rounded" />
+              <div className="h-3.5 w-28 bg-white/20 rounded" />
+              <div className="h-7 w-36 bg-white/30 rounded" />
+              <div className="h-3 w-24 bg-white/10 rounded" />
             </div>
           ))}
         </div>
       )}
-      <div className="rounded-[14px] bg-[#FFFFFF] border border-[#E7E0D8] p-5 space-y-3 shadow-2xs">
+      <div className="rounded-3xl backdrop-blur-2xl bg-white/[0.07] border border-white/[0.14] p-5 space-y-3 shadow-[0_12px_30px_rgba(0,0,0,0.3)]">
         {Array.from({ length: rows }).map((_, idx) => (
           <div
             key={`row-skel-${idx}`}
-            className="h-[52px] rounded-[12px] bg-[#F5F3EF] border border-[#E7E0D8]/60 animate-pulse px-4 flex items-center justify-between gap-4"
+            className="h-[52px] rounded-2xl bg-white/[0.04] border border-white/10 animate-pulse px-4 flex items-center justify-between gap-4"
           >
-            <div className="h-3.5 bg-[#E7E0D8] rounded w-1/4" />
-            <div className="h-3.5 bg-[#E7E0D8]/70 rounded w-1/3" />
-            <div className="h-3.5 bg-[#E7E0D8]/60 rounded w-16" />
+            <div className="h-3.5 bg-white/20 rounded w-1/4" />
+            <div className="h-3.5 bg-white/15 rounded w-1/3" />
+            <div className="h-3.5 bg-white/10 rounded w-16" />
           </div>
         ))}
       </div>

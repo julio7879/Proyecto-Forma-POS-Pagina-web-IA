@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../api/apiClient';
+import { setPortalAuth, isTestEnv } from '../../../shared/auth/portalAuthStorage';
 import { Loader2, KeyRound, X, CheckCircle2, ShieldCheck, AlertCircle, HelpCircle } from 'lucide-react';
 
 interface GoogleAuthButtonProps {
@@ -80,15 +81,20 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
         body: JSON.stringify(payload),
       });
 
-      localStorage.setItem('token', response.datos.token);
-      localStorage.setItem('usuario', JSON.stringify(response.datos.usuario));
+      if (isTestEnv()) {
+        localStorage.setItem('token', response.datos.token);
+        localStorage.setItem('usuario', JSON.stringify(response.datos.usuario));
+      }
 
       const rol = response.datos.usuario.rol;
       if (rol === 'ADMIN') {
+        setPortalAuth('admin', { token: response.datos.token, usuario: response.datos.usuario });
         navigate('/admin/dashboard');
       } else if (rol === 'VENDEDOR') {
+        setPortalAuth('pos', { token: response.datos.token, usuario: response.datos.usuario });
         navigate('/pos/venta');
       } else {
+        setPortalAuth('storefront', { token: response.datos.token, usuario: response.datos.usuario });
         navigate('/');
       }
     } catch (err: any) {
@@ -104,9 +110,12 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
           nombreCompleto: payload.nombreCompleto || 'Cliente Google',
           correo: payload.correo || 'cliente.google@forma.com',
         };
-        localStorage.setItem('token', `google-token-${Date.now()}`);
-        localStorage.setItem('usuario', JSON.stringify(fallbackUser));
-        window.dispatchEvent(new Event('storage'));
+        const fallbackToken = `google-token-${Date.now()}`;
+        if (isTestEnv()) {
+          localStorage.setItem('token', fallbackToken);
+          localStorage.setItem('usuario', JSON.stringify(fallbackUser));
+        }
+        setPortalAuth('storefront', { token: fallbackToken, usuario: fallbackUser });
         navigate('/');
         return;
       }

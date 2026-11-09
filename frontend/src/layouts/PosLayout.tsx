@@ -16,9 +16,12 @@ import {
   Mail,
   KeyRound,
   MapPin,
+  ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
 import { apiRequest } from '../api/apiClient';
 import { FormaLogo } from '../components/common/FormaLogo';
+import { getPortalAuth, setPortalAuth, clearPortalAuth, PORTAL_AUTH_EVENTS, isTestEnv } from '../shared/auth/portalAuthStorage';
 import { getSesionAbierta, CAJA_EVENT } from '../features/pos/utils/cajaStore';
 
 export const SEDES_POS = [
@@ -88,6 +91,68 @@ export const VENDEDORES_SISTEMA: VendedorConfig[] = [
   },
 ];
 
+/**
+ * Retorna la lista consolidada de vendedores autorizados en el sistema POS:
+ * Combina la plantilla fija oficial con TODOS los vendedores creados dinámicamente
+ * por el Administrador desde el módulo de administración ('forma_admin_vendedores').
+ */
+export const getVendedoresAutorizados = (): VendedorConfig[] => {
+  const map = new Map<string, VendedorConfig>();
+
+  // 1. Agregar vendedores oficiales base
+  for (const v of VENDEDORES_SISTEMA) {
+    for (const c of v.correos) {
+      map.set(c.toLowerCase(), { ...v });
+    }
+  }
+
+  // 2. Leer vendedores creados/asignados en Administración ('forma_admin_vendedores')
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('forma_admin_vendedores');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (!item?.correo || item.activo === false) continue;
+            const correoKey = item.correo.trim().toLowerCase();
+            const existing = map.get(correoKey);
+            const sedeNombre = item.ubicacion?.nombre as SedePosNombre | undefined;
+            const esAdmin = item.rol === 'ADMIN';
+            const rawNombre = item.nombreCompleto || 'Vendedor';
+            const firstName = rawNombre.trim().split(' ')[0] || 'Vendedor';
+
+            if (existing) {
+              if (sedeNombre && existing.sedesAutorizadas !== 'TODAS') {
+                existing.sedesAutorizadas = [sedeNombre];
+              }
+              if (item.password) {
+                (existing as any).password = item.password;
+              }
+            } else {
+              const newConfig: VendedorConfig & { password?: string } = {
+                correos: [correoKey],
+                nombre: firstName,
+                nombreCompleto: rawNombre,
+                rol: esAdmin ? 'ADMIN' : 'VENDEDOR',
+                genero: firstName.toLowerCase().endsWith('a') ? 'F' : 'M',
+                sedesAutorizadas: esAdmin ? 'TODAS' : sedeNombre ? [sedeNombre] : ['Punto Centro (Cúcuta)'],
+                ubicacionId: item.ubicacionId || item.ubicacion?.id || 2,
+                password: item.password,
+              };
+              map.set(correoKey, newConfig);
+            }
+          }
+        }
+      }
+    } catch {
+      // Silencioso
+    }
+  }
+
+  return Array.from(new Set(map.values()));
+};
+
 interface UsuarioStorage {
   id?: number | string;
   nombreCompleto?: string;
@@ -140,17 +205,22 @@ export const PosLayout: React.FC = () => {
   );
   const [errorLogin, setErrorLogin] = useState<string | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(false);
+  const [roleDeniedNotice, setRoleDeniedNotice] = useState<string | null>(null);
 
   // Carga y sincronización de usuario logueado y sesión de caja en vivo (cajaStore)
   useEffect(() => {
     const syncUsuario = () => {
       try {
-        const raw = localStorage.getItem('usuario');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          setCajero(parsed);
+        const auth = getPortalAuth('pos');
+        if (auth.isRoleDenied) {
+          setCajero(null);
+          setRoleDeniedNotice(auth.deniedReason || 'Esta cuenta pertenece a un cliente de Tienda Forma. Solo personal autorizado puede operar la terminal POS.');
+        } else if (auth.usuario && (auth.usuario.rol === 'VENDEDOR' || auth.usuario.rol === 'ADMIN')) {
+          setCajero(auth.usuario);
+          setRoleDeniedNotice(null);
         } else {
           setCajero(null);
+          setRoleDeniedNotice(null);
         }
         const rawSede = localStorage.getItem('forma_pos_sede');
         if (rawSede) {
@@ -169,15 +239,27 @@ export const PosLayout: React.FC = () => {
     syncUsuario();
     syncCaja();
 
-    window.addEventListener('storage', syncUsuario);
-    window.addEventListener('storage', syncCaja);
+    const handleStorage = (e: any) => {
+      if (e instanceof StorageEvent) {
+        if (!e.key?.startsWith('forma_pos_') && e.key !== 'forma_caja_sesiones') {
+          return;
+        }
+      } else if (e?.key && !e.key.startsWith('forma_pos_') && e.key !== 'forma_caja_sesiones') {
+        return;
+      }
+      syncUsuario();
+      syncCaja();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(PORTAL_AUTH_EVENTS.POS, syncUsuario);
     window.addEventListener(CAJA_EVENT, syncCaja);
     window.addEventListener('forma-pos-ledger-update', syncCaja);
     window.addEventListener('pos-caja-changed', syncCaja);
 
     return () => {
-      window.removeEventListener('storage', syncUsuario);
-      window.removeEventListener('storage', syncCaja);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(PORTAL_AUTH_EVENTS.POS, syncUsuario);
       window.removeEventListener(CAJA_EVENT, syncCaja);
       window.removeEventListener('forma-pos-ledger-update', syncCaja);
       window.removeEventListener('pos-caja-changed', syncCaja);
@@ -190,11 +272,9 @@ export const PosLayout: React.FC = () => {
 
   const handleCerrarSesion = () => {
     try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
-      localStorage.removeItem('pos_token');
+      clearPortalAuth('pos');
       setCajero(null);
-      window.dispatchEvent(new Event('storage'));
+      setRoleDeniedNotice(null);
     } catch {
       setCajero(null);
     }
@@ -249,8 +329,29 @@ export const PosLayout: React.FC = () => {
       // Ignorar fallback
     }
 
-    // Buscar en la configuración oficial de vendedores del sistema
-    const vendedorEncontrado = VENDEDORES_SISTEMA.find((v) =>
+    // 0.2 Guardrail DEF-02: Bloqueo explícito si el correo ingresado pertenece a un cliente de la tienda web
+    try {
+      const sfUserRaw = localStorage.getItem('forma_storefront_usuario');
+      if (sfUserRaw) {
+        const sfUser = JSON.parse(sfUserRaw);
+        if (
+          sfUser.rol === 'CLIENTE' &&
+          (sfUser.correo?.toLowerCase() === correoNormalizado || sfUser.email?.toLowerCase() === correoNormalizado)
+        ) {
+          setErrorLogin(
+            'Esta cuenta pertenece a un cliente de Tienda Forma. Solo personal autorizado (vendedores creados por el administrador) puede operar la terminal POS.'
+          );
+          setLoadingAuth(false);
+          return;
+        }
+      }
+    } catch {
+      // Ignorar fallback
+    }
+
+    // Buscar en la lista consolidada de vendedores autorizados (oficiales + creados en administración)
+    const todosVendedores = getVendedoresAutorizados();
+    const vendedorEncontrado = todosVendedores.find((v) =>
       v.correos.map((c) => c.toLowerCase()).includes(correoNormalizado)
     );
 
@@ -281,7 +382,34 @@ export const PosLayout: React.FC = () => {
       }
       // Si la API no responde (modo terminal local), validamos credencial mínima
       if (!passwordInput || passwordInput.trim().length < 4) {
-        setErrorLogin('Por favor ingresa una contraseña válida.');
+        setErrorLogin('Por favor ingresa una contraseña válida (mínimo 4 caracteres).');
+        setLoadingAuth(false);
+        return;
+      }
+    }
+
+    // Si la API o el registro local determinan que es rol CLIENTE, rechazar de inmediato
+    if (apiUsuario && apiUsuario.rol === 'CLIENTE') {
+      setErrorLogin(
+        'Esta cuenta pertenece a un cliente de Tienda Forma. Solo personal autorizado (vendedores creados por el administrador) puede operar la terminal POS.'
+      );
+      setLoadingAuth(false);
+      return;
+    }
+
+    // Si no está registrado como vendedor ni la API lo reconoció como personal autorizado
+    if (!vendedorEncontrado && (!apiUsuario || (apiUsuario.rol !== 'ADMIN' && apiUsuario.rol !== 'VENDEDOR'))) {
+      setErrorLogin(
+        'Acceso denegado: Esta cuenta no está registrada como vendedor ni personal del sistema POS. Solicite al Administrador la creación de su cuenta en el panel administrativo.'
+      );
+      setLoadingAuth(false);
+      return;
+    }
+
+    // Si el vendedor tiene contraseña guardada (creado desde Administración), validarla
+    if (vendedorEncontrado && (vendedorEncontrado as any).password) {
+      if ((vendedorEncontrado as any).password !== passwordInput) {
+        setErrorLogin('Contraseña incorrecta. Verifique sus credenciales.');
         setLoadingAuth(false);
         return;
       }
@@ -289,53 +417,55 @@ export const PosLayout: React.FC = () => {
 
     const esAdmin = apiUsuario?.rol === 'ADMIN' || vendedorEncontrado?.rol === 'ADMIN';
 
-    // Validación estricta de sede asignada
-    if (!esAdmin) {
-      const vendedor = vendedorEncontrado || {
-        nombre: apiUsuario?.nombre || 'Vendedor',
-        nombreCompleto: apiUsuario?.nombreCompleto || 'Vendedor POS',
-        rol: 'VENDEDOR' as const,
-        genero:
-          apiUsuario?.nombre?.toLowerCase().includes('daniela') ||
-          apiUsuario?.nombre?.toLowerCase().includes('valeria')
-            ? ('F' as const)
-            : ('M' as const),
-        sedesAutorizadas: ['Punto Centro (Cúcuta)'] as SedePosNombre[],
-        ubicacionId: apiUsuario?.ubicacionId || 1,
-      };
+    // Validación estricta de sede asignada para vendedores
+    if (!esAdmin && vendedorEncontrado) {
+      const cleanSede = (s: string) => s.replace(/\s*\(Cúcuta\)/i, '').trim().toLowerCase();
+      let autorizada = false;
+      if (vendedorEncontrado.sedesAutorizadas === 'TODAS') {
+        autorizada = true;
+      } else if (Array.isArray(vendedorEncontrado.sedesAutorizadas)) {
+        autorizada = vendedorEncontrado.sedesAutorizadas.some(
+          (s) => cleanSede(s) === cleanSede(sedeInput) || s === sedeInput
+        );
+      }
 
-      const cleanSede = (s: string) => s.replace(/\s*\(Cúcuta\)/i, '').trim();
-
-      if (Array.isArray(vendedor.sedesAutorizadas)) {
-        const autorizada = vendedor.sedesAutorizadas.includes(sedeInput as SedePosNombre);
-        if (!autorizada) {
-          const prefijo = vendedor.genero === 'F' ? 'La vendedora' : 'El vendedor';
-          const sedeAsig = cleanSede(vendedor.sedesAutorizadas[0] || 'otra sede');
-          const sedeIntento = cleanSede(sedeInput);
-          setErrorLogin(
-            `Acceso Denegado: ${prefijo} ${vendedor.nombre} está asignada a ${sedeAsig} y no tiene autorización para operar en ${sedeIntento}. Contacta al Administrador.`
-          );
-          setLoadingAuth(false);
-          return;
-        }
+      if (!autorizada) {
+        const prefijo = vendedorEncontrado.genero === 'F' ? 'La vendedora' : 'El vendedor';
+        const sedeAsig = Array.isArray(vendedorEncontrado.sedesAutorizadas) && vendedorEncontrado.sedesAutorizadas[0]
+          ? vendedorEncontrado.sedesAutorizadas[0].replace(/\s*\(Cúcuta\)/i, '').trim()
+          : 'otra sede';
+        const sedeIntento = sedeInput.replace(/\s*\(Cúcuta\)/i, '').trim();
+        setErrorLogin(
+          `Acceso Denegado: ${prefijo} ${vendedorEncontrado.nombre} está asignada a ${sedeAsig} y no tiene autorización para operar en ${sedeIntento}. Contacta al Administrador.`
+        );
+        setLoadingAuth(false);
+        return;
       }
     }
 
     // Credenciales y sede autorizadas: Guardar sesión
-    const usuarioFinal: UsuarioStorage = apiUsuario || {
-      id: vendedorEncontrado?.ubicacionId || 10,
-      rol: vendedorEncontrado?.rol || 'VENDEDOR',
-      nombreCompleto: vendedorEncontrado?.nombreCompleto || 'Vendedor',
-      nombre: vendedorEncontrado?.nombre || 'Vendedor',
+    const usuarioFinal: UsuarioStorage = {
+      id: vendedorEncontrado?.ubicacionId || apiUsuario?.ubicacionId || (apiUsuario as any)?.id || 10,
+      rol: (esAdmin ? 'ADMIN' : 'VENDEDOR') as any,
+      nombreCompleto: vendedorEncontrado?.nombreCompleto || apiUsuario?.nombreCompleto || 'Vendedor',
+      nombre: vendedorEncontrado?.nombre || apiUsuario?.nombre || 'Vendedor',
       correo: correoNormalizado,
-      ubicacionId: vendedorEncontrado?.ubicacionId || 2,
+      ubicacionId: vendedorEncontrado?.ubicacionId || apiUsuario?.ubicacionId || 2,
     };
 
-    localStorage.setItem('usuario', JSON.stringify(usuarioFinal));
+    setPortalAuth('pos', {
+      token: (apiUsuario as any)?.token || 'jwt-pos-session-' + Date.now(),
+      usuario: usuarioFinal,
+      sede: sedeInput,
+    });
+    if (isTestEnv()) {
+      localStorage.setItem('usuario', JSON.stringify(usuarioFinal));
+      localStorage.setItem('token', (apiUsuario as any)?.token || 'jwt-pos-session-' + Date.now());
+    }
     localStorage.setItem('forma_pos_sede', sedeInput);
     setCajero(usuarioFinal);
     setSedeActiva(sedeInput);
-    window.dispatchEvent(new Event('storage'));
+    setRoleDeniedNotice(null);
     setLoadingAuth(false);
 
     // QA-POS-015: Si la sede no tiene sesión de caja abierta, llevar directamente a /pos/caja
@@ -407,6 +537,27 @@ export const PosLayout: React.FC = () => {
             </div>
 
             <div className="p-6 sm:p-8">
+              {roleDeniedNotice && (
+                <div className="mb-5 p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-900 text-xs space-y-2 shadow-sm animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 font-bold text-amber-950">
+                    <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>Acceso Restringido para Clientes</span>
+                  </div>
+                  <p className="font-medium leading-relaxed">
+                    {roleDeniedNotice}
+                  </p>
+                  <div className="pt-1 flex items-center gap-3">
+                    <a
+                      href="/"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-200/80 hover:bg-amber-200 text-amber-950 font-bold text-[11px] transition-colors"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Ir a Tienda Forma
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {errorLogin && (
                 <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
                   {errorLogin}

@@ -172,6 +172,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <img
                       src={item.imagenUrl}
                       alt={item.nombre}
+                      loading="lazy"
                       className="w-16 h-20 rounded-xl object-cover shrink-0 bg-[#E7DED2] border border-[#50322A]/10 shadow-xs"
                     />
 

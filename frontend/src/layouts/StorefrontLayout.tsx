@@ -1,5 +1,5 @@
-import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Navbar } from './StorefrontLayout/components/Navbar';
 import { FormaLogo } from '../components/common/FormaLogo';
 import {
@@ -9,8 +9,24 @@ import {
 import { CartDrawer } from '../features/storefront/components/CartDrawer';
 
 const StorefrontShell: React.FC = () => {
+  const location = useLocation();
   const { items, isCartOpen, closeCart, updateCantidad, removeItem } =
     useStorefrontCart();
+
+  // Restaurar scroll superior automáticamente en cambios de sección / ruta (CLI-003, CLI-004)
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } else {
+      const elementId = location.hash.replace('#', '');
+      const el = document.getElementById(elementId);
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location.pathname, location.hash]);
 
   return (
     <div className="min-h-screen flex flex-col forma-storefront-canvas text-[#171717]">

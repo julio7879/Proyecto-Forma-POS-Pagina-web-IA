@@ -32,7 +32,7 @@ export const checkoutWebSchema = z
   );
 
 export const pedidoWebIdParamSchema = z.object({
-  id: z.coerce.number().int().positive('El parámetro id debe ser un entero positivo'),
+  id: z.string().min(1, 'El parámetro id o código del pedido es requerido'),
 });
 
 export const listarPedidosWebQuerySchema = z.object({
@@ -123,3 +123,18 @@ export type LineaRetornoLogisticoInput = z.infer<typeof lineaRetornoLogisticoSch
 export type RetornoLogisticoInput = z.infer<typeof retornoLogisticoSchema>;
 export type LineaDevolucionComercialInput = z.infer<typeof lineaDevolucionComercialSchema>;
 export type DevolucionComercialWebInput = z.infer<typeof devolucionComercialWebSchema>;
+
+export const transicionarPedidoWebSchema = z.object({
+  nuevoEstado: z.enum([
+    'CONFIRMADO',
+    'EN_PREPARACION',
+    'ENVIADO',
+    'ENTREGADO',
+    'CANCELADO',
+  ]),
+  transportadora: z.string().trim().optional(),
+  numeroGuia: z.string().trim().optional(),
+  observacion: z.string().trim().optional(),
+  referenciaPagoRecaudo: z.string().trim().optional(),
+});
+export type TransicionarPedidoWebInput = z.infer<typeof transicionarPedidoWebSchema>;

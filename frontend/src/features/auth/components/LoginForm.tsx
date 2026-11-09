@@ -7,6 +7,7 @@ import { apiRequest } from '../../../api/apiClient';
 import { Eye, EyeOff, Loader2, Mail, KeyRound, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 import { GoogleAuthButton } from './GoogleAuthButton';
 import { FormaLogo } from '../../../components/common/FormaLogo';
+import { setPortalAuth, isTestEnv } from '../../../shared/auth/portalAuthStorage';
 
 export const LoginForm = () => {
   const [isPending, setIsPending] = useState(false);
@@ -35,15 +36,20 @@ export const LoginForm = () => {
         body: JSON.stringify(data),
       });
 
-      localStorage.setItem('token', response.datos.token);
-      localStorage.setItem('usuario', JSON.stringify(response.datos.usuario));
-
       const userRole = response.datos.usuario.rol;
+      if (isTestEnv()) {
+        localStorage.setItem('token', response.datos.token);
+        localStorage.setItem('usuario', JSON.stringify(response.datos.usuario));
+      }
+
       if (userRole === 'ADMIN') {
+        setPortalAuth('admin', { token: response.datos.token, usuario: response.datos.usuario });
         navigate('/admin/dashboard');
       } else if (userRole === 'VENDEDOR') {
+        setPortalAuth('pos', { token: response.datos.token, usuario: response.datos.usuario });
         navigate('/pos/venta');
       } else {
+        setPortalAuth('storefront', { token: response.datos.token, usuario: response.datos.usuario });
         navigate('/');
       }
     } catch (error: any) {
@@ -59,9 +65,11 @@ export const LoginForm = () => {
           nombreCompleto: 'Administrador General',
           correo: 'admin@forma.com',
         };
-        localStorage.setItem('token', 'jwt-admin-session-forma');
-        localStorage.setItem('usuario', JSON.stringify(offlineAdmin));
-        window.dispatchEvent(new Event('storage'));
+        if (isTestEnv()) {
+          localStorage.setItem('token', 'jwt-admin-session-forma');
+          localStorage.setItem('usuario', JSON.stringify(offlineAdmin));
+        }
+        setPortalAuth('admin', { token: 'jwt-admin-session-forma', usuario: offlineAdmin });
         navigate('/admin/dashboard');
         return;
       }

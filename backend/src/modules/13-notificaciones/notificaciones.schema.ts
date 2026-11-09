@@ -64,5 +64,21 @@ export const notificarBienvenidaSchema = z.object({
   clienteEmail: z.string().trim().email('Formato de correo inválido').toLowerCase(),
 });
 
+export const notificarEstadoPedidoSchema = z.object({
+  codigo: z.string().trim().min(1, 'El código del pedido es requerido'),
+  clienteNombre: z.string().trim().min(1).optional().default('Cliente Estimado'),
+  clienteEmail: z.string().trim().email('Formato de correo inválido').toLowerCase(),
+  nuevoEstado: z.string().trim().min(1, 'El nuevo estado es requerido'),
+  nuevoEstadoTexto: z.string().trim().min(1).optional(),
+  descripcionEstado: z.string().trim().optional(),
+  sedeAsignada: z.string().trim().optional(),
+  guiaTransportadora: z.string().trim().optional(),
+  transportadora: z.string().trim().optional(),
+}).transform((d) => ({
+  ...d,
+  nuevoEstadoTexto: d.nuevoEstadoTexto || d.nuevoEstado,
+}));
+
 export type NotificarPedidoWebDTO = z.infer<typeof notificarPedidoWebSchema>;
 export type NotificarBienvenidaDTO = z.infer<typeof notificarBienvenidaSchema>;
+export type NotificarEstadoPedidoDTO = z.infer<typeof notificarEstadoPedidoSchema>;

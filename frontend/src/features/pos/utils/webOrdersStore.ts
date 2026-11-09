@@ -4,7 +4,65 @@
 // Reglas: RN-WEB-05 (sede asignada), RN-WEB-15 (reserva dura), CA-40 (contraentrega no suma
 // a ventas hasta PAGADO por Admin), CA-64 (NO_ENTREGADO = retorno logístico sin afectar ventas).
 
-import { applyStockDelta } from './posLedgerSync';
+import {
+  applyStockDelta,
+  getBodegaCentralDelta,
+  applyBodegaCentralDelta,
+  getAllStockDeltas,
+} from './posLedgerSync';
+import { PRODUCTOS_SEMILLA } from '../../storefront/services/catalogService';
+import { apiRequest } from '../../../api/apiClient';
+
+const KEY_GLOBAL = 'forma_pedidos_web_global';
+
+// Purga inmediata de pedidos de prueba huérfanos específicos ($548.000 / $540.000 / $73.000)
+if (typeof window !== 'undefined') {
+  try {
+    const keysToCheck: string[] = ['forma_ultimo_pedido', KEY_GLOBAL];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('forma_pedidos_')) {
+        keysToCheck.push(k);
+      }
+    }
+    keysToCheck.forEach((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const limpios = parsed.filter(
+            (p: any) =>
+              p &&
+              p.totalCOP !== 548000 &&
+              p.totalCOP !== 540000 &&
+              p.totalCOP !== 73000 &&
+              p.subtotalCOP !== 548000 &&
+              p.subtotalCOP !== 540000 &&
+              p.subtotalCOP !== 73000
+          );
+          if (limpios.length !== parsed.length) {
+            localStorage.setItem(key, JSON.stringify(limpios));
+          }
+        } else if (
+          parsed &&
+          (parsed.totalCOP === 548000 ||
+            parsed.totalCOP === 540000 ||
+            parsed.totalCOP === 73000 ||
+            parsed.subtotalCOP === 548000 ||
+            parsed.subtotalCOP === 540000 ||
+            parsed.subtotalCOP === 73000)
+        ) {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        /* noop */
+      }
+    });
+  } catch {
+    /* noop */
+  }
+}
 
 export type EstadoPedidoWeb =
   | 'RECIBIDO'
@@ -75,7 +133,6 @@ export interface PedidoWebRecord {
   historial: EventoPedidoWeb[];
 }
 
-const KEY_GLOBAL = 'forma_pedidos_web_global';
 export const WEB_ORDERS_EVENT = 'forma-web-orders-update';
 
 /** Orden lógico para línea de tiempo del cliente (MiCuenta / Rastreo). */
@@ -89,7 +146,7 @@ export const FLUJO_ESTADOS_WEB: EstadoPedidoWeb[] = [
   'ENTREGADO',
 ];
 
-const normalizarSede = (s: string): string =>
+export const normalizarSede = (s: string): string =>
   s
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -99,8 +156,109 @@ const normalizarSede = (s: string): string =>
     .toLowerCase();
 
 /** Compara sedes tolerando variantes ('Punto Centro (Cúcuta)' vs 'Punto Centro — Cúcuta'). */
-export const mismaSede = (a?: string, b?: string): boolean =>
-  Boolean(a && b && normalizarSede(a) === normalizarSede(b));
+export const mismaSede = (a?: string, b?: string): boolean => {
+  if (!a || !b) return false;
+  const na = normalizarSede(a);
+  const nb = normalizarSede(b);
+  if (na === nb) return true;
+  if ((na.includes('bodega') || na.includes('central')) && (nb.includes('bodega') || nb.includes('central'))) return true;
+  if (na.includes('centro') && nb.includes('centro')) return true;
+  if (na.includes('caobos') && nb.includes('caobos')) return true;
+  if ((na.includes('ocana') || na.includes('ocaña')) && (nb.includes('ocana') || nb.includes('ocaña'))) return true;
+  if (na.includes('bucaramanga') && nb.includes('bucaramanga')) return true;
+  return false;
+};
+
+/**
+ * Retorna el stock físico real disponible de un SKU en una sede específica.
+ * Normaliza sedes: 'Bodega Central' / 'Centro de Producción', 'Punto Centro (Cúcuta)' -> 'Punto Centro', etc.
+ */
+export const obtenerStockSede = (sku: string, sede: string): number => {
+  if (!sku) return 0;
+  const sNorm = normalizarSede(sede || '');
+  const skuUpper = sku.trim().toUpperCase();
+
+  // 1. Centro de Producción / Bodega Central:
+  if (
+    sNorm.includes('bodega') ||
+    sNorm.includes('central') ||
+    sNorm.includes('produccion') ||
+    sNorm.includes('admin')
+  ) {
+    let base = 0;
+    for (const p of PRODUCTOS_SEMILLA) {
+      const v = p.variantes?.find((x) => x.sku.toUpperCase() === skuUpper);
+      if (v) {
+        base = v.stockPorSede?.['Bodega Central'] ?? v.stockDisponible ?? 0;
+        break;
+      }
+    }
+    const delta = getBodegaCentralDelta(skuUpper);
+    return Math.max(0, base + delta);
+  }
+
+  // 2. Puntos de venta físicos (Punto Centro, Punto Caobos, Punto Ocaña, Punto Bucaramanga):
+  let claveSede = 'Punto Centro';
+  if (sNorm.includes('caobos')) claveSede = 'Punto Caobos';
+  else if (sNorm.includes('ocana') || sNorm.includes('ocaña')) claveSede = 'Punto Ocaña';
+  else if (sNorm.includes('bucaramanga')) claveSede = 'Punto Bucaramanga';
+  else if (sNorm.includes('centro')) claveSede = 'Punto Centro';
+
+  let baseTienda = 0;
+  for (const p of PRODUCTOS_SEMILLA) {
+    const v = p.variantes?.find((x) => x.sku.toUpperCase() === skuUpper);
+    if (v) {
+      baseTienda = v.stockPorSede?.[claveSede] ?? 0;
+      break;
+    }
+  }
+
+  // Delta específico de sede si existe, o delta general de la terminal si es Punto Centro
+  const deltas = getAllStockDeltas();
+  const deltaEspecifico =
+    deltas[`${claveSede.toUpperCase()}::${skuUpper}`] !== undefined
+      ? deltas[`${claveSede.toUpperCase()}::${skuUpper}`]
+      : deltas[`${claveSede}::${skuUpper}`];
+
+  const deltaSede =
+    deltaEspecifico !== undefined
+      ? deltaEspecifico
+      : claveSede === 'Punto Centro'
+      ? deltas[skuUpper] || 0
+      : 0;
+
+  return Math.max(0, baseTienda + deltaSede);
+};
+
+/**
+ * Valida si una sede cuenta con stock suficiente de todos los productos de un pedido.
+ */
+export const sedeTieneStockParaPedido = (
+  sede: string,
+  productos?: { sku: string; cantidad: number }[]
+): boolean => {
+  if (!productos || productos.length === 0) return true;
+  return productos.every((item) => {
+    const stock = obtenerStockSede(item.sku, sede);
+    return stock >= (item.cantidad || 1);
+  });
+};
+
+/**
+ * Retorna la lista de sedes que cuentan con stock suficiente para surtir el pedido.
+ */
+export const obtenerSedesConStockParaPedido = (
+  productos: { sku: string; cantidad: number }[]
+): string[] => {
+  const todasLasSedes = [
+    'Punto Centro (Cúcuta)',
+    'Punto Caobos (Cúcuta)',
+    'Punto Bucaramanga',
+    'Punto Ocaña',
+    'Bodega Central',
+  ];
+  return todasLasSedes.filter((s) => sedeTieneStockParaPedido(s, productos));
+};
 
 const emitir = () => {
   try {
@@ -114,9 +272,18 @@ export const getWebOrders = (): PedidoWebRecord[] => {
   try {
     const raw = localStorage.getItem(KEY_GLOBAL);
     const arr = raw ? JSON.parse(raw) : [];
-    // Purga proactiva de pedidos de prueba huérfanos de $540.000
+    // Purga proactiva de pedidos de prueba huérfanos de $540.000 / $548.000 / $73.000
     const filtrados = Array.isArray(arr)
-      ? arr.filter((p) => p && p.totalCOP !== 540000 && p.subtotalCOP !== 540000)
+      ? arr.filter(
+          (p) =>
+            p &&
+            p.totalCOP !== 540000 &&
+            p.subtotalCOP !== 540000 &&
+            p.totalCOP !== 548000 &&
+            p.subtotalCOP !== 548000 &&
+            p.totalCOP !== 73000 &&
+            p.subtotalCOP !== 73000
+        )
       : [];
     if (Array.isArray(arr) && arr.length !== filtrados.length) {
       localStorage.setItem(KEY_GLOBAL, JSON.stringify(filtrados));
@@ -189,13 +356,33 @@ const guardar = (lista: PedidoWebRecord[]) => {
  * - Apenas una sede inicia 'EN_PREPARACION', el pedido queda bloqueado exclusivamente para
  *   esa `sedeAsignada` y desaparece del listado de las demás sedes.
  */
-export const getWebOrdersBySede = (sede: string): PedidoWebRecord[] =>
-  getWebOrders().filter((p) => {
-    if (p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO') {
+export const getWebOrdersBySede = (sede: string): PedidoWebRecord[] => {
+  const sNorm = normalizarSede(sede || '');
+  const esCentral =
+    sNorm.includes('bodega') ||
+    sNorm.includes('central') ||
+    sNorm.includes('produccion') ||
+    sNorm.includes('admin');
+
+  return getWebOrders().filter((p) => {
+    // Si el pedido ya fue tomado o está en curso:
+    if (p.estado !== 'RECIBIDO' && p.estado !== 'CONFIRMADO') {
+      return mismaSede(p.sedeAsignada, sede);
+    }
+
+    // Si el pedido está pendiente por alistar (RECIBIDO o CONFIRMADO):
+    // 1. Centro de Producción (Bodega Central / Admin):
+    // Siempre tiene visibilidad de la bandeja global de pedidos pendientes por alistar.
+    if (esCentral) {
       return true;
     }
-    return mismaSede(p.sedeAsignada, sede);
+
+    // 2. Punto de Venta Físico:
+    // Solo le aparece si la sede TIENE STOCK disponible de todas las prendas del pedido.
+    // Si la sede no cuenta con stock suficiente, no le aparece en su bandeja de alistamiento.
+    return sedeTieneStockParaPedido(sede, p.productos);
   });
+};
 
 export const getWebOrdersByEmail = (email: string): PedidoWebRecord[] => {
   const e = email.trim().toLowerCase();
@@ -291,7 +478,17 @@ export const transicionarPedidoWeb = (
     actual.estado !== 'EN_ENTREGA' &&
     actual.estado !== 'ENTREGADO'
   ) {
-    actual.productos.forEach((p) => applyStockDelta(p.sku, -p.cantidad));
+    const sNorm = normalizarSede(actual.sedeAsignada || '');
+    const esBodegaCentral =
+      sNorm.includes('bodega') ||
+      sNorm.includes('central') ||
+      sNorm.includes('produccion');
+
+    if (esBodegaCentral) {
+      actual.productos.forEach((p) => applyBodegaCentralDelta(p.sku, -p.cantidad));
+    } else {
+      actual.productos.forEach((p) => applyStockDelta(p.sku, -p.cantidad));
+    }
   }
   if (nuevoEstado === 'ENTREGADO') {
     // Cuando el pedido es entregado, el dinero de contraentrega o transferencia verificada ingresa formalmente al sistema
@@ -299,7 +496,17 @@ export const transicionarPedidoWeb = (
   }
   if (nuevoEstado === 'NO_ENTREGADO') {
     if (actual.estado === 'DESPACHADO' || actual.estado === 'EN_ENTREGA') {
-      actual.productos.forEach((p) => applyStockDelta(p.sku, p.cantidad));
+      const sNorm = normalizarSede(actual.sedeAsignada || '');
+      const esBodegaCentral =
+        sNorm.includes('bodega') ||
+        sNorm.includes('central') ||
+        sNorm.includes('produccion');
+
+      if (esBodegaCentral) {
+        actual.productos.forEach((p) => applyBodegaCentralDelta(p.sku, p.cantidad));
+      } else {
+        actual.productos.forEach((p) => applyStockDelta(p.sku, p.cantidad));
+      }
     }
     cambios.estadoCobro = 'ANULADO';
   }
@@ -319,7 +526,58 @@ export const transicionarPedidoWeb = (
     CANCELADO: 'Pedido cancelado',
   };
 
-  return updateWebOrder(codigo, cambios, nuevoEvento(titulos[nuevoEstado], usuario, nota, nuevoEstado));
+  const actualizado = updateWebOrder(codigo, cambios, nuevoEvento(titulos[nuevoEstado], usuario, nota, nuevoEstado));
+
+  // Sincronización atómica con el motor PostgreSQL (PATCH /api/pedidos-web/:id/estado)
+  if (typeof window !== 'undefined' && actualizado) {
+    const estadoBackendMap: Record<EstadoPedidoWeb, string> = {
+      RECIBIDO: 'CONFIRMADO',
+      CONFIRMADO: 'CONFIRMADO',
+      EN_PREPARACION: 'EN_PREPARACION',
+      LISTO_DESPACHO: 'EN_PREPARACION',
+      DESPACHADO: 'ENVIADO',
+      EN_ENTREGA: 'ENVIADO',
+      ENTREGADO: 'ENTREGADO',
+      NO_ENTREGADO: 'CANCELADO',
+      CANCELADO: 'CANCELADO',
+    };
+    const nuevoBackendEstado = estadoBackendMap[nuevoEstado];
+    if (nuevoBackendEstado) {
+      apiRequest(`/pedidos-web/${actualizado.codigo}/estado`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nuevoEstado: nuevoBackendEstado,
+          transportadora: extra.transportadora || actualizado.transportadora,
+          numeroGuia: extra.guiaTransportadora || actualizado.guiaTransportadora,
+          observacion: nota || titulos[nuevoEstado],
+        }),
+      }).catch((err) => console.warn('Aviso sincronización backend estado pedido:', err));
+    }
+  }
+
+  // Notificación asíncrona por correo al cliente sobre el cambio de estado de su pedido
+  if (actualizado?.emailCliente) {
+    try {
+      apiRequest('/notificaciones/estado-pedido', {
+        method: 'POST',
+        body: JSON.stringify({
+          codigo: actualizado.codigo,
+          clienteNombre: actualizado.cliente,
+          clienteEmail: actualizado.emailCliente,
+          nuevoEstado,
+          nuevoEstadoTexto: titulos[nuevoEstado] || nuevoEstado,
+          descripcionEstado: nota || `Tu pedido #${actualizado.codigo} ha avanzado a estado ${titulos[nuevoEstado] || nuevoEstado}.`,
+          sedeAsignada: actualizado.sedeAsignada,
+          guiaTransportadora: extra.guiaTransportadora || actualizado.guiaTransportadora,
+          transportadora: extra.transportadora || actualizado.transportadora,
+        }),
+      }).catch((err) => console.warn('Aviso: envío de correo cambio de estado:', err));
+    } catch {
+      // Ignorar fallback
+    }
+  }
+
+  return actualizado;
 };
 
 /**
@@ -343,6 +601,19 @@ export const tomarPedidoWebEnSede = (
       };
     }
   }
+
+  // Guardrail estricto de inventario: solo puede tomar el pedido si la sede cuenta con stock físico real
+  if (!sedeTieneStockParaPedido(sede, actual.productos)) {
+    const prendasSinStock = actual.productos
+      .filter((p) => obtenerStockSede(p.sku, sede) < p.cantidad)
+      .map((p) => `${p.nombre} (${p.sku}) [Stock en sede: ${obtenerStockSede(p.sku, sede)} uds]`)
+      .join(', ');
+    return {
+      ok: false,
+      error: `No es posible tomar este pedido en ${sede}: no cuenta con stock disponible en inventario (${prendasSinStock}).`,
+    };
+  }
+
   const actualizado = transicionarPedidoWeb(
     codigo,
     'EN_PREPARACION',

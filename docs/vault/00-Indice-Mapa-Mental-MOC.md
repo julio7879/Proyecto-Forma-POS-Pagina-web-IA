@@ -12,8 +12,8 @@ Cada nota en este vault está autocontenida (50 a 140 líneas), cuenta con metad
 ## 0. Oficina de Agentes de IA y Lienzo Visual
 - [[00-Oficina-Agentes-MOC]] — Arquitectura completa del escuadrón agéntico, asignación de 20+ skills y roles por departamento.
 - [[Oficina-Agentes.canvas]] — Lienzo interactivo 2D (Obsidian Canvas) con el flujo de 5 etapas, agentes y guardrails.
-- **Escuadrón de Agentes (`07-Agentes/`):** [[AGE-00-Vigia-Requerimientos]], [[AGE-01-Inquisidor-Dudas]], [[AGE-02-Oraculo-Analista]], [[AGE-03-Arquitecto-Dominio]], [[AGE-04-Forja-Backend]], [[AGE-05-Vitral-UI]], [[AGE-06-Sabueso-Hunter]], [[AGE-07-Juez-Esceptico]], [[AGE-08-Centinela-QA]].
-- **Skills Operativas (`08-Skills/`):** [[SKI-pos-evaluador-solicitudes]], [[SKI-pos-clarification-interview]], [[SKI-orquestador-pos-rag-audit]], [[SKI-pos-clean-architecture]], [[SKI-pos-kardex-transaction]], [[SKI-pos-postgres-concurrency-optimizer]], [[SKI-pos-ecommerce-checkout-machine]], [[SKI-pos-financial-ledger-audit]], [[SKI-pos-storefront-ui-designer]], [[SKI-pos-sales-ui-design]], [[SKI-react-shadcn-admin]], [[SKI-pos-adversarial-audit]], [[SKI-pos-gitflow-pr-review]], [[SKI-pos-sprint-progress-tracker]].
+- **Escuadrón de Agentes (`07-Agentes/`):** [[AGE-00-Vigia-Requerimientos]], [[AGE-01-Inquisidor-Dudas]], [[AGE-02-Oraculo-Analista]], [[AGE-03-Arquitecto-Dominio]], [[AGE-04-Forja-Backend]], [[AGE-05-Vitral-UI]], [[AGE-06-Sabueso-Hunter]], [[AGE-07-Juez-Esceptico]], [[AGE-08-Centinela-QA]], [[AGE-09-Arquitecto-UX-Storefront]].
+- **Skills Operativas (`08-Skills/`):** [[SKI-pos-evaluador-solicitudes]], [[SKI-pos-clarification-interview]], [[SKI-orquestador-pos-rag-audit]], [[SKI-pos-clean-architecture]], [[SKI-pos-kardex-transaction]], [[SKI-pos-postgres-concurrency-optimizer]], [[SKI-pos-ecommerce-checkout-machine]], [[SKI-pos-financial-ledger-audit]], [[SKI-pos-storefront-ui-designer]], [[SKI-pos-ecommerce-ux-law]], [[SKI-pos-sales-ui-design]], [[SKI-react-shadcn-admin]], [[SKI-pos-adversarial-audit]], [[SKI-pos-gitflow-pr-review]], [[SKI-pos-sprint-progress-tracker]].
 
 ---
 
@@ -73,3 +73,4 @@ Cada nota en este vault está autocontenida (50 a 140 líneas), cuenta con metad
 - [[ARQ-04-Patrones-Concurrencia-y-Base-Datos]] — Los 9 patrones de concurrencia ACID, orden canónico, preempción y SKIP LOCKED (Sección 3.2).
 - [[ARQ-05-Estructura-Carpetas-y-Tres-Portales]] — Arquitectura de 3 portales y árbol oficial de directorios Backend/Frontend (Sección 4.1 y 4.2).
 - [[ARQ-06-Guia-Diseno-Sistema-Visual]] — Sistema de diseño visual, Liquid Glass UI estilo Apple para Storefront, ergonomía POS y tokens (Sección 2 y 4).
+- [[ARQ-07-Ley-Diseno-Ecommerce-Navegacion-UIUX]] — Ley Canónica de Diseño E-Commerce, Navegación Intuitiva, Jerarquía Visual, PDP, Catálogo (Grid/List), Carrito, Checkout y Rendimiento (14 Mandamientos y 13 Figuras Normativas).

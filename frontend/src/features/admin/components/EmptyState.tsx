@@ -22,16 +22,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-[14px] bg-[#FFFFFF] border border-[#E7E0D8] p-10 text-center flex flex-col items-center justify-center shadow-2xs ${className}`}
+      className={`relative rounded-3xl backdrop-blur-2xl bg-white/[0.07] border border-white/[0.14] p-10 text-center flex flex-col items-center justify-center shadow-[0_12px_30px_rgba(0,0,0,0.3)] overflow-hidden text-white ${className}`}
     >
-      <div className="w-12 h-12 rounded-[12px] bg-[#F5F3EF] border border-[#E7E0D8] text-[#741C2B] flex items-center justify-center mb-3.5 shadow-2xs">
-        <Icon className="w-6 h-6 text-[#C49A68]" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
+      <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 text-[#E5BE90] flex items-center justify-center mb-3.5 shadow-sm relative z-10">
+        <Icon className="w-6 h-6 text-[#E5BE90]" />
       </div>
-      <h4 className="text-[15px] font-black text-[#292827] tracking-tight">
+      <h4 className="text-[15px] font-black text-white tracking-tight relative z-10">
         {title}
       </h4>
       {description && (
-        <p className="text-[13px] text-[#77736E] mt-1 max-w-md leading-relaxed">
+        <p className="text-[13px] text-white/70 mt-1 max-w-md leading-relaxed relative z-10">
           {description}
         </p>
       )}
@@ -39,14 +41,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <button
           type="button"
           onClick={onAction}
-          className="mt-4 px-4 py-2 rounded-[12px] bg-[#741C2B] hover:bg-[#5E1622] text-white text-[13px] font-bold transition-colors cursor-pointer shadow-2xs"
+          className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-[#741C2B] to-[#912537] hover:from-[#912537] hover:to-[#A32E43] text-white text-[13px] font-bold transition-all cursor-pointer shadow-md relative z-10 border border-white/20"
         >
           {actionLabel}
         </button>
       )}
-      {children && <div className="mt-4">{children}</div>}
+      {children && <div className="mt-4 relative z-10">{children}</div>}
     </div>
   );
 };
-
-export default EmptyState;

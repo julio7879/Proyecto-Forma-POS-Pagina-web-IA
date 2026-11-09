@@ -45,11 +45,14 @@ export function AdminDataTable<T>({
 }: AdminDataTableProps<T>) {
   return (
     <div
-      className={`rounded-[14px] bg-[#FFFFFF] border border-[#E7E0D8] shadow-2xs overflow-hidden flex flex-col ${className}`}
+      className={`relative rounded-3xl backdrop-blur-2xl bg-white/[0.07] border border-white/[0.14] shadow-[0_12px_30px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col text-white ${className}`}
     >
+      {/* Reflejo superior especular */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
       {/* Vista Móvil (< md): Tarjetas compactas apiladas sin desbordamiento horizontal */}
       {!isLoading && data.length > 0 && (
-        <div className="md:hidden divide-y divide-[#E7E0D8]">
+        <div className="md:hidden divide-y divide-white/10 relative z-10">
           {data.map((row) => {
             const key = keyExtractor(row);
             const isSelected = selectedRowKey !== undefined && selectedRowKey === key;
@@ -67,8 +70,8 @@ export function AdminDataTable<T>({
                 }}
                 className={`p-4 space-y-2.5 transition-colors ${
                   isSelected
-                    ? 'bg-[#741C2B]/5'
-                    : 'bg-[#FFFFFF] hover:bg-[#F5F3EF]/70'
+                    ? 'bg-[#741C2B]/30 border-l-2 border-[#C49A68]'
+                    : 'bg-black/20 hover:bg-white/[0.05]'
                 } ${onSelectRow ? 'cursor-pointer' : ''}`}
               >
                 {renderMobileCard ? (
@@ -82,10 +85,10 @@ export function AdminDataTable<T>({
                           key={`mob-col-${col.key}`}
                           className="flex items-start justify-between gap-3 text-[13px]"
                         >
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#77736E] shrink-0">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-white/60 shrink-0">
                             {col.header}
                           </span>
-                          <div className="text-right font-medium text-[#292827] min-w-0">
+                          <div className="text-right font-medium text-white min-w-0">
                             {col.render ? col.render(row) : (row as any)[col.key]}
                           </div>
                         </div>
@@ -98,17 +101,17 @@ export function AdminDataTable<T>({
         </div>
       )}
 
-      {/* Vista Desktop (md+): Tabla compacta con filas de 56px (escala 52-60px) */}
-      <div className="overflow-x-auto">
+      {/* Vista Desktop (md+): Tabla compacta con filas de 56px en Frosted Acrylic */}
+      <div className="overflow-x-auto relative z-10">
         <table className="w-full text-left border-collapse text-[13px]">
-          <thead className="bg-[#F5F3EF] border-b border-[#E7E0D8]">
+          <thead className="bg-white/[0.04] border-b border-white/10 select-none">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
                   style={{ width: col.width }}
-                  className={`px-4 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-[#77736E] ${
+                  className={`px-4 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-white/60 ${
                     col.align === 'right'
                       ? 'text-right'
                       : col.align === 'center'
@@ -122,13 +125,13 @@ export function AdminDataTable<T>({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-[#E7E0D8]">
+          <tbody className="divide-y divide-white/[0.07]">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, idx) => (
                 <tr key={`skeleton-${idx}`} className="animate-pulse h-[56px]">
                   {columns.map((_, cIdx) => (
                     <td key={`skel-col-${cIdx}`} className="px-4 py-3">
-                      <div className="h-4 bg-[#E7E0D8]/60 rounded-md w-3/4" />
+                      <div className="h-4 bg-white/10 rounded-md w-3/4" />
                     </td>
                   ))}
                 </tr>
@@ -137,13 +140,13 @@ export function AdminDataTable<T>({
               <tr>
                 <td colSpan={columns.length} className="py-14 text-center">
                   <div className="flex flex-col items-center justify-center max-w-sm mx-auto px-4">
-                    <div className="w-12 h-12 rounded-[12px] bg-[#F5F3EF] border border-[#E7E0D8] text-[#741C2B] flex items-center justify-center mb-3 shadow-2xs">
-                      <PackageOpen className="w-6 h-6 text-[#C49A68]" />
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 text-[#E5BE90] flex items-center justify-center mb-3 shadow-sm">
+                      <PackageOpen className="w-6 h-6 text-[#E5BE90]" />
                     </div>
-                    <h4 className="text-[14px] font-black text-[#292827]">
+                    <h4 className="text-[14px] font-black text-white">
                       {emptyTitle}
                     </h4>
-                    <p className="text-[13px] text-[#77736E] mt-1">
+                    <p className="text-[13px] text-white/60 mt-1">
                       {emptySubtitle}
                     </p>
                   </div>
@@ -168,16 +171,16 @@ export function AdminDataTable<T>({
                     }}
                     className={`h-[56px] transition-colors ${
                       isSelected
-                        ? 'bg-[#741C2B]/5'
+                        ? 'bg-[#741C2B]/35 border-l-2 border-[#C49A68]'
                         : isClickable
-                        ? 'hover:bg-[#F5F3EF]/80 cursor-pointer active:bg-[#F5F3EF]'
+                        ? 'hover:bg-white/[0.06] cursor-pointer'
                         : ''
                     }`}
                   >
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={`px-4 py-3 text-[#292827] font-medium ${
+                        className={`px-4 py-3 text-white/90 font-medium ${
                           col.align === 'right'
                             ? 'text-right'
                             : col.align === 'center'
@@ -198,13 +201,13 @@ export function AdminDataTable<T>({
 
       {/* Pie con conteo y paginación */}
       {!isLoading && data.length > 0 && (
-        <div className="px-4 py-3 border-t border-[#E7E0D8] bg-[#F5F3EF]/60 flex items-center justify-between text-[12px] text-[#77736E]">
+        <div className="px-4 py-3 border-t border-white/10 bg-white/[0.03] flex items-center justify-between text-[12px] text-white/70 relative z-10">
           <div>
-            Mostrando <span className="font-bold text-[#292827]">{data.length}</span>
+            Mostrando <span className="font-bold text-white">{data.length}</span>
             {totalRecords !== undefined && (
               <>
                 {' '}
-                de <span className="font-bold text-[#292827]">{totalRecords}</span> registros
+                de <span className="font-bold text-white">{totalRecords}</span> registros
               </>
             )}
           </div>
@@ -216,11 +219,11 @@ export function AdminDataTable<T>({
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage <= 1}
                 aria-label="Página anterior"
-                className="p-1.5 rounded-lg border border-[#E7E0D8] bg-[#FFFFFF] text-[#292827] hover:bg-[#F5F3EF] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-2 text-[12px] font-semibold text-[#292827]">
+              <span className="px-2 text-[12px] font-semibold text-white">
                 Página {currentPage} de {totalPages}
               </span>
               <button
@@ -228,7 +231,7 @@ export function AdminDataTable<T>({
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage >= totalPages}
                 aria-label="Página siguiente"
-                className="p-1.5 rounded-lg border border-[#E7E0D8] bg-[#FFFFFF] text-[#292827] hover:bg-[#F5F3EF] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

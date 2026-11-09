@@ -30,25 +30,28 @@ export const InventarioTable: React.FC<Props> = ({
   const renderSortIcon = (campo: CampoOrdenInventario) => {
     if (!onToggleSort) return null;
     if (campoOrden !== campo) {
-      return <ArrowUpDown className="w-3 h-3 text-[#77736E]/50 group-hover:text-[#741C2B] transition-colors" />;
+      return <ArrowUpDown className="w-3 h-3 text-white/40 group-hover:text-[#E5BE90] transition-colors" />;
     }
     return direccionOrden === 'asc' ? (
-      <ArrowUp className="w-3.5 h-3.5 text-[#741C2B] font-bold" />
+      <ArrowUp className="w-3.5 h-3.5 text-[#E5BE90] font-bold" />
     ) : (
-      <ArrowDown className="w-3.5 h-3.5 text-[#741C2B] font-bold" />
+      <ArrowDown className="w-3.5 h-3.5 text-[#E5BE90] font-bold" />
     );
   };
 
   return (
-    <div className="rounded-2xl bg-white border border-[#E7E0D8] shadow-2xs overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="relative rounded-3xl backdrop-blur-2xl bg-white/[0.07] border border-white/[0.14] shadow-[0_12px_30px_rgba(0,0,0,0.3)] overflow-hidden text-white">
+      {/* Reflejo superior especular */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
+      <div className="overflow-x-auto relative z-10">
         <table className="w-full text-xs text-left border-collapse">
-          <thead className="bg-[#F5F3EF] border-b border-[#E7E0D8] select-none">
+          <thead className="bg-white/[0.04] border-b border-white/10 select-none">
             <tr>
               <th
                 onClick={() => onToggleSort?.('sede')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center gap-1.5">
@@ -58,8 +61,8 @@ export const InventarioTable: React.FC<Props> = ({
               </th>
               <th
                 onClick={() => onToggleSort?.('producto')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center gap-1.5">
@@ -69,8 +72,8 @@ export const InventarioTable: React.FC<Props> = ({
               </th>
               <th
                 onClick={() => onToggleSort?.('fisico')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] text-right ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] text-right ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center justify-end gap-1.5">
@@ -80,8 +83,8 @@ export const InventarioTable: React.FC<Props> = ({
               </th>
               <th
                 onClick={() => onToggleSort?.('disponible')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] text-right ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] text-right ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center justify-end gap-1.5">
@@ -91,8 +94,8 @@ export const InventarioTable: React.FC<Props> = ({
               </th>
               <th
                 onClick={() => onToggleSort?.('reservadoBlando')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] text-right ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] text-right ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center justify-end gap-1.5">
@@ -102,8 +105,8 @@ export const InventarioTable: React.FC<Props> = ({
               </th>
               <th
                 onClick={() => onToggleSort?.('reservadoDuro')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] text-right ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] text-right ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center justify-end gap-1.5">
@@ -113,8 +116,8 @@ export const InventarioTable: React.FC<Props> = ({
               </th>
               <th
                 onClick={() => onToggleSort?.('noVendible')}
-                className={`px-4 py-3.5 font-extrabold text-[#77736E] uppercase tracking-wider text-[11px] text-right ${
-                  onToggleSort ? 'cursor-pointer hover:text-[#741C2B] group' : ''
+                className={`px-4 py-3.5 font-extrabold text-white/60 uppercase tracking-wider text-[11px] text-right ${
+                  onToggleSort ? 'cursor-pointer hover:text-[#E5BE90] group' : ''
                 }`}
               >
                 <div className="flex items-center justify-end gap-1.5">
@@ -125,65 +128,65 @@ export const InventarioTable: React.FC<Props> = ({
               <th className="w-10 px-2 py-3.5"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E7E0D8]">
+          <tbody className="divide-y divide-white/[0.07]">
             {data.map((item) => {
               const isStockBajo = item.disponible <= item.umbralStockBajo;
               return (
                 <tr
                   key={item.id}
                   onClick={() => onSelectRow?.(item)}
-                  className={`h-[54px] transition-colors hover:bg-[#F5F3EF]/70 ${
+                  className={`h-[54px] transition-colors hover:bg-white/[0.06] ${
                     onSelectRow ? 'cursor-pointer' : ''
-                  } ${isStockBajo ? 'bg-amber-50/40' : ''}`}
+                  } ${isStockBajo ? 'bg-[#741C2B]/15' : ''}`}
                 >
-                  <td className="px-4 py-3 font-bold text-[#292827]">
+                  <td className="px-4 py-3 font-bold text-white">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-lg bg-[#F5F3EF] border border-[#E7E0D8] text-[11px] font-bold text-[#292827]">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-[11px] font-bold text-white">
                         {item.sedeNombre}
                       </span>
                       {isStockBajo && (
                         <AlertTriangle
-                          className="w-4 h-4 text-[#B77925] shrink-0"
+                          className="w-4 h-4 text-[#F59E0B] shrink-0"
                           aria-label="Stock bajo"
                         />
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-mono tabular-nums text-xs font-bold text-[#741C2B]">
+                    <div className="font-mono tabular-nums text-xs font-bold text-[#E5BE90]">
                       {item.sku}
                     </div>
-                    <div className="font-bold text-xs text-[#292827] mt-0.5 truncate max-w-[280px]">
+                    <div className="font-bold text-xs text-white mt-0.5 truncate max-w-[280px]">
                       {item.nombreProducto}
                     </div>
-                    <div className="text-[11px] font-medium text-[#77736E]">
+                    <div className="text-[11px] font-medium text-white/60">
                       {item.categoriaNombre}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums font-bold text-[#292827]">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums font-bold text-white">
                     {item.fisico}
                   </td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums">
                     <span
                       className={`inline-flex items-center justify-end px-2.5 py-1 rounded-lg text-xs font-black ${
                         isStockBajo
-                          ? 'bg-[#C44848]/10 text-[#C44848] border border-[#C44848]/30'
-                          : 'bg-[#27845C]/10 text-[#27845C] border border-[#27845C]/30'
+                          ? 'bg-[#EF4444]/20 text-[#F87171] border border-[#EF4444]/40'
+                          : 'bg-[#10B981]/20 text-[#34D399] border border-[#10B981]/40'
                       }`}
                     >
                       {item.disponible}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-[#77736E]">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-white/70">
                     {item.reservadoBlando}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-[#77736E]">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-white/70">
                     {item.reservadoDuro}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-[#77736E]">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-white/70">
                     {item.noVendible}
                   </td>
-                  <td className="px-2 py-3 text-center text-[#77736E]">
+                  <td className="px-2 py-3 text-center text-white/50">
                     <ChevronRight className="w-4 h-4 opacity-50" />
                   </td>
                 </tr>
@@ -193,9 +196,9 @@ export const InventarioTable: React.FC<Props> = ({
         </table>
       </div>
 
-      <div className="px-4 py-3 border-t border-[#E7E0D8] bg-[#F5F3EF]/40 text-xs text-[#77736E] flex justify-between items-center">
-        <span>Mostrando <strong className="text-[#292827]">{data.length}</strong> variantes en inventario</span>
-        <span className="text-[11px]">Haga clic en cualquier fila para ver el desglose en el panel lateral</span>
+      <div className="px-4 py-3 border-t border-white/10 bg-white/[0.03] text-xs text-white/70 flex justify-between items-center relative z-10">
+        <span>Mostrando <strong className="text-white">{data.length}</strong> variantes en inventario</span>
+        <span className="text-[11px] text-white/50">Haga clic en cualquier fila para ver el desglose en el panel lateral</span>
       </div>
     </div>
   );

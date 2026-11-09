@@ -8,7 +8,7 @@ export const listarInventarioQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
-  limite: z.coerce.number().int().positive().max(300).default(150).optional(),
+  limite: z.coerce.number().int().positive().max(1000).default(500).optional(),
   offset: z.coerce.number().int().min(0).default(0).optional(),
 });
 

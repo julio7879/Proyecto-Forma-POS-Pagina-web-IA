@@ -1,6 +1,4 @@
 // frontend/src/features/admin/services/adminService.ts
-import { PRODUCTOS_SEMILLA } from '../../storefront/services/catalogService';
-import { getAllStockDeltas } from '../../pos/utils/posLedgerSync';
 import { apiRequest } from '../../../api/apiClient';
 
 // ============================================
@@ -28,7 +26,7 @@ export interface InventarioFiltro {
 }
 
 // ============================================
-// DTOs de Compras
+// DTOs de Compras y Distribuidores Asociados
 // ============================================
 export type EstadoCompra = 'PEDIDA' | 'RECIBIDA' | 'CANCELADA';
 
@@ -37,9 +35,14 @@ export interface LineaCompraDTO {
   varianteId: number;
   sku: string;
   nombreProducto: string;
+  descripcion?: string;
+  talla?: string;
+  color?: string;
+  precioVentaCop?: number;
   cantidadPedida: number;
   cantidadRecibida: number;
   costoUnitarioCop?: number;
+  observacionDiferencia?: string | null;
 }
 
 export interface OrdenCompraDTO {
@@ -47,10 +50,88 @@ export interface OrdenCompraDTO {
   codigo: string;
   proveedorNombre: string;
   proveedorContacto?: string;
+  notas?: string;
   estado: EstadoCompra;
   fechaCreacion: string;
+  fechaRecepcion?: string | null;
   lineas: LineaCompraDTO[];
 }
+
+export interface DistribuidorAsociado {
+  id: string;
+  nombre: string;
+  nit: string;
+  contacto: string;
+  telefono: string;
+  email: string;
+  ciudad: string;
+  especialidad: string;
+  descuentoMayoristaPorc: number; // Porcentaje de descuento sobre PVP (ej: 50% = costo al 50%)
+  categorias: string[];
+}
+
+export const DISTRIBUIDORES_OFICIALES: DistribuidorAsociado[] = [
+  {
+    id: 'dist-1',
+    nombre: 'Hilaturas & Sedas del Oriente S.A.S',
+    nit: '900.542.110-4',
+    contacto: 'María Camila Restrepo · Gerente de Cuentas',
+    telefono: '+57 310 456 7890',
+    email: 'ventas@sedasdeloriente.co',
+    ciudad: 'Bucaramanga, Santander',
+    especialidad: 'Sedas naturales andinas, lino 100% orgánico y champaña satinada',
+    descuentoMayoristaPorc: 52, // Costo mayorista: 48% del PVP
+    categorias: ['Ropa'],
+  },
+  {
+    id: 'dist-2',
+    nombre: 'Confecciones & Sastrería Imperial Andina S.A.S',
+    nit: '901.238.455-8',
+    contacto: 'Hernán Darío Gómez · Director Comercial',
+    telefono: '+57 312 890 1234',
+    email: 'pedidos@sastreriaandina.co',
+    ciudad: 'Cúcuta, Norte de Santander',
+    especialidad: 'Blazers en lana fría de sastre, chaquetas térmicas 3D y algodón peinado 220 GSM',
+    descuentoMayoristaPorc: 55, // Costo mayorista: 45% del PVP
+    categorias: ['Ropa'],
+  },
+  {
+    id: 'dist-3',
+    nombre: 'Manufacturas de Cuero & Calzado La Fontana S.A.S',
+    nit: '890.312.980-1',
+    contacto: 'Valeria Cárdenas · Directora de Ventas Mayoristas',
+    telefono: '+57 315 678 9012',
+    email: 'mayoristas@lafontanaleather.co',
+    ciudad: 'Bogotá D.C.',
+    especialidad: 'Piel vacuna flor entera, calzado Oxford, mocasines miel y bolsos tote de lujo',
+    descuentoMayoristaPorc: 50, // Costo mayorista: 50% del PVP
+    categorias: ['Accesorios', 'Calzado'],
+  },
+  {
+    id: 'dist-4',
+    nombre: 'Laboratorios Botánicos & Cuidado Facial del Valle S.A.S',
+    nit: '900.871.234-9',
+    contacto: 'Dra. Elena Monsalve · Dirección Técnica y Despachos',
+    telefono: '+57 318 234 5678',
+    email: 'distribucion@botanicosdelvalle.co',
+    ciudad: 'Cali, Valle del Cauca',
+    especialidad: 'Sérums botánicos oro 24K, aceite puro de sacha inchi y cosmética limpia certificada',
+    descuentoMayoristaPorc: 58, // Costo mayorista: 42% del PVP
+    categorias: ['Cosméticos'],
+  },
+  {
+    id: 'dist-5',
+    nombre: 'Maestría Artesanal & Tejidos Tradicionales S.A.S',
+    nit: '800.654.321-7',
+    contacto: 'Taita Jairo Chindoy · Maestro Tejedor y Representante',
+    telefono: '+57 320 123 4567',
+    email: 'contacto@maestriatradicional.co',
+    ciudad: 'Nobsa, Boyacá / Pasto, Nariño',
+    especialidad: 'Lana virgen de oveja hilada a mano, palma de iraca fina, werregue y tejidos Wayuu',
+    descuentoMayoristaPorc: 48, // Costo mayorista: 52% del PVP
+    categorias: ['Artesanías'],
+  },
+];
 
 export interface CrearLineaCompraDto {
   varianteId: number;
@@ -149,6 +230,15 @@ export interface ResolucionNovedadDto {
   }>;
 }
 
+export interface CrearSolicitudTrasladoDto {
+  ubicacionDestinoId: number;
+  esEnvioDirecto?: boolean;
+  lineas: Array<{
+    varianteId: number;
+    cantidadSolicitada: number;
+  }>;
+}
+
 export interface CrearSolicitudTrasladoLocalDto {
   origenId: number;
   origenNombre: string;
@@ -165,158 +255,94 @@ export interface CrearSolicitudTrasladoLocalDto {
 }
 
 // ============================================
-// Funciones de Inventario
+// Funciones de Inventario (RN-GEN-01: Fuente única PostgreSQL)
 // ============================================
 
-const SEDES_FALLBACK = [
-  { id: 1, nombre: 'Bodega Central' },
-  { id: 2, nombre: 'Punto Centro' },
-  { id: 8, nombre: 'Punto Caobos' },
-  { id: 3, nombre: 'Punto Ocaña' },
-  { id: 4, nombre: 'Punto Bucaramanga' },
-];
-
-export const getLocalInventario = (filtro: InventarioFiltro = {}): InventarioDTO[] => {
-  const stockDeltas = typeof window !== 'undefined' ? getAllStockDeltas() : {};
-  const items: InventarioDTO[] = [];
-  let currentId = 1;
-
-  for (const prod of PRODUCTOS_SEMILLA) {
-    if (
-      filtro.categoria &&
-      filtro.categoria !== 'Todas' &&
-      prod.categoriaNombre !== filtro.categoria
-    ) {
-      continue;
-    }
-    for (const v of prod.variantes) {
-      if (
-        filtro.sku &&
-        !v.sku.toLowerCase().includes(filtro.sku.toLowerCase()) &&
-        !prod.nombre.toLowerCase().includes(filtro.sku.toLowerCase())
-      ) {
-        continue;
-      }
-      const delta = stockDeltas[v.sku] || 0;
-      for (const sede of SEDES_FALLBACK) {
-        const rawStock =
-          v.stockPorSede?.[sede.nombre] ??
-          (sede.id === 1 ? (v.stockDisponible ?? 0) : 0);
-        const fisico = Math.max(0, rawStock + (sede.id === 2 ? delta : 0));
-        const resBlando = 0;
-        const resDuro = 0;
-        const noVendible = 0;
-        const disponible = Math.max(0, fisico - resDuro);
-        const umbral = 4;
-
-        if (filtro.stockBajo && disponible > umbral) {
-          continue;
-        }
-
-        items.push({
-          id: currentId++,
-          sku: v.sku,
-          nombreProducto: prod.nombre,
-          categoriaNombre: prod.categoriaNombre,
-          sedeId: sede.id,
-          sedeNombre: sede.nombre,
-          fisico,
-          disponible,
-          reservadoBlando: resBlando,
-          reservadoDuro: resDuro,
-          noVendible,
-          umbralStockBajo: umbral,
-        });
-      }
-    }
-  }
-  return items;
+export const getLocalInventario = (_filtro: InventarioFiltro = {}): InventarioDTO[] => {
+  return [];
 };
-
-const CODIGOS_DEMO_ANTIGUOS = new Set(['TRL-0084', 'TRL-0083', 'TRL-0082']);
 
 export const getStoredTraslados = (): TrasladoDTO[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem('forma_admin_traslados');
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    const limpios = parsed.filter((t: TrasladoDTO) => !CODIGOS_DEMO_ANTIGUOS.has(t?.codigo));
-    if (limpios.length !== parsed.length) {
-      localStorage.setItem('forma_admin_traslados', JSON.stringify(limpios));
-    }
-    return limpios;
-  } catch {
-    return [];
-  }
+  return [];
 };
 
-const saveStoredTraslados = (lista: TrasladoDTO[]): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem('forma_admin_traslados', JSON.stringify(lista));
-  } catch {
-    // Ignorar errores de almacenamiento
-  }
-};
-
-export const createSolicitudTrasladoLocal = (
-  payload: CrearSolicitudTrasladoLocalDto
-): TrasladoDTO => {
-  const actuales = getStoredTraslados();
-  const nextNumber = actuales.length + 1;
-  const nowIso = new Date().toISOString();
-  const despachar = Boolean(payload.despacharInmediatamente);
-
-  const nuevo: TrasladoDTO = {
-    id: Date.now(),
-    codigo: `TRL-${String(nextNumber).padStart(4, '0')}`,
-    origenId: payload.origenId,
-    origenNombre: payload.origenNombre,
-    destinoId: payload.destinoId,
-    destinoNombre: payload.destinoNombre,
-    estado: despachar ? 'ENVIADO' : 'APROBADO',
-    fechaSolicitud: nowIso,
-    ...(despachar ? { fechaEnvio: nowIso } : {}),
-    observaciones: payload.observaciones,
-    lineas: payload.lineas.map((l, idx) => ({
-      id: Date.now() + idx + 1,
+function mapBackendTraslado(t: any): TrasladoDTO {
+  return {
+    id: t.id,
+    codigo: t.codigo || `TRL-${String(t.id).padStart(4, '0')}`,
+    origenId: t.ubicacionOrigenId ?? t.ubicacionOrigen?.id ?? 1,
+    origenNombre: t.ubicacionOrigen?.nombre ?? t.origenNombre ?? 'Bodega Central',
+    destinoId: t.ubicacionDestinoId ?? t.ubicacionDestino?.id,
+    destinoNombre: t.ubicacionDestino?.nombre ?? t.destinoNombre ?? 'Punto Destino',
+    estado: t.estado,
+    fechaSolicitud: t.fechaSolicitud,
+    fechaEnvio: t.fechaEnvio,
+    fechaRecepcion: t.fechaRecepcion,
+    observaciones: t.observaciones || t.motivoRechazo,
+    lineas: (t.lineas || []).map((l: any) => ({
+      id: l.id,
       varianteId: l.varianteId,
-      sku: l.sku,
-      nombreProducto: l.nombreProducto,
+      sku: l.variante?.sku || l.sku || `VAR-${l.varianteId}`,
+      nombreProducto: l.variante?.producto?.nombre || l.nombreProducto || 'Prenda de Colección',
       cantidadSolicitada: l.cantidadSolicitada,
-      cantidadAprobada: l.cantidadSolicitada,
-      cantidadEnviada: despachar ? l.cantidadSolicitada : 0,
-      recibidaBuena: 0,
-      recibidaDanada: 0,
+      cantidadAprobada: l.cantidadAprobada ?? l.cantidadSolicitada,
+      cantidadEnviada: l.cantidadEnviada ?? 0,
+      recibidaBuena: l.cantidadRecibidaBuena ?? l.recibidaBuena ?? 0,
+      recibidaDanada: l.cantidadRecibidaDanada ?? l.recibidaDanada ?? 0,
     })),
   };
+}
 
-  saveStoredTraslados([nuevo, ...actuales]);
-  return nuevo;
+export const crearSolicitudTraslado = async (
+  payload: CrearSolicitudTrasladoDto,
+  idempotencyKey?: string
+): Promise<TrasladoDTO> => {
+  const key =
+    idempotencyKey ||
+    (typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `TRL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
+
+  const response = await apiRequest<{ datos: any }>('/traslados', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Idempotency-Key': key },
+  });
+  return mapBackendTraslado(response.datos);
+};
+
+export const createSolicitudTrasladoLocal = async (
+  payload: CrearSolicitudTrasladoLocalDto
+): Promise<TrasladoDTO> => {
+  return crearSolicitudTraslado({
+    ubicacionDestinoId: payload.destinoId,
+    esEnvioDirecto: payload.despacharInmediatamente,
+    lineas: payload.lineas.map((l) => ({
+      varianteId: l.varianteId,
+      cantidadSolicitada: l.cantidadSolicitada,
+    })),
+  });
 };
 
 export const fetchInventario = async (
   filtro: InventarioFiltro = {}
 ): Promise<InventarioDTO[]> => {
   const params = new URLSearchParams();
-  if (filtro.categoria) params.append('categoria', filtro.categoria);
+  if (filtro.categoria && filtro.categoria !== 'Todas') {
+    params.append('categoria', filtro.categoria);
+  }
   if (filtro.sku) params.append('sku', filtro.sku);
   if (filtro.stockBajo) params.append('stockBajo', 'true');
+  params.append('limite', '500');
 
   const query = params.toString();
-  try {
-    const response = await apiRequest<{ datos: InventarioDTO[] }>(
-      `/inventario${query ? `?${query}` : ''}`
-    );
-    if (response && Array.isArray(response.datos)) {
-      return response.datos;
-    }
-  } catch {
-    // Modo local / offline de contingencia con catálogo sincronizado
+  const response = await apiRequest<{ datos: InventarioDTO[] }>(
+    `/inventario${query ? `?${query}` : ''}`
+  );
+  if (response && Array.isArray(response.datos)) {
+    return response.datos;
   }
-  return getLocalInventario(filtro);
+  return [];
 };
 
 // ============================================
@@ -324,7 +350,10 @@ export const fetchInventario = async (
 // ============================================
 export const fetchOrdenesCompra = async (): Promise<OrdenCompraDTO[]> => {
   const response = await apiRequest<{ datos: OrdenCompraDTO[] }>('/compras');
-  return response.datos;
+  if (response && Array.isArray(response.datos)) {
+    return response.datos;
+  }
+  return [];
 };
 
 export const createOrdenCompra = async (
@@ -356,142 +385,63 @@ export const recibirOrdenCompra = async (
 };
 
 // ============================================
-// Funciones de Traslados
+// Funciones de Traslados (RN-TRA-01 a RN-TRA-19)
 // ============================================
 export const fetchTraslados = async (estado?: EstadoTraslado): Promise<TrasladoDTO[]> => {
   const query = estado ? `?estado=${estado}` : '';
-  try {
-    const response = await apiRequest<{ datos: TrasladoDTO[] }>(`/traslados${query}`);
-    if (response && Array.isArray(response.datos)) {
-      return response.datos;
-    }
-  } catch {
-    // Fallback a traslados reales creados en localStorage
+  const response = await apiRequest<{ datos: any[] }>(`/traslados${query}`);
+  if (response && Array.isArray(response.datos)) {
+    return response.datos.map(mapBackendTraslado);
   }
-  const all = getStoredTraslados();
-  if (estado) return all.filter((t) => t.estado === estado);
-  return all;
+  return [];
 };
 
 export const despacharTraslado = async (
   payload: DespachoTrasladoDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  try {
-    const response = await apiRequest<{ datos: TrasladoDTO }>(
-      `/traslados/${payload.trasladoId}/despachar`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ lineas: payload.lineas }),
-        headers: { 'Idempotency-Key': idempotencyKey },
-      }
-    );
-    return response.datos;
-  } catch (err) {
-    const actuales = getStoredTraslados();
-    const target = actuales.find((t) => t.id === payload.trasladoId);
-    if (!target) throw err;
-
-    const actualizado: TrasladoDTO = {
-      ...target,
-      estado: 'ENVIADO',
-      fechaEnvio: new Date().toISOString(),
-      lineas: target.lineas.map((l) => {
-        const enviada = payload.lineas.find((pl) => pl.lineaId === l.id);
-        return enviada ? { ...l, cantidadEnviada: enviada.cantidadEnviada } : l;
-      }),
-    };
-    saveStoredTraslados(actuales.map((t) => (t.id === payload.trasladoId ? actualizado : t)));
-    return actualizado;
-  }
+  const response = await apiRequest<{ datos: any }>(
+    `/traslados/${payload.trasladoId}/despachar`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ lineas: payload.lineas }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
+  return mapBackendTraslado(response.datos);
 };
 
 export const recibirTraslado = async (
   payload: RecepcionTrasladoDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  try {
-    const response = await apiRequest<{ datos: TrasladoDTO }>(
-      `/traslados/${payload.trasladoId}/recepcionar`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          lineas: payload.lineas,
-          observaciones: payload.observaciones,
-        }),
-        headers: { 'Idempotency-Key': idempotencyKey },
-      }
-    );
-    return response.datos;
-  } catch (err) {
-    const actuales = getStoredTraslados();
-    const target = actuales.find((t) => t.id === payload.trasladoId);
-    if (!target) throw err;
-
-    let hayNovedad = false;
-    const nuevasLineas = target.lineas.map((l) => {
-      const rec = payload.lineas.find((pl) => pl.lineaId === l.id);
-      if (!rec) return l;
-      const totalRecibido = rec.recibidaBuena + rec.recibidaDanada;
-      if (
-        totalRecibido < l.cantidadEnviada ||
-        rec.recibidaDanada > 0 ||
-        (rec.excedenteReportado && rec.excedenteReportado > 0)
-      ) {
-        hayNovedad = true;
-      }
-      return {
-        ...l,
-        recibidaBuena: rec.recibidaBuena,
-        recibidaDanada: rec.recibidaDanada,
-      };
-    });
-
-    const actualizado: TrasladoDTO = {
-      ...target,
-      estado: hayNovedad ? 'RECIBIDO_CON_NOVEDAD' : 'RECIBIDO',
-      fechaRecepcion: new Date().toISOString(),
-      observaciones: payload.observaciones || target.observaciones,
-      lineas: nuevasLineas,
-    };
-    saveStoredTraslados(actuales.map((t) => (t.id === payload.trasladoId ? actualizado : t)));
-    return actualizado;
-  }
+  const response = await apiRequest<{ datos: any }>(
+    `/traslados/${payload.trasladoId}/recepcionar`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        lineas: payload.lineas,
+        observaciones: payload.observaciones,
+      }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
+  return mapBackendTraslado(response.datos);
 };
 
 export const resolverNovedadTraslado = async (
   payload: ResolucionNovedadDto,
   idempotencyKey: string
 ): Promise<TrasladoDTO> => {
-  try {
-    const response = await apiRequest<{ datos: TrasladoDTO }>(
-      `/traslados/${payload.trasladoId}/resolver-novedad`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ resoluciones: payload.resoluciones }),
-        headers: { 'Idempotency-Key': idempotencyKey },
-      }
-    );
-    return response.datos;
-  } catch (err) {
-    const actuales = getStoredTraslados();
-    const target = actuales.find((t) => t.id === payload.trasladoId);
-    if (!target) throw err;
-
-    const detalleResolucion = payload.resoluciones
-      .map((r) => `${r.tipo} (${r.cantidad} uds)${r.notas ? `: ${r.notas}` : ''}`)
-      .join(' · ');
-
-    const actualizado: TrasladoDTO = {
-      ...target,
-      estado: 'CERRADO',
-      observaciones: target.observaciones
-        ? `${target.observaciones} | Resolución: ${detalleResolucion}`
-        : `Resolución: ${detalleResolucion}`,
-    };
-    saveStoredTraslados(actuales.map((t) => (t.id === payload.trasladoId ? actualizado : t)));
-    return actualizado;
-  }
+  const response = await apiRequest<{ datos: any }>(
+    `/traslados/${payload.trasladoId}/resolver-novedad`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ resoluciones: payload.resoluciones }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }
+  );
+  return mapBackendTraslado(response.datos);
 };
 
 // ============================================

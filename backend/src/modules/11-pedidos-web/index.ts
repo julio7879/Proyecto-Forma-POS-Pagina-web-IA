@@ -18,6 +18,7 @@ import {
   noPuedoDespacharSchema,
   pedidoWebIdParamSchema,
   retornoLogisticoSchema,
+  transicionarPedidoWebSchema,
 } from './pedidoWeb.schema.js';
 
 export { WebOrderTtlWorker } from './domain/WebOrderTtlWorker.js';
@@ -99,4 +100,14 @@ router.post(
   validateParams(pedidoWebIdParamSchema),
   validateBody(devolucionComercialWebSchema),
   PedidoWebController.procesarDevolucionComercial
+);
+
+// Transición de estados operativos de pedidos web (ADMIN y VENDEDOR)
+router.patch(
+  '/:id/estado',
+  authenticateJWT,
+  requireRole('ADMIN', 'VENDEDOR'),
+  validateParams(pedidoWebIdParamSchema),
+  validateBody(transicionarPedidoWebSchema),
+  PedidoWebController.transicionarEstado
 );

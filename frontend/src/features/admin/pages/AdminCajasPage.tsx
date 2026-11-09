@@ -181,34 +181,34 @@ export const AdminCajasPage: React.FC = () => {
       header: 'Turno',
       render: (s) => (
         <div>
-          <span className="font-mono font-bold text-xs text-[#741C2B] block">
+          <span className="font-mono font-bold text-xs text-[#E5BE90] block">
             Turno #{s.turnoNumero}
           </span>
-          <span className="font-mono text-[10px] text-[#77736E]">{s.id}</span>
+          <span className="font-mono text-[10px] text-white/50">{s.id}</span>
         </div>
       ),
     },
     {
       key: 'sede',
       header: 'Sede',
-      render: (s) => <span className="font-bold text-xs text-[#292827]">{s.sede}</span>,
+      render: (s) => <span className="font-bold text-xs text-white">{s.sede}</span>,
     },
     {
       key: 'vendedor',
       header: 'Cajero en Turno',
-      render: (s) => <span className="text-xs font-medium text-[#292827]">{s.vendedor}</span>,
+      render: (s) => <span className="text-xs font-medium text-white/90">{s.vendedor}</span>,
     },
     {
       key: 'horarios',
       header: 'Apertura / Cierre',
       render: (s) => (
         <div className="text-[11px] space-y-0.5">
-          <div className="text-[#292827] flex items-center gap-1 font-mono">
-            <span className="text-[#27845C] font-bold">Inicia:</span> {formatFechaHora(s.aperturaIso)}
+          <div className="text-white/80 flex items-center gap-1 font-mono">
+            <span className="text-[#34D399] font-bold">Inicia:</span> {formatFechaHora(s.aperturaIso)}
           </div>
           {s.cierreIso && (
-            <div className="text-[#77736E] flex items-center gap-1 font-mono">
-              <span className="text-[#741C2B] font-bold">Cierra:</span> {formatFechaHora(s.cierreIso)}
+            <div className="text-white/70 flex items-center gap-1 font-mono">
+              <span className="text-[#F87171] font-bold">Cierra:</span> {formatFechaHora(s.cierreIso)}
             </div>
           )}
         </div>
@@ -220,13 +220,13 @@ export const AdminCajasPage: React.FC = () => {
       align: 'right',
       render: (s) => {
         if (s.estado === 'ABIERTA') {
-          return <span className="text-xs text-[#77736E] italic">Turno en curso</span>;
+          return <span className="text-xs text-white/60 italic">Turno en curso</span>;
         }
         const dif = s.diferenciaCop || 0;
         return (
           <span
             className={`font-mono text-xs font-bold ${
-              dif === 0 ? 'text-[#27845C]' : dif > 0 ? 'text-[#B77925]' : 'text-[#C44848]'
+              dif === 0 ? 'text-[#34D399]' : dif > 0 ? 'text-[#FBBF24]' : 'text-[#F87171]'
             }`}
           >
             {dif === 0 ? 'Cuadre Exacto' : formatCOP(dif)}
@@ -308,14 +308,14 @@ export const AdminCajasPage: React.FC = () => {
             <div
               key={sedeNombre}
               onClick={() => sesion && setSelectedSesion(sesion)}
-              className={`p-4 rounded-[14px] bg-white border transition-all ${
+              className={`p-4 rounded-2xl backdrop-blur-2xl border transition-all ${
                 estaAbierta
-                  ? 'border-[#27845C]/40 shadow-xs ring-1 ring-[#27845C]/15 hover:border-[#27845C]'
-                  : 'border-[#E7E0D8] opacity-80'
-              } ${sesion ? 'cursor-pointer hover:shadow-sm' : ''}`}
+                  ? 'bg-[#10B981]/15 border-[#10B981]/40 shadow-md ring-1 ring-[#10B981]/25 hover:border-[#10B981]'
+                  : 'bg-white/[0.05] border-white/10 opacity-70 hover:opacity-90'
+              } ${sesion ? 'cursor-pointer hover:shadow-lg' : ''}`}
             >
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="font-bold text-xs text-[#292827] truncate">{sedeNombre}</span>
+                <span className="font-bold text-xs text-white truncate">{sedeNombre}</span>
                 <StatusBadge
                   label={estaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}
                   variant={estaAbierta ? 'success' : 'neutral'}
@@ -326,20 +326,20 @@ export const AdminCajasPage: React.FC = () => {
 
               {estaAbierta && sesion && resumen ? (
                 <div className="space-y-1 text-xs">
-                  <div className="text-[11px] text-[#77736E]">
-                    Cajero: <strong className="text-[#292827]">{sesion.vendedor}</strong> · Turno #{sesion.turnoNumero}
+                  <div className="text-[11px] text-white/70">
+                    Cajero: <strong className="text-white font-bold">{sesion.vendedor}</strong> · Turno #{sesion.turnoNumero}
                   </div>
-                  <div className="flex justify-between text-[#77736E] pt-1">
+                  <div className="flex justify-between text-white/70 pt-1 border-t border-white/10">
                     <span>En gaveta:</span>
-                    <span className="font-mono font-bold text-[#741C2B]">
+                    <span className="font-mono font-bold text-[#E5BE90]">
                       {formatCOP(resumen.efectivoEsperadoCop)}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-1 text-xs text-[#77736E]">
+                <div className="space-y-1 text-xs text-white/50">
                   <div>Sin turno activo</div>
-                  <div className="font-mono text-[11px] pt-1">$0 COP en gaveta</div>
+                  <div className="font-mono text-[11px] pt-1 text-white/40">$0 COP en gaveta</div>
                 </div>
               )}
             </div>

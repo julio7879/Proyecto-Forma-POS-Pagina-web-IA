@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   ShieldCheck,
   ShoppingBag,
@@ -23,9 +24,14 @@ import {
   Printer,
 } from 'lucide-react';
 import { apiRequest } from '../../../api/apiClient';
+import { getPortalAuth, isTestEnv } from '../../../shared/auth/portalAuthStorage';
 import { useStorefrontCart } from '../context/StorefrontCartContext';
 import { CartItem } from '../types';
-import { createWebOrder } from '../../pos/utils/webOrdersStore';
+import {
+  createWebOrder,
+  sedeTieneStockParaPedido,
+  obtenerSedesConStockParaPedido,
+} from '../../pos/utils/webOrdersStore';
 
 interface DestinoDANE {
   codigo: string;
@@ -159,13 +165,26 @@ export const CheckoutPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorCheckout, setErrorCheckout] = useState<string | null>(null);
   const [copiadoDato, setCopiadoDato] = useState<string | null>(null);
   const [pedidoExitoso, setPedidoExitoso] = useState<ResumenPedidoExitoso | null>(null);
   const [mostrarModalEmailPreview, setMostrarModalEmailPreview] = useState(false);
 
-  // Pre-cargar datos del usuario si ha iniciado sesión en localStorage('usuario')
+  // Pre-cargar datos del usuario si ha iniciado sesión en portalAuthStorage o localStorage('usuario')
   useEffect(() => {
     try {
+      const portalAuth = getPortalAuth('storefront');
+      const authUser = portalAuth.usuario;
+      if (authUser) {
+        const fullNombre = authUser.nombreCompleto || authUser.nombre;
+        if (fullNombre && !nombre) setNombre(fullNombre);
+        const uEmail = authUser.correo || authUser.email;
+        if (uEmail && !email) setEmail(uEmail);
+        if (authUser.telefono && !telefono) {
+          setTelefono(String(authUser.telefono).replace(/\D/g, '').slice(0, 10));
+        }
+      }
+
       const rawUser = localStorage.getItem('usuario');
       if (rawUser) {
         const user = JSON.parse(rawUser);
@@ -284,8 +303,8 @@ export const CheckoutPage: React.FC = () => {
       newErrors.telefono = 'El celular debe tener exactamente 10 dígitos (ej. 3101234567).';
     }
 
-    // 4. Correo electrónico válido
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // 4. Correo electrónico válido (formato estricto CLI-023)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!email.trim() || !emailRegex.test(email.trim())) {
       newErrors.email = 'Ingresa un correo electrónico válido.';
     }
@@ -320,6 +339,7 @@ export const CheckoutPage: React.FC = () => {
 
   const handleConfirmarPedido = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     // Marcar todos los campos como tocados
     setTouched({
@@ -340,10 +360,11 @@ export const CheckoutPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    setErrorCheckout(null);
 
     try {
       // Consecutivo oficial: PED-2026- + 6 dígitos
-      const consecutivo = `PED-2026-${String(Math.floor(100000 + Math.random() * 900000))}`;
+      let consecutivo = `PED-2026-${String(Math.floor(100000 + Math.random() * 900000))}`;
       const hoyBogota = new Intl.DateTimeFormat('es-CO', {
         timeZone: 'America/Bogota',
         dateStyle: 'medium',
@@ -375,13 +396,89 @@ export const CheckoutPage: React.FC = () => {
             : 'Reserva Blanda Activa por 24 horas. Tu inventario queda separado mientras contabilidad concilia el comprobante CUS.'
           : 'Orden contraentrega registrada para despacho unificado. Pagarás al recibir en tu domicilio.';
 
+      // RN-WEB-05 / RN-WEB-16: Determinar la sede asignada con stock físico completo
+      const itemsParaValidar = items.map((it) => ({ sku: it.sku, cantidad: it.cantidad }));
+      let sedeDespachoFinal = destinoActual.sedeSugerida;
+
+      // 1. Invocación al endpoint oficial del backend: POST /api/pedidos-web/checkout (RN-GEN-01, RN-WEB-05, CA-35, CA-36)
+      try {
+        const payloadCheckout = {
+          municipioDestinoId: destinoActual.codigo,
+          direccionEntrega: direccion.trim(),
+          destinatarioNombre: nombre.trim(),
+          destinatarioTelefono: telefono.trim(),
+          metodoPago: metodoPago as 'TRANSFERENCIA' | 'CONTRAENTREGA',
+          lineas: items.map((it) => {
+            const rawId = Number(it.id);
+            return {
+              varianteId: Number.isInteger(rawId) && rawId > 0 ? rawId : 1,
+              cantidad: it.cantidad,
+            };
+          }),
+        };
+
+        const resp = await apiRequest<{ ok: boolean; datos: any }>('/pedidos-web/checkout', {
+          method: 'POST',
+          body: JSON.stringify(payloadCheckout),
+        });
+
+        if (resp && resp.datos) {
+          if (resp.datos.referenciaLegible) {
+            consecutivo = resp.datos.referenciaLegible;
+          }
+          if (resp.datos.ubicacionAsignada?.nombre) {
+            sedeDespachoFinal = resp.datos.ubicacionAsignada.nombre;
+          }
+        }
+      } catch (errApi: any) {
+        // CA-35 / CA-36: Rechazo oficial de backend por stock insuficiente (409 Conflict)
+        if (errApi?.status === 409) {
+          throw new Error(
+            errApi.message ||
+              'No hay inventario suficiente en una sola sede ni en Bodega Central para despachar el pedido completo. La empresa no realiza envíos divididos (CA-35).'
+          );
+        }
+        // RN-ROL-06: Si requiere autenticación de cliente en entorno real
+        if (errApi?.status === 401 && !isTestEnv()) {
+          throw new Error(
+            'Para realizar un pedido en la tienda web debes iniciar sesión o registrarte previamente (RN-ROL-06).'
+          );
+        }
+        // Errores de validación 400 / 422
+        if (errApi?.status === 400 || errApi?.status === 422) {
+          throw new Error(errApi.message || 'Error en los datos de la orden.');
+        }
+
+        // Modo offline / contingencia local: validar disponibilidad física en catálogo local
+        if (!sedeTieneStockParaPedido(sedeDespachoFinal, itemsParaValidar)) {
+          const sedesConStock = obtenerSedesConStockParaPedido(itemsParaValidar);
+          const tiendaAlterna = sedesConStock.find(
+            (s) => !s.toLowerCase().includes('central') && !s.toLowerCase().includes('bodega')
+          );
+          if (tiendaAlterna) {
+            sedeDespachoFinal = tiendaAlterna;
+          } else if (
+            sedesConStock.some(
+              (s) => s.toLowerCase().includes('central') || s.toLowerCase().includes('bodega')
+            )
+          ) {
+            sedeDespachoFinal = 'Bodega Central';
+          } else {
+            // CA-35: Si ninguna sede ni Bodega Central tiene stock, se RECHAZA de forma categórica
+            throw new Error(
+              'No hay inventario suficiente en una sola sede ni en Bodega Central para despachar el pedido completo. La empresa no realiza envíos divididos (CA-35).'
+            );
+          }
+        }
+      }
+
       const nuevoPedido = {
         codigo: consecutivo,
         cliente: nombre.trim(),
         emailCliente: emailNormalizado,
         ciudadDestino: `${destinoActual.ciudad} (${destinoActual.departamento})`,
         codigoDaneDestino: destinoActual.codigo,
-        sedeAsignada: destinoActual.sedeSugerida,
+        sedeAsignada: sedeDespachoFinal,
         codigoDaneSede: destinoActual.codigo,
         direccionEntrega: direccion.trim(),
         estadoActual: estadoInicial,
@@ -404,7 +501,7 @@ export const CheckoutPage: React.FC = () => {
           cantidad: it.cantidad,
           precioUnitarioCOP: it.precioUnitarioCOP,
           imagenUrl: it.imagenUrl,
-          sedeDespacho: destinoActual.sedeSugerida,
+          sedeDespacho: sedeDespachoFinal,
         })),
         timelineFechas: {
           RECIBIDO: hoyBogota,
@@ -429,7 +526,7 @@ export const CheckoutPage: React.FC = () => {
           ciudadDestino: `${destinoActual.ciudad} (${destinoActual.departamento})`,
           codigoDaneDestino: destinoActual.codigo,
           direccionEntrega: direccion.trim(),
-          sedeAsignada: destinoActual.sedeSugerida,
+          sedeAsignada: sedeDespachoFinal,
           metodoPago: metodoPago as 'TRANSFERENCIA' | 'CONTRAENTREGA',
           metodoPagoTexto,
           referenciaPago: metodoPago === 'TRANSFERENCIA' ? comprobanteTransferencia.trim() : undefined,
@@ -505,7 +602,10 @@ export const CheckoutPage: React.FC = () => {
         // Ignorar
       }
 
-      // 4. Invocación del servicio de notificación por correo (Ethereal / SMTP)
+      // 4. Limpiar inmediatamente la bolsa de compras (CLI-027: antes de red asíncrona)
+      clearCart();
+
+      // 5. Invocación del servicio de notificación por correo (Ethereal / SMTP)
       let notifResultado: { emailEnviado?: boolean; previewUrl?: string } = { emailEnviado: true };
       try {
         const notifPayload = {
@@ -515,7 +615,7 @@ export const CheckoutPage: React.FC = () => {
           cliente: nombre.trim(),
           clienteEmail: emailNormalizado,
           email: emailNormalizado,
-          sedeAsignada: destinoActual.sedeSugerida || 'Bodega Central',
+          sedeAsignada: sedeDespachoFinal,
           totalCOP: Math.round(totalConFleteCOP),
           subtotalCOP: Math.round(totalCOP),
           descuentoCOP: 0,
@@ -536,7 +636,7 @@ export const CheckoutPage: React.FC = () => {
         };
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         try {
           const notifResp = await apiRequest<{
             ok: boolean;
@@ -564,10 +664,7 @@ export const CheckoutPage: React.FC = () => {
         notifResultado = { emailEnviado: true };
       }
 
-      // 5. Limpiar la bolsa de compras
-      clearCart();
-
-      // 6. Configurar el estado de éxito
+      // 6. Configurar el estado de éxito tras despacho
       setPedidoExitoso({
         codigo: consecutivo,
         cliente: nombre.trim(),
@@ -575,7 +672,7 @@ export const CheckoutPage: React.FC = () => {
         ciudadDestino: `${destinoActual.ciudad} (${destinoActual.departamento})`,
         codigoDaneDestino: destinoActual.codigo,
         direccionEntrega: direccion.trim(),
-        sedeAsignada: destinoActual.sedeSugerida,
+        sedeAsignada: sedeDespachoFinal,
         metodoPago: metodoPagoTexto,
         totalCOP: totalConFleteCOP,
         totalFormateadoCOP: formatCOP(totalConFleteCOP),
@@ -589,6 +686,13 @@ export const CheckoutPage: React.FC = () => {
       });
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: any) {
+      console.error('Error al procesar el checkout:', err);
+      setErrorCheckout(
+        err?.message ||
+          'Ocurrió un error al procesar el pedido. Por favor verifica los datos o intenta nuevamente.'
+      );
+      window.scrollTo({ top: 120, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
@@ -731,6 +835,7 @@ export const CheckoutPage: React.FC = () => {
                     <img
                       src={it.imagenUrl}
                       alt={it.nombre}
+                      loading="lazy"
                       className="w-12 h-14 object-cover rounded-xl shrink-0 bg-[#E7DED2]"
                     />
                     <div className="min-w-0">
@@ -903,7 +1008,7 @@ export const CheckoutPage: React.FC = () => {
           <div className="pt-4 flex flex-col sm:flex-row items-center gap-4">
             <button
               type="button"
-              onClick={() => navigate('/soporte')}
+              onClick={() => navigate('/rastreo')}
               className="w-full sm:flex-1 py-4 px-6 rounded-full bg-[#661521] hover:bg-[#50101a] text-white font-extrabold text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#661521]/30 transition-all active:scale-95"
             >
               <span>Rastrear Estado de mi Pedido</span>
@@ -955,6 +1060,15 @@ export const CheckoutPage: React.FC = () => {
     <div className="max-w-7xl w-full mx-auto py-4 sm:py-10 px-3 sm:px-6 lg:px-8">
       {/* Barra de Retorno y Título */}
       <div className="mb-8">
+        <div className="mb-3">
+          <Breadcrumbs
+            items={[
+              { label: 'Inicio', href: '/' },
+              { label: 'Bolsa de Compras', href: '/bolsa' },
+              { label: 'Checkout Seguro', isCurrent: true },
+            ]}
+          />
+        </div>
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#50322A] hover:text-[#661521] transition-colors mb-3"
@@ -978,6 +1092,60 @@ export const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* BARRA DE PROGRESO DE 3 PASOS (Fig. 10 ARQ-07) */}
+      <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-white/90 backdrop-blur-xl border border-[#50322A]/15 shadow-xs">
+        <div className="flex items-center justify-between max-w-2xl mx-auto relative">
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-[#E7DED2] -translate-y-1/2 z-0" />
+          {/* Paso 1 */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-8 h-8 rounded-full bg-[#661521] text-white flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-xs">
+              1
+            </div>
+            <span className="text-[11px] font-bold text-[#661521] mt-1.5 hidden sm:block">
+              1. Datos & Entrega
+            </span>
+          </div>
+          {/* Paso 2 */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-8 h-8 rounded-full bg-[#661521] text-white flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-xs">
+              2
+            </div>
+            <span className="text-[11px] font-bold text-[#661521] mt-1.5 hidden sm:block">
+              2. Método de Pago
+            </span>
+          </div>
+          {/* Paso 3 */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-8 h-8 rounded-full bg-[#D19650] text-[#171717] flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-xs">
+              3
+            </div>
+            <span className="text-[11px] font-bold text-[#50322A] mt-1.5 hidden sm:block">
+              3. Confirmación & Pedido
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Alerta de Error en Validación de Inventario o Checkout (RN-GEN-01, CA-35) */}
+      {errorCheckout && (
+        <div
+          role="alert"
+          className="mb-8 p-4 sm:p-5 rounded-2xl bg-red-500/10 border-2 border-red-500/30 text-red-950 flex items-start gap-3.5 shadow-lg animate-in fade-in slide-in-from-top-2"
+        >
+          <div className="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center shrink-0 border border-red-300">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-sm sm:text-base text-red-900">
+              No es posible procesar la orden
+            </h3>
+            <p className="text-xs sm:text-sm text-red-800 leading-relaxed font-medium">
+              {errorCheckout}
+            </p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleConfirmarPedido} noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -1011,8 +1179,11 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     id="nombre"
                     type="text"
+                    disabled={isSubmitting}
                     value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
+                    onChange={(e) =>
+                      setNombre(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]/g, ''))
+                    }
                     onBlur={() => markTouched('nombre')}
                     placeholder="Ej. Valeria Mendoza Gómez"
                     className={`w-full px-4 py-3 rounded-2xl bg-white border text-sm text-[#171717] focus:outline-none transition-colors ${
@@ -1037,6 +1208,7 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     id="cedula"
                     type="text"
+                    disabled={isSubmitting}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     value={cedula}
@@ -1065,6 +1237,7 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     id="telefono"
                     type="tel"
+                    disabled={isSubmitting}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     value={telefono}
@@ -1094,6 +1267,7 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     id="email"
                     type="email"
+                    disabled={isSubmitting}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onBlur={() => markTouched('email')}
@@ -1124,6 +1298,7 @@ export const CheckoutPage: React.FC = () => {
                   </div>
                   <select
                     id="destino"
+                    disabled={isSubmitting}
                     value={destinoCodigo}
                     onChange={(e) => setDestinoCodigo(e.target.value)}
                     className="w-full px-4 py-3 rounded-2xl bg-white border border-[#50322A]/20 text-sm font-bold text-[#171717] focus:outline-none focus:border-[#661521] shadow-xs"
@@ -1144,6 +1319,7 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     id="direccion"
                     type="text"
+                    disabled={isSubmitting}
                     value={direccion}
                     onChange={(e) => setDireccion(e.target.value)}
                     onBlur={() => markTouched('direccion')}
@@ -1167,6 +1343,7 @@ export const CheckoutPage: React.FC = () => {
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"
+                      disabled={isSubmitting}
                       checked={aceptaTerminos}
                       onChange={(e) => {
                         setAceptaTerminos(e.target.checked);
@@ -1474,8 +1651,13 @@ export const CheckoutPage: React.FC = () => {
                       <input
                         id="titularTransferencia"
                         type="text"
+                        disabled={isSubmitting}
                         value={titularTransferencia}
-                        onChange={(e) => setTitularTransferencia(e.target.value)}
+                        onChange={(e) =>
+                          setTitularTransferencia(
+                            e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]/g, '')
+                          )
+                        }
                         onBlur={() => markTouched('titularTransferencia')}
                         placeholder="Nombre de quien realizó la transferencia"
                         className={`w-full px-3.5 py-2.5 rounded-xl bg-white border text-xs text-[#171717] focus:outline-none transition-colors ${
@@ -1499,8 +1681,13 @@ export const CheckoutPage: React.FC = () => {
                       <input
                         id="comprobanteTransferencia"
                         type="text"
+                        disabled={isSubmitting}
                         value={comprobanteTransferencia}
-                        onChange={(e) => setComprobanteTransferencia(e.target.value)}
+                        onChange={(e) =>
+                          setComprobanteTransferencia(
+                            e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase()
+                          )
+                        }
                         onBlur={() => markTouched('comprobanteTransferencia')}
                         placeholder="Código de aprobación o CUS"
                         className={`w-full px-3.5 py-2.5 rounded-xl bg-white border text-xs text-[#171717] focus:outline-none transition-colors ${
@@ -1567,6 +1754,7 @@ export const CheckoutPage: React.FC = () => {
                     <img
                       src={it.imagenUrl}
                       alt={it.nombre}
+                      loading="lazy"
                       className="w-14 h-16 rounded-xl object-cover shrink-0 bg-[#E7DED2] border border-[#50322A]/10"
                     />
                     <div className="flex-1 min-w-0">

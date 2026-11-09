@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   Sparkles,
   ShieldCheck,
@@ -108,7 +109,7 @@ const SEDES_RED_OMNICANAL: SedeOmnicanal[] = [
       'Sastrería a medida y ajustes de ruedo en 24h',
       'Redención inmediata de QR de Saldo a Favor (Cambios)',
       'Despacho de pedidos web locales DANE 54001',
-      'Prioridad de venta presencial sobre reserva blanda (RN-VTA-03)',
+      'Prioridad de venta presencial con inventario garantizado en mostrador',
     ],
     destacadoColor: '#661521',
   },
@@ -182,6 +183,14 @@ export const NosotrosPage: React.FC = () => {
 
   return (
     <div className="space-y-16 relative">
+      <div className="pt-2">
+        <Breadcrumbs
+          items={[
+            { label: 'Inicio', href: '/' },
+            { label: 'Nosotros · ADN & Sello de Origen', isCurrent: true },
+          ]}
+        />
+      </div>
       {/* Burbujas decorativas 3D en segundo plano */}
       <div
         className="mirror-bubble-3d w-44 h-44 absolute -top-8 -left-10 opacity-60 animate-float-3d hidden lg:block"
@@ -556,9 +565,9 @@ export const NosotrosPage: React.FC = () => {
                     <MapPin className="w-3.5 h-3.5 text-[#661521] shrink-0" aria-hidden="true" />
                     <span className="truncate">{sede.direccion}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#171717]/70">
-                    <Clock className="w-3.5 h-3.5 text-[#D19650] shrink-0" aria-hidden="true" />
-                    <span className="truncate">{sede.horario.split('·')[0]}</span>
+                  <div className="flex items-start gap-1.5 text-[#171717]/70">
+                    <Clock className="w-3.5 h-3.5 text-[#D19650] shrink-0 mt-0.5" aria-hidden="true" />
+                    <span className="line-clamp-2 leading-tight">{sede.horario}</span>
                   </div>
                 </div>
               </button>
@@ -648,7 +657,7 @@ export const NosotrosPage: React.FC = () => {
               <div className="space-y-2.5 pt-2">
                 <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 text-xs">
                   <strong className="text-[#D19650] block mb-0.5">
-                    Recepción Exclusiva de Compras (RN-COM-02)
+                    Recepción Exclusiva y Control de Calidad
                   </strong>
                   <span>
                     Toda orden de compra a proveedores y talleres artesanos ingresa y se audita primero en la Bodega Central antes de irrigarse a las tiendas.
@@ -657,7 +666,7 @@ export const NosotrosPage: React.FC = () => {
 
                 <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 text-xs">
                   <strong className="text-[#D19650] block mb-0.5">
-                    Custodia de Pedidos Web Reasignados (RN-VTA-03)
+                    Custodia Central de Pedidos Web
                   </strong>
                   <span>
                     Si una venta presencial en tienda física reclama la última unidad con reserva blanda y ninguna otra sede tiene stock, el pedido web pasa a custodia prioritaria en Bodega Central.
@@ -694,7 +703,11 @@ export const NosotrosPage: React.FC = () => {
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <Link
-              to="/"
+              to="/#catalogo-grid"
+              onClick={() => {
+                const el = document.getElementById('catalogo-grid');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="inline-flex items-center gap-2.5 px-7 py-4 rounded-full bg-[#661521] hover:bg-[#4A0E17] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#661521]/25"
             >
               <span>Explorar el Catálogo Oficial</span>

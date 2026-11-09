@@ -21,6 +21,7 @@ export interface FormaLogoProps {
   className?: string;
   /** Mostrar u ocultar el subtítulo sastre en variantes textuales */
   showSubtitle?: boolean;
+  subtitleText?: string;
 }
 
 /**
@@ -174,6 +175,7 @@ export const FormaLogo: React.FC<FormaLogoProps> = ({
   theme = 'dark',
   className = '',
   showSubtitle = true,
+  subtitleText,
 }) => {
   const rawId = useId();
   const uniqueId = rawId.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -292,7 +294,7 @@ export const FormaLogo: React.FC<FormaLogoProps> = ({
             <span
               className={`font-sans font-bold uppercase mt-1 ${subtitleSizeMap[size]} ${subtitleColorClass}`}
             >
-              COLOMBIA • ATELIER & OMNIPOS
+              {subtitleText || 'COLOMBIA • ATELIER & ALTA COSTURA'}
             </span>
           )}
         </div>
@@ -326,7 +328,7 @@ export const FormaLogo: React.FC<FormaLogoProps> = ({
           <span
             className={`font-sans font-bold uppercase mt-1 truncate ${subtitleSizeMap[size]} ${subtitleColorClass}`}
           >
-            ATELIER & OMNIPOS
+            {subtitleText || 'ATELIER & ALTA COSTURA'}
           </span>
         )}
       </div>

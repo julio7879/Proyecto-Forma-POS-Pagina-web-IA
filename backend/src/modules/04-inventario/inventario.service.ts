@@ -13,7 +13,7 @@ export class InventarioService {
    * Consulta saldos de inventario con desglose físico, disponible, reservas y sede.
    */
   static async listarInventario(filtros: ListarInventarioQuery) {
-    const { categoria, sku, ubicacionId, stockBajo, limite = 150, offset = 0 } = filtros;
+    const { categoria, sku, ubicacionId, stockBajo, limite = 500, offset = 0 } = filtros;
 
     const where: any = {
       variante: {
@@ -71,7 +71,7 @@ export class InventarioService {
           },
         },
       },
-      take: Math.min(limite, 300),
+      take: Math.min(limite, 1000),
       skip: offset,
       orderBy: [{ ubicacionId: 'asc' }, { varianteId: 'asc' }],
     });

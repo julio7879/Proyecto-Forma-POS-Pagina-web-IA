@@ -14,27 +14,91 @@ import {
   Info,
   HelpCircle,
   ChevronRight,
+  ChevronDown,
+  Search,
 } from 'lucide-react';
 import { useStorefrontCart } from '../../../features/storefront/context/StorefrontCartContext';
 import { FormaLogo } from '../../../components/common/FormaLogo';
+import { PredictiveSearch } from '../../../features/storefront/components/PredictiveSearch';
+import {
+  getPortalAuth,
+  clearPortalAuth,
+  PORTAL_AUTH_EVENTS,
+} from '../../../shared/auth/portalAuthStorage';
+
+const DEPARTAMENTOS_NAV = [
+  {
+    nombre: 'Ropa',
+    icono: '👔',
+    tagline: 'Sastrería & lino noble',
+    subcategorias: ['Camisas', 'Pantalones', 'Vestidos', 'Chaquetas'],
+  },
+  {
+    nombre: 'Calzado',
+    icono: '👞',
+    tagline: 'Cuero genuino hecho a mano',
+    subcategorias: ['Botines', 'Sandalias', 'Mocasines'],
+  },
+  {
+    nombre: 'Accesorios',
+    icono: '👜',
+    tagline: 'Marroquinería fina',
+    subcategorias: ['Bolsos', 'Cinturones', 'Gorras', 'Joyería'],
+  },
+  {
+    nombre: 'Cosméticos',
+    icono: '🌿',
+    tagline: 'Fórmulas botánicas andinas',
+    subcategorias: ['Sérums', 'Cremas', 'Aceites', 'Tónicos'],
+  },
+  {
+    nombre: 'Artesanías',
+    icono: '🏺',
+    tagline: 'Sello de origen ancestral',
+    subcategorias: ['Wayuu', 'Sombreros', 'Ruanas'],
+  },
+];
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [seccionActiva, setSeccionActiva] = useState<'inicio' | 'ofertas' | 'catalogo'>('inicio');
+  const [buscadorAbierto, setBuscadorAbierto] = useState(false);
+  const [dropdownColeccionesOpen, setDropdownColeccionesOpen] = useState(false);
+  const [subcatMobileOpen, setSubcatMobileOpen] = useState<string | null>(null);
+
+  // Detección activa de sección en ruta '/' (CLI-001, CLI-002, CLI-022)
+  useEffect(() => {
+    if (location.pathname !== '/') return;
+
+    const handleScroll = () => {
+      const catalogoEl = document.getElementById('catalogo-grid');
+      const ofertasEl = document.getElementById('ofertas');
+      const scrollY = window.scrollY;
+
+      if (catalogoEl && scrollY + 220 >= catalogoEl.offsetTop) {
+        setSeccionActiva('catalogo');
+      } else if (ofertasEl && scrollY + 220 >= ofertasEl.offsetTop && scrollY > 120) {
+        setSeccionActiva('ofertas');
+      } else {
+        setSeccionActiva('inicio');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [location.pathname, location.hash]);
   const { totalItems, openCart } = useStorefrontCart();
 
-  const [session, setSession] = useState(() => ({
-    token: localStorage.getItem('token'),
-    usuario: (() => {
-      try {
-        const raw = localStorage.getItem('usuario');
-        return raw ? JSON.parse(raw) : null;
-      } catch {
-        return null;
-      }
-    })(),
-  }));
+  const [session, setSession] = useState(() => {
+    const auth = getPortalAuth('storefront');
+    return {
+      token: auth.token,
+      usuario: auth.usuario,
+    };
+  });
 
   // Bloquear scroll del body cuando el menú móvil está abierto
   useEffect(() => {
@@ -51,31 +115,48 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     const syncSession = () => {
       try {
-        const raw = localStorage.getItem('usuario');
+        const auth = getPortalAuth('storefront');
         setSession({
-          token: localStorage.getItem('token'),
-          usuario: raw ? JSON.parse(raw) : null,
+          token: auth.token,
+          usuario: auth.usuario,
         });
       } catch {
         setSession({ token: null, usuario: null });
       }
     };
 
-    window.addEventListener('storage', syncSession);
+    const handleStorage = (e: any) => {
+      if (e instanceof StorageEvent) {
+        if (e.key !== 'forma_storefront_token' && e.key !== 'forma_storefront_usuario') {
+          return;
+        }
+      } else if (e?.key && !e.key.startsWith('forma_storefront_')) {
+        return;
+      }
+      syncSession();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(PORTAL_AUTH_EVENTS.STOREFRONT, syncSession);
     syncSession();
-    return () => window.removeEventListener('storage', syncSession);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(PORTAL_AUTH_EVENTS.STOREFRONT, syncSession);
+    };
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
+    clearPortalAuth('storefront');
     setSession({ token: null, usuario: null });
     setMenuAbierto(false);
-    navigate('/login');
+    navigate('/');
   };
 
   const handleScrollToSection = (sectionId: string) => {
     setMenuAbierto(false);
+    if (sectionId === 'ofertas') setSeccionActiva('ofertas');
+    if (sectionId === 'catalogo-grid') setSeccionActiva('catalogo');
+
     const doScroll = () => {
       const el =
         document.getElementById(sectionId) ||
@@ -131,6 +212,7 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
+                  setSeccionActiva('inicio');
                   if (location.pathname === '/') {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   } else {
@@ -138,7 +220,7 @@ export const Navbar: React.FC = () => {
                   }
                 }}
                 className={`px-3.5 py-1.5 rounded-full transition-all ${
-                  location.pathname === '/' && !location.hash
+                  location.pathname === '/' && seccionActiva === 'inicio'
                     ? 'bg-[#661521] text-white shadow-sm'
                     : 'text-[#50322A] hover:text-[#661521] hover:bg-white/60'
                 }`}
@@ -149,18 +231,121 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleScrollToSection('ofertas')}
-                className="px-3.5 py-1.5 rounded-full text-[#50322A] hover:text-[#661521] hover:bg-white/60 transition-all"
+                className={`px-3.5 py-1.5 rounded-full transition-all ${
+                  location.pathname === '/' && seccionActiva === 'ofertas'
+                    ? 'bg-[#661521] text-white shadow-sm'
+                    : 'text-[#50322A] hover:text-[#661521] hover:bg-white/60'
+                }`}
               >
                 Ofertas
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleScrollToSection('catalogo-grid')}
-                className="px-3.5 py-1.5 rounded-full text-[#50322A] hover:text-[#661521] hover:bg-white/60 transition-all"
+              {/* Botón Catálogo con Menú Desplegable en Cascada (Fig. 5 ARQ-07) */}
+              <div
+                className="relative"
+                onMouseEnter={() => setDropdownColeccionesOpen(true)}
+                onMouseLeave={() => setDropdownColeccionesOpen(false)}
               >
-                Catálogo
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/#catalogo-grid');
+                    setTimeout(() => {
+                      const el = document.getElementById('catalogo-grid');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 80);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1 cursor-pointer ${
+                    location.pathname === '/' && seccionActiva === 'catalogo'
+                      ? 'bg-[#661521] text-white shadow-sm'
+                      : 'text-[#50322A] hover:text-[#661521] hover:bg-white/60'
+                  }`}
+                  aria-haspopup="true"
+                  aria-expanded={dropdownColeccionesOpen}
+                >
+                  <span>Catálogo</span>
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${
+                      dropdownColeccionesOpen ? 'rotate-180 text-[#661521]' : 'text-[#50322A]/60'
+                    }`}
+                  />
+                </button>
+
+                {/* Menú Desplegable en Cascada (Cascading Dropdown Liquid Glass) */}
+                {dropdownColeccionesOpen && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50 w-[580px] animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-white/95 backdrop-blur-2xl rounded-3xl p-5 shadow-[0_20px_50px_rgba(80,50,42,0.18)] border border-[#E7DED2] text-left">
+                      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#50322A]/10">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-[#D19650]" />
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#50322A]">
+                            Colecciones Oficiales FORMA
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDropdownColeccionesOpen(false);
+                            navigate('/#catalogo-grid');
+                            setTimeout(() => {
+                              const el = document.getElementById('catalogo-grid');
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }, 80);
+                          }}
+                          className="text-xs font-bold text-[#661521] hover:underline cursor-pointer"
+                        >
+                          Ver catálogo completo &rarr;
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-5 gap-3">
+                        {DEPARTAMENTOS_NAV.map((dep) => (
+                          <div key={dep.nombre} className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDropdownColeccionesOpen(false);
+                                navigate(`/?categoria=${encodeURIComponent(dep.nombre)}#catalogo-grid`);
+                                setTimeout(() => {
+                                  const el = document.getElementById('catalogo-grid');
+                                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                }, 80);
+                              }}
+                              className="w-full text-left font-bold text-xs text-[#50322A] hover:text-[#661521] flex items-center gap-1 group/item"
+                            >
+                              <span>{dep.icono}</span>
+                              <span className="group-hover/item:underline">{dep.nombre}</span>
+                            </button>
+
+                            <ul className="space-y-1 text-[11px] text-[#50322A]/70 list-none p-0 m-0">
+                              {dep.subcategorias.map((sub) => (
+                                <li key={sub}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDropdownColeccionesOpen(false);
+                                      navigate(
+                                        `/?categoria=${encodeURIComponent(dep.nombre)}&subcategoria=${encodeURIComponent(sub)}#catalogo-grid`
+                                      );
+                                      setTimeout(() => {
+                                        const el = document.getElementById('catalogo-grid');
+                                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                      }, 80);
+                                    }}
+                                    className="hover:text-[#661521] hover:underline transition-colors block py-0.5 text-left w-full truncate cursor-pointer"
+                                  >
+                                    {sub}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <Link
                 to="/nosotros"
@@ -185,8 +370,19 @@ export const Navbar: React.FC = () => {
               </Link>
             </div>
 
-            {/* Acciones Derecha: Carrito Compacto, Mi Cuenta (Icono) y Botón Hamburguesa Móvil */}
+            {/* Acciones Derecha: Buscador, Carrito Compacto, Mi Cuenta (Icono) y Botón Hamburguesa Móvil */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Botón de Búsqueda Predictiva Inteligente (Fig. 1) */}
+              <button
+                type="button"
+                onClick={() => setBuscadorAbierto(true)}
+                aria-label="Buscar en el catálogo"
+                title="Buscador predictivo (lino, seda, calzado, color...)"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-white/80 hover:bg-white text-[#50322A] hover:text-[#661521] border border-white/90 transition-all shadow-sm active:scale-95 flex items-center justify-center cursor-pointer"
+              >
+                <Search className="w-4 h-4 text-[#50322A]" />
+                <span className="sr-only">Buscar prendas</span>
+              </button>
               {/* Botón de Bolsa / Carrito Compacto */}
               <Link
                 to="/bolsa"
@@ -198,7 +394,7 @@ export const Navbar: React.FC = () => {
                 }}
                 aria-label={`Bolsa (${totalItems})`}
                 title={`Carrito de compras (${totalItems})`}
-                className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#661521] hover:bg-[#50322A] text-white transition-all shadow-md active:scale-95 shrink-0 cursor-pointer border border-white/40"
+                className="relative inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#661521] hover:bg-[#50322A] text-white transition-all shadow-md active:scale-95 shrink-0 cursor-pointer border border-white/40"
               >
                 <ShoppingCart className="w-4 h-4 text-[#D19650]" />
                 <span className="sr-only">Bolsa ({totalItems})</span>
@@ -214,7 +410,7 @@ export const Navbar: React.FC = () => {
                     to="/cuenta"
                     aria-label="Mi Cuenta"
                     title={session.usuario?.nombreCompleto || 'Mi Cuenta'}
-                    className="w-10 h-10 rounded-full bg-[#50322A] hover:bg-[#661521] text-white inline-flex items-center justify-center transition-all shadow-sm shrink-0 border border-white/40"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#50322A] hover:bg-[#661521] text-white inline-flex items-center justify-center transition-all shadow-sm shrink-0 border border-white/40"
                   >
                     <User className="w-4 h-4 text-[#D19650]" />
                     <span className="sr-only">Mi Cuenta</span>
@@ -233,7 +429,7 @@ export const Navbar: React.FC = () => {
                   to="/cuenta"
                   aria-label="Mi Cuenta"
                   title="Mi Cuenta"
-                  className="w-10 h-10 rounded-full bg-[#D19650] hover:bg-[#bf833e] text-white inline-flex items-center justify-center transition-all shadow-sm shrink-0 border border-white/40"
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#D19650] hover:bg-[#bf833e] text-white inline-flex items-center justify-center transition-all shadow-sm shrink-0 border border-white/40"
                 >
                   <User className="w-4 h-4" />
                   <span className="sr-only">Mi Cuenta</span>
@@ -244,7 +440,7 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMenuAbierto((prev) => !prev)}
-                className={`p-2 sm:p-2.5 md:hidden rounded-full border transition-all shadow-sm active:scale-95 shrink-0 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#D19650] ${
+                className={`w-11 h-11 min-w-[44px] min-h-[44px] md:hidden rounded-full border transition-all shadow-sm active:scale-95 shrink-0 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#D19650] ${
                   menuAbierto
                     ? 'bg-[#661521] text-white border-[#D19650]'
                     : 'bg-white/95 text-[#50322A] border-[#50322A]/20 hover:bg-[#FAF6EF]'
@@ -282,15 +478,33 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMenuAbierto(false)}
-                className="w-9 h-9 rounded-full bg-white border border-[#50322A]/15 flex items-center justify-center text-[#50322A] hover:bg-[#661521] hover:text-white transition-all shadow-xs"
+                className="w-9 h-9 rounded-full bg-white border border-[#50322A]/15 flex items-center justify-center text-[#50322A] hover:bg-[#661521] hover:text-white transition-all shadow-xs cursor-pointer"
                 aria-label="Cerrar menú"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Buscador Rápido Móvil (Fig. 1 ARQ-07) */}
+            <div className="pt-3 pb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  setBuscadorAbierto(true);
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-white border border-[#50322A]/15 text-[#50322A] text-xs font-semibold shadow-xs hover:border-[#661521] transition-all cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Search className="w-4 h-4 text-[#661521]" />
+                  <span>Buscar lino, seda, calzado, ref...</span>
+                </span>
+                <span className="text-[10px] font-bold uppercase text-[#D19650]">Buscar</span>
+              </button>
+            </div>
+
             {/* Acceso Rápido a Bolsa */}
-            <div className="py-4 border-b border-[#50322A]/10">
+            <div className="py-3 border-b border-[#50322A]/10">
               <Link
                 to="/bolsa"
                 onClick={() => setMenuAbierto(false)}
@@ -347,8 +561,15 @@ export const Navbar: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleScrollToSection('catalogo-grid')}
-                className="w-full flex items-center justify-between p-3 rounded-2xl text-left text-sm font-bold text-[#50322A] hover:bg-white/80 transition-colors"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  navigate('/#catalogo-grid');
+                  setTimeout(() => {
+                    const el = document.getElementById('catalogo-grid');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }, 80);
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl text-left text-sm font-bold text-[#50322A] hover:bg-white/80 transition-colors cursor-pointer"
               >
                 <span className="flex items-center gap-3">
                   <Grid className="w-4 h-4 text-[#D19650]" />
@@ -381,22 +602,77 @@ export const Navbar: React.FC = () => {
                 <ChevronRight className="w-4 h-4 text-[#50322A]/40" />
               </Link>
 
-              {/* Categorías Rápidas */}
-              <div className="pt-3 border-t border-[#50322A]/10 mt-3">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#50322A]/60 px-3 block mb-2">
-                  Colecciones
+              {/* Departamentos & Subcategorías en Cascada Móvil (Fig. 5 ARQ-07) */}
+              <div className="pt-3 border-t border-[#50322A]/10 mt-3 space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#50322A]/60 px-2 block">
+                  Departamentos & Subcategorías
                 </span>
-                <div className="grid grid-cols-2 gap-1.5 px-1">
-                  {['Ropa', 'Calzado', 'Accesorios', 'Cosméticos', 'Artesanías'].map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => handleScrollToSection('catalogo-grid')}
-                      className="p-2 rounded-xl bg-white/60 hover:bg-white text-xs font-semibold text-[#50322A] text-left border border-[#50322A]/10 transition-colors"
-                    >
-                      {cat}
-                    </button>
-                  ))}
+                <div className="space-y-1.5">
+                  {DEPARTAMENTOS_NAV.map((dep) => {
+                    const isExpanded = subcatMobileOpen === dep.nombre;
+                    return (
+                      <div
+                        key={dep.nombre}
+                        className="rounded-2xl border border-[#50322A]/10 bg-white/70 overflow-hidden transition-all shadow-2xs"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSubcatMobileOpen(isExpanded ? null : dep.nombre)}
+                          className="w-full flex items-center justify-between p-2.5 sm:p-3 text-xs font-bold text-[#50322A] hover:bg-white text-left transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{dep.icono}</span>
+                            <span>{dep.nombre}</span>
+                            <span className="text-[10px] font-normal text-[#50322A]/50">
+                              · {dep.tagline}
+                            </span>
+                          </span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-[#50322A]/50 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-180 text-[#661521]' : ''
+                            }`}
+                          />
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-1 bg-[#FAF6EF]/80 border-t border-[#50322A]/10 flex flex-wrap gap-1.5 animate-in fade-in duration-150">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuAbierto(false);
+                                navigate(`/?categoria=${encodeURIComponent(dep.nombre)}#catalogo-grid`);
+                                setTimeout(() => {
+                                  const el = document.getElementById('catalogo-grid');
+                                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                }, 80);
+                              }}
+                              className="px-2.5 py-1 rounded-xl bg-[#661521] text-white text-[11px] font-bold shadow-2xs"
+                            >
+                              Ver Todo {dep.nombre} &rarr;
+                            </button>
+                            {dep.subcategorias.map((sub) => (
+                              <button
+                                key={sub}
+                                type="button"
+                                onClick={() => {
+                                  setMenuAbierto(false);
+                                  navigate(
+                                    `/?categoria=${encodeURIComponent(dep.nombre)}&subcategoria=${encodeURIComponent(sub)}#catalogo-grid`
+                                  );
+                                  setTimeout(() => {
+                                    const el = document.getElementById('catalogo-grid');
+                                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                  }, 80);
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#661521]/10 text-[#50322A] text-[11px] font-medium border border-[#50322A]/15 transition-colors"
+                              >
+                                {sub}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -482,6 +758,20 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Buscador Predictivo Inteligente con Resultados en Tiempo Real (Fig. 1 ARQ-07) */}
+      <PredictiveSearch
+        isOpen={buscadorAbierto}
+        onClose={() => setBuscadorAbierto(false)}
+        onSearchSubmit={(termino) => {
+          setBuscadorAbierto(false);
+          navigate(`/?q=${encodeURIComponent(termino)}#catalogo-grid`);
+          setTimeout(() => {
+            const el = document.getElementById('catalogo-grid');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 80);
+        }}
+      />
     </>
   );
 };

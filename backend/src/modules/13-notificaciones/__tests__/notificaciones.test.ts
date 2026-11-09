@@ -78,7 +78,7 @@ describe('Módulo 13: Notificaciones y Servicio Híbrido de Correo (Alta Costura
       expect(html).toContain('Vestido Seda Gala');
       expect(html).toContain('VES-SED-01');
       expect(html).toContain('Sede Poblado (Medellín)');
-      expect(html).toContain('/soporte?codigo=PED-2026-849201');
+      expect(html).toContain('/rastreo?codigo=PED-2026-849201');
     });
 
     it('debe implementar NotificacionPort para avisos generales del sistema', async () => {

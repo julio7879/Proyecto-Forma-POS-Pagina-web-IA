@@ -5,7 +5,7 @@ import PosPedidosWebPage from '../pages/PosPedidosWebPage';
 import PosCambiosPage from '../pages/PosCambiosPage';
 import PosTrasladosPage from '../pages/PosTrasladosPage';
 import PosArqueoPage from '../pages/PosArqueoPage';
-import { createWebOrder } from '../utils/webOrdersStore';
+import { createWebOrder, tomarPedidoWebEnSede } from '../utils/webOrdersStore';
 import { applyStockDelta, recordPosSale, resetPosLedgerSync } from '../utils/posLedgerSync';
 import { abrirSesionCaja, resetCaja } from '../utils/cajaStore';
 
@@ -92,6 +92,7 @@ describe('Portal 2 (Sistema POS) - 5 Vistas Dedicadas con Datos 100% Reales', ()
 
   describe('2. PosPedidosWebPage (Bandeja Compartida con Bloqueo al Primer Clic y Cierre de Drawer)', () => {
     beforeEach(() => {
+      applyStockDelta('ROP-DNM-001-M', 5);
       createWebOrder({
         codigo: 'PED-2026-849201',
         fechaCreacionIso: new Date().toISOString(),
@@ -159,6 +160,19 @@ describe('Portal 2 (Sistema POS) - 5 Vistas Dedicadas con Datos 100% Reales', ()
       expect(screen.getByText('Reportar falta de prenda en tienda')).toBeInTheDocument();
       expect(screen.getByText('1. Reasignar a otra Tienda')).toBeInTheDocument();
       expect(screen.getByText('2. Enviar a Bodega Central')).toBeInTheDocument();
+    });
+
+    it('no muestra el pedido en la bandeja de una sede física que tenga 0 stock de la prenda', () => {
+      localStorage.setItem('forma_pos_sede', 'Punto Caobos (Cúcuta)');
+      render(<PosPedidosWebPage />);
+      expect(screen.queryByText(/PED-2026-849201/)).not.toBeInTheDocument();
+      expect(screen.getByText(/No hay pedidos web asignados a esta sede/i)).toBeInTheDocument();
+    });
+
+    it('bloquea tomarPedidoWebEnSede si la sede física no cuenta con stock disponible', () => {
+      const res = tomarPedidoWebEnSede('PED-2026-849201', 'Punto Caobos (Cúcuta)', 'Valeria Gómez');
+      expect(res.ok).toBe(false);
+      expect(res.error).toMatch(/no cuenta con stock disponible/i);
     });
   });
 

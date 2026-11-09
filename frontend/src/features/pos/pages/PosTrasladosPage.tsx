@@ -26,6 +26,26 @@ import {
 
 export type SubcategoriaInventarioSede = 'EXISTENCIAS' | 'SOLICITUD' | 'RECEPCION' | 'KARDEX';
 
+export interface DesgloseTallaSolicitud {
+  sku: string;
+  talla: string;
+  color?: string;
+  cantidad: number;
+}
+
+export interface ProductoAgrupadoSolicitud {
+  nombre: string;
+  categoria: string;
+  imagenUrl: string;
+  variantes: Array<{
+    sku: string;
+    talla: string;
+    color: string;
+    stockSede: number;
+    precioUnitarioCOP: number;
+  }>;
+}
+
 export interface SolicitudTrasladoItem {
   id: string;
   codigo: string;
@@ -39,6 +59,7 @@ export interface SolicitudTrasladoItem {
   cantidad: number;
   motivo: string;
   estado: 'PENDIENTE' | 'APROBADA' | 'EN_CAMINO' | 'RECIBIDA';
+  desgloseTallas?: DesgloseTallaSolicitud[];
 }
 
 export interface LineaRecepcionTraslado {
@@ -304,22 +325,56 @@ export const PosTrasladosPage: React.FC = () => {
   }, [inventarioSede]);
 
   // =========================================================================
-  // ESTADO SUBCATEGORÍA 2: SOLICITAR MERCANCÍA A CENTRAL (CERO MOCKS)
+  // ESTADO SUBCATEGORÍA 2: SOLICITAR MERCANCÍA A CENTRAL (MULTI-TALLA REAL)
   // =========================================================================
-  const [skuSeleccionadoSolicitud, setSkuSeleccionadoSolicitud] = useState<string>(
-    () => CATALOGO_INICIAL_POS[0]?.sku || ''
-  );
-  const varianteSolicitudActual = useMemo(
-    () =>
-      CATALOGO_INICIAL_POS.find((v) => v.sku === skuSeleccionadoSolicitud) ||
-      CATALOGO_INICIAL_POS[0],
-    [skuSeleccionadoSolicitud]
+  const productosAgrupadosSolicitud = useMemo<ProductoAgrupadoSolicitud[]>(() => {
+    const map = new Map<string, ProductoAgrupadoSolicitud>();
+    for (const v of CATALOGO_INICIAL_POS) {
+      if (!map.has(v.nombre)) {
+        map.set(v.nombre, {
+          nombre: v.nombre,
+          categoria: v.categoria,
+          imagenUrl: v.imagenUrl,
+          variantes: [],
+        });
+      }
+      const prod = map.get(v.nombre)!;
+      if (!prod.variantes.some((existente) => existente.sku === v.sku)) {
+        prod.variantes.push({
+          sku: v.sku,
+          talla: v.talla,
+          color: v.color,
+          stockSede: v.stockSede,
+          precioUnitarioCOP: v.precioUnitarioCOP,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, []);
+
+  const [productoSeleccionadoNombre, setProductoSeleccionadoNombre] = useState<string>(
+    () => productosAgrupadosSolicitud[0]?.nombre || CATALOGO_INICIAL_POS[0]?.nombre || ''
   );
 
-  const [tallaSolicitud, setTallaSolicitud] = useState<string>(
+  const productoSeleccionado = useMemo(() => {
+    return (
+      productosAgrupadosSolicitud.find((p) => p.nombre === productoSeleccionadoNombre) ||
+      productosAgrupadosSolicitud[0]
+    );
+  }, [productosAgrupadosSolicitud, productoSeleccionadoNombre]);
+
+  // Cantidades pedidas para cada SKU del producto actual
+  const [cantidadesPorSku, setCantidadesPorSku] = useState<Record<string, number>>({});
+
+  const [, setSkuSeleccionadoSolicitud] = useState<string>(
+    () => CATALOGO_INICIAL_POS[0]?.sku || ''
+  );
+
+
+  const [, setTallaSolicitud] = useState<string>(
     () => CATALOGO_INICIAL_POS[0]?.talla || 'M'
   );
-  const [cantidadSolicitada, setCantidadSolicitada] = useState<number>(5);
+  const [cantidadSolicitada] = useState<number>(5);
   const [motivoSolicitud, setMotivoSolicitud] = useState<string>(
     'Reposición por inventario bajo en mostrador'
   );
@@ -328,6 +383,21 @@ export const PosTrasladosPage: React.FC = () => {
   const [solicitudes, setSolicitudes] = useState<SolicitudTrasladoItem[]>(() =>
     loadSolicitudesGuardadas()
   );
+
+  // Variantes con cantidad > 0 del producto actual
+  const variantesConCantidad = useMemo(() => {
+    if (!productoSeleccionado) return [];
+    return productoSeleccionado.variantes
+      .map((v) => ({
+        ...v,
+        cantidad: cantidadesPorSku[v.sku] ?? 0,
+      }))
+      .filter((v) => v.cantidad > 0);
+  }, [productoSeleccionado, cantidadesPorSku]);
+
+  const totalUnidadesSolicitadas = useMemo(() => {
+    return variantesConCantidad.reduce((sum, v) => sum + v.cantidad, 0);
+  }, [variantesConCantidad]);
 
   // =========================================================================
   // ESTADO SUBCATEGORÍA 3: RECEPCIÓN DE DESPACHOS (CONECTADO A ADMIN STORAGE)
@@ -358,12 +428,39 @@ export const PosTrasladosPage: React.FC = () => {
   // Crear solicitud de mercancía a Bodega Central y sincronizar con forma_admin_traslados
   const handleCrearSolicitud = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!varianteSolicitudActual) return;
+    if (!productoSeleccionado) return;
 
-    const cantPositiva = Math.max(1, Math.trunc(cantidadSolicitada || 1));
+    // Si tiene cantidades en la matriz multi-talla, las procesa; de lo contrario usa fallback
+    const itemsSolicitados =
+      variantesConCantidad.length > 0
+        ? variantesConCantidad
+        : productoSeleccionado.variantes.slice(0, 1).map((v) => ({
+            ...v,
+            cantidad: Math.max(1, cantidadSolicitada),
+          }));
+
+    const totalUnidades = itemsSolicitados.reduce((acc, it) => acc + it.cantidad, 0);
+    if (totalUnidades <= 0) {
+      alert('Por favor asigna al menos 1 unidad en alguna talla para enviar la solicitud.');
+      return;
+    }
+
     const nowIso = new Date().toISOString();
     const nextNum = solicitudes.length + 1;
     const codigoSol = `SOL-${new Date().getFullYear()}-${String(nextNum).padStart(3, '0')}`;
+
+    const desgloseTallas: DesgloseTallaSolicitud[] = itemsSolicitados.map((it) => ({
+      sku: it.sku,
+      talla: it.talla,
+      color: it.color,
+      cantidad: it.cantidad,
+    }));
+
+    const tallasResumenTexto = desgloseTallas
+      .map((t) => `${t.talla} (${t.cantidad})`)
+      .join(', ');
+
+    const primeraVar = itemsSolicitados[0];
 
     const nuevaSol: SolicitudTrasladoItem = {
       id: `sol-${Date.now()}`,
@@ -371,13 +468,14 @@ export const PosTrasladosPage: React.FC = () => {
       fecha: `Hoy · ${formatFechaBogota(nowIso)}`,
       fechaIso: nowIso,
       sedeDestino: sedeActiva,
-      productoNombre: varianteSolicitudActual.nombre,
-      sku: varianteSolicitudActual.sku,
-      talla: tallaSolicitud || varianteSolicitudActual.talla,
-      color: varianteSolicitudActual.color,
-      cantidad: cantPositiva,
+      productoNombre: productoSeleccionado.nombre,
+      sku: itemsSolicitados.length === 1 ? primeraVar.sku : `MULTI-${itemsSolicitados.length}TALLAS`,
+      talla: tallasResumenTexto,
+      color: itemsSolicitados.length === 1 ? primeraVar.color : 'Variados',
+      cantidad: totalUnidades,
       motivo: motivoSolicitud.trim() || 'Reposición regular de tienda',
       estado: 'EN_CAMINO',
+      desgloseTallas,
     };
 
     const nuevasSolicitudes = [nuevaSol, ...solicitudes];
@@ -392,6 +490,18 @@ export const PosTrasladosPage: React.FC = () => {
       const nuevoTrasladoId = Date.now();
       const codigoTrl = `TRL-${String(arrAdmin.length + 1).padStart(4, '0')}`;
 
+      const lineasTraslado = itemsSolicitados.map((it, idx) => ({
+        id: nuevoTrasladoId + idx + 1,
+        varianteId: idx + 1,
+        sku: it.sku,
+        nombreProducto: `${productoSeleccionado.nombre} (Talla ${it.talla})`,
+        cantidadSolicitada: it.cantidad,
+        cantidadAprobada: it.cantidad,
+        cantidadEnviada: it.cantidad,
+        recibidaBuena: it.cantidad,
+        recibidaDanada: 0,
+      }));
+
       const nuevoAdminTraslado = {
         id: nuevoTrasladoId,
         codigo: codigoTrl,
@@ -403,19 +513,7 @@ export const PosTrasladosPage: React.FC = () => {
         fechaSolicitud: nowIso,
         fechaEnvio: nowIso,
         observaciones: nuevaSol.motivo,
-        lineas: [
-          {
-            id: nuevoTrasladoId + 1,
-            varianteId: 1,
-            sku: varianteSolicitudActual.sku,
-            nombreProducto: varianteSolicitudActual.nombre,
-            cantidadSolicitada: cantPositiva,
-            cantidadAprobada: cantPositiva,
-            cantidadEnviada: cantPositiva,
-            recibidaBuena: cantPositiva,
-            recibidaDanada: 0,
-          },
-        ],
+        lineas: lineasTraslado,
       };
 
       const nuevosAdmin = [nuevoAdminTraslado, ...arrAdmin];
@@ -426,9 +524,17 @@ export const PosTrasladosPage: React.FC = () => {
     }
 
     setMensajeSolicitudExito(
-      `Solicitud ${nuevaSol.codigo} enviada a Bodega Central y habilitada en Recepción de Despachos.`
+      `Solicitud ${nuevaSol.codigo} enviada a Bodega Central: ${totalUnidades} unidades de ${productoSeleccionado.nombre} en ${itemsSolicitados.length} tallas (${tallasResumenTexto}).`
     );
-    setTimeout(() => setMensajeSolicitudExito(null), 5000);
+
+    // Limpiar formulario para el siguiente pedido
+    const resetObj: Record<string, number> = {};
+    productoSeleccionado.variantes.forEach((v) => {
+      resetObj[v.sku] = 0;
+    });
+    setCantidadesPorSku((prev) => ({ ...prev, ...resetObj }));
+
+    setTimeout(() => setMensajeSolicitudExito(null), 6000);
   };
 
   // Registrar un despacho entrante desde Bodega Central en la pestaña de Recepción
@@ -985,76 +1091,173 @@ export const PosTrasladosPage: React.FC = () => {
               </h2>
             </div>
 
-            <form onSubmit={handleCrearSolicitud} className="space-y-3.5">
-              {/* Producto */}
+            <form onSubmit={handleCrearSolicitud} className="space-y-4">
+              {/* Producto a Solicitar */}
               <div>
                 <label className="block text-xs font-bold uppercase text-stone-700 mb-1">
                   Producto a Solicitar:
                 </label>
                 <select
-                  value={skuSeleccionadoSolicitud}
+                  value={productoSeleccionadoNombre}
                   onChange={(e) => {
-                    const sku = e.target.value;
-                    setSkuSeleccionadoSolicitud(sku);
-                    const found = CATALOGO_INICIAL_POS.find((v) => v.sku === sku);
-                    if (found) setTallaSolicitud(found.talla);
+                    const nom = e.target.value;
+                    setProductoSeleccionadoNombre(nom);
+                    const prod = productosAgrupadosSolicitud.find((p) => p.nombre === nom);
+                    if (prod && prod.variantes.length > 0) {
+                      setSkuSeleccionadoSolicitud(prod.variantes[0].sku);
+                      setTallaSolicitud(prod.variantes[0].talla);
+                    }
                   }}
                   className="w-full min-h-[46px] px-3.5 rounded-xl bg-[#FAF7F4] border-2 border-[#D8CFC6] text-xs font-bold text-[#1C1311] focus:outline-none focus:border-[#661521]"
                 >
-                  {CATALOGO_INICIAL_POS.map((p) => (
-                    <option key={p.sku} value={p.sku}>
-                      {p.nombre} ({p.sku} · Talla {p.talla})
+                  {productosAgrupadosSolicitud.map((p) => (
+                    <option key={p.nombre} value={p.nombre}>
+                      {p.nombre} ({p.categoria} · {p.variantes.length} {p.variantes.length === 1 ? 'talla' : 'tallas'})
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Talla y Cantidad */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-stone-700 mb-1">
-                    Talla:
+              {/* Matriz Multi-Talla de Cantidades */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase text-stone-700">
+                    Tallas y Cantidades a Pedir:
                   </label>
-                  <select
-                    value={tallaSolicitud}
-                    onChange={(e) => setTallaSolicitud(e.target.value)}
-                    className="w-full min-h-[46px] px-3.5 rounded-xl bg-[#FAF7F4] border-2 border-[#D8CFC6] text-xs font-bold text-[#1C1311] focus:outline-none focus:border-[#661521]"
-                  >
-                    {Array.from(
-                      new Set([
-                        varianteSolicitudActual?.talla || 'M',
-                        'S',
-                        'M',
-                        'L',
-                        'XL',
-                        'Única',
-                      ])
-                    ).map((t) => (
-                      <option key={t} value={t}>
-                        Talla {t}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const upd: Record<string, number> = {};
+                        productoSeleccionado?.variantes.forEach((v) => (upd[v.sku] = 5));
+                        setCantidadesPorSku((prev) => ({ ...prev, ...upd }));
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-[#FAF7F4] hover:bg-stone-200 border border-[#D8CFC6] font-bold text-[#661521] cursor-pointer"
+                    >
+                      5 c/u
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const upd: Record<string, number> = {};
+                        productoSeleccionado?.variantes.forEach((v) => (upd[v.sku] = 10));
+                        setCantidadesPorSku((prev) => ({ ...prev, ...upd }));
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-[#FAF7F4] hover:bg-stone-200 border border-[#D8CFC6] font-bold text-[#661521] cursor-pointer"
+                    >
+                      10 c/u
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const upd: Record<string, number> = {};
+                        productoSeleccionado?.variantes.forEach((v) => (upd[v.sku] = 0));
+                        setCantidadesPorSku((prev) => ({ ...prev, ...upd }));
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600 font-medium cursor-pointer"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase text-stone-700 mb-1">
-                    Cantidad (Unidades):
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={cantidadSolicitada}
-                    onKeyDown={(e) => {
-                      if (e.key === '-' || e.key === 'e') e.preventDefault();
-                    }}
-                    onChange={(e) => {
-                      const limpio = e.target.value.replace(/[^0-9]/g, '');
-                      setCantidadSolicitada(Math.max(1, parseInt(limpio, 10) || 1));
-                    }}
-                    className="w-full min-h-[46px] px-3.5 rounded-xl bg-[#FAF7F4] border-2 border-[#D8CFC6] font-mono text-base font-black text-[#1C1311] focus:outline-none focus:border-[#661521]"
-                  />
+                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                  {productoSeleccionado?.variantes.map((v) => {
+                    const cant = cantidadesPorSku[v.sku] ?? 0;
+                    return (
+                      <div
+                        key={v.sku}
+                        className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                          cant > 0
+                            ? 'bg-[#661521]/5 border-[#661521]/40 shadow-2xs'
+                            : 'bg-[#FAF7F4] border-[#E5DDD3]'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-xs text-[#1C1311]">
+                              Talla {v.talla}
+                            </span>
+                            <span className="text-[11px] text-stone-500 truncate">
+                              · {v.color}
+                            </span>
+                          </div>
+                          <div className="font-mono text-[10px] text-stone-400 mt-0.5 truncate">
+                            {v.sku} · Stock en tienda: {v.stockSede} uds
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const actual = cantidadesPorSku[v.sku] ?? 0;
+                              setCantidadesPorSku((prev) => ({
+                                ...prev,
+                                [v.sku]: Math.max(0, actual - 1),
+                              }));
+                            }}
+                            className="w-7 h-7 rounded-lg bg-white border border-[#D8CFC6] flex items-center justify-center text-stone-700 hover:bg-stone-200 cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min={0}
+                            max={200}
+                            value={cant}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value.replace(/[^0-9]/g, ''), 10) || 0);
+                              setCantidadesPorSku((prev) => ({
+                                ...prev,
+                                [v.sku]: val,
+                              }));
+                            }}
+                            className="w-12 h-7 rounded-lg bg-white border border-[#D8CFC6] font-mono text-center text-xs font-black text-[#1C1311] focus:outline-none focus:border-[#661521]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const actual = cantidadesPorSku[v.sku] ?? 0;
+                              setCantidadesPorSku((prev) => ({
+                                ...prev,
+                                [v.sku]: Math.min(200, actual + 1),
+                              }));
+                            }}
+                            className="w-7 h-7 rounded-lg bg-white border border-[#D8CFC6] flex items-center justify-center text-stone-700 hover:bg-stone-200 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const actual = cantidadesPorSku[v.sku] ?? 0;
+                              setCantidadesPorSku((prev) => ({
+                                ...prev,
+                                [v.sku]: Math.min(200, actual + 5),
+                              }));
+                            }}
+                            className="px-1.5 py-1 rounded bg-stone-200/80 hover:bg-stone-300 text-[10px] font-bold text-stone-800 cursor-pointer ml-0.5"
+                          >
+                            +5
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Resumen del Lote */}
+                <div className="p-3 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] flex items-center justify-between text-xs">
+                  <span className="text-stone-600 font-semibold">Total a pedir:</span>
+                  <span className="font-mono font-black text-sm text-[#661521]">
+                    {totalUnidadesSolicitadas} unidades
+                    {variantesConCantidad.length > 0 && (
+                      <span className="font-normal text-xs text-stone-500 ml-1">
+                        ({variantesConCantidad.length} {variantesConCantidad.length === 1 ? 'talla' : 'tallas'})
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
 
@@ -1074,10 +1277,13 @@ export const PosTrasladosPage: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full min-h-[52px] px-5 rounded-2xl bg-[#661521] hover:bg-[#52101a] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                disabled={totalUnidadesSolicitadas === 0}
+                className="w-full min-h-[52px] px-5 rounded-2xl bg-[#661521] hover:bg-[#52101a] disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
               >
                 <Send className="w-4 h-4 text-[#D19650]" />
-                <span>Enviar Solicitud a Bodega Central</span>
+                <span>
+                  Enviar Solicitud a Bodega Central ({totalUnidadesSolicitadas} uds)
+                </span>
               </button>
 
               {mensajeSolicitudExito && (
@@ -1141,16 +1347,34 @@ export const PosTrasladosPage: React.FC = () => {
                       </div>
 
                       <p className="font-black text-sm text-[#1C1311] mt-1">
-                        {sol.productoNombre} (Talla {sol.talla})
+                        {sol.productoNombre}
+                        {!sol.desgloseTallas?.length && sol.talla ? ` (Talla ${sol.talla})` : ''}
                       </p>
-                      <p className="text-stone-600 mt-0.5">
-                        Cantidad: <strong>{sol.cantidad} unidades</strong> · Motivo: {sol.motivo}
+
+                      {sol.desgloseTallas && sol.desgloseTallas.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {sol.desgloseTallas.map((item, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200/80 border border-stone-300/70 text-[11px] font-medium text-stone-800"
+                            >
+                              <span className="font-bold text-stone-600">Talla {item.talla}:</span>
+                              <span className="font-mono font-black text-[#661521]">{item.cantidad} uds</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-stone-600 mt-1">
+                        Total Solicitado: <strong>{sol.cantidad} unidades</strong> · Motivo: {sol.motivo}
                       </p>
                     </div>
 
                     <div className="text-right shrink-0 space-y-1">
                       <span className="font-mono text-xs font-bold text-stone-500 block">
-                        SKU: {sol.sku}
+                        {sol.desgloseTallas && sol.desgloseTallas.length > 1
+                          ? `${sol.desgloseTallas.length} SKUs (${sol.cantidad} uds)`
+                          : `SKU: ${sol.sku}`}
                       </span>
                       <button
                         type="button"

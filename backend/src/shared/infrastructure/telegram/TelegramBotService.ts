@@ -254,7 +254,7 @@ export class TelegramBotService {
    * Genera enlaces de Telegram (deep link al bot y enlace directo para compartir)
    */
   public generarEnlaceTelegram(consecutivo: string, ticketText: string) {
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'FormaOmniPosBot';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'FormaPosBot';
     const consecutivoLimpio = this.normalizarConsecutivo(consecutivo);
 
     const deepLinkBot = `https://t.me/${botUsername}?start=recibo_${consecutivoLimpio}`;

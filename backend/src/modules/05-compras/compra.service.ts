@@ -35,18 +35,63 @@ export class CompraService {
             };
         }
 
-        return prisma.compraProveedor.findMany({
+        const compras = await prisma.compraProveedor.findMany({
             where,
             orderBy: { fechaCreacion: 'desc' },
-            include: { _count: { select: { lineas: true } } },
+            include: {
+                lineas: {
+                    include: {
+                        variante: {
+                            include: {
+                                producto: true,
+                            },
+                        },
+                    },
+                    orderBy: { id: 'asc' },
+                },
+                creadoPor: { select: USUARIO_PUBLICO },
+                recibidoPor: { select: USUARIO_PUBLICO },
+                _count: { select: { lineas: true } },
+            },
         });
+
+        return compras.map((c: any) => ({
+            ...c,
+            codigo: 'OC-' + String(c.id).padStart(4, '0'),
+            lineas: (c.lineas || []).map((l: any) => ({
+                id: l.id,
+                compraId: l.compraId,
+                varianteId: l.varianteId,
+                sku: l.variante?.sku || 'VAR-' + l.varianteId,
+                nombreProducto: l.variante?.producto?.nombre
+                    ? l.variante.producto.nombre + ' (' + l.variante.talla + ' / ' + l.variante.color + ')'
+                    : 'Prenda #' + l.varianteId,
+                descripcion: l.variante?.producto?.descripcion || '',
+                talla: l.variante?.talla || '',
+                color: l.variante?.color || '',
+                precioVentaCop: l.variante?.precioVentaCop || 0,
+                cantidadPedida: l.cantidadPedida,
+                cantidadRecibida: l.cantidadRecibida ?? (c.estado === 'RECIBIDA' ? l.cantidadPedida : 0),
+                costoUnitarioCop: l.costoUnitarioCop ?? undefined,
+                observacionDiferencia: l.observacionDiferencia,
+            })),
+        }));
     }
 
     static async obtenerPorId(id: number) {
         const compra = await prisma.compraProveedor.findUnique({
             where: { id },
             include: {
-                lineas: { include: { variante: true }, orderBy: { id: 'asc' } },
+                lineas: {
+                    include: {
+                        variante: {
+                            include: {
+                                producto: true,
+                            },
+                        },
+                    },
+                    orderBy: { id: 'asc' },
+                },
                 creadoPor: { select: USUARIO_PUBLICO },
                 recibidoPor: { select: USUARIO_PUBLICO },
             },
@@ -55,7 +100,28 @@ export class CompraService {
         if (!compra) {
             throw AppError.notFound('Orden de compra no encontrada');
         }
-        return compra;
+
+        return {
+            ...compra,
+            codigo: 'OC-' + String(compra.id).padStart(4, '0'),
+            lineas: (compra.lineas || []).map((l: any) => ({
+                id: l.id,
+                compraId: l.compraId,
+                varianteId: l.varianteId,
+                sku: l.variante?.sku || 'VAR-' + l.varianteId,
+                nombreProducto: l.variante?.producto?.nombre
+                    ? l.variante.producto.nombre + ' (' + l.variante.talla + ' / ' + l.variante.color + ')'
+                    : 'Prenda #' + l.varianteId,
+                descripcion: l.variante?.producto?.descripcion || '',
+                talla: l.variante?.talla || '',
+                color: l.variante?.color || '',
+                precioVentaCop: l.variante?.precioVentaCop || 0,
+                cantidadPedida: l.cantidadPedida,
+                cantidadRecibida: l.cantidadRecibida ?? (compra.estado === 'RECIBIDA' ? l.cantidadPedida : 0),
+                costoUnitarioCop: l.costoUnitarioCop ?? undefined,
+                observacionDiferencia: l.observacionDiferencia,
+            })),
+        };
     }
 
     /**

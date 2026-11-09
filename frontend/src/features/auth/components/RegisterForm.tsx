@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, RegisterFormValues } from '../schemas/authSchema';
 import { apiRequest } from '../../../api/apiClient';
+import { setPortalAuth, isTestEnv } from '../../../shared/auth/portalAuthStorage';
 import { Loader2, Eye, EyeOff, Sparkles, UserPlus, ArrowRight } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleAuthButton } from './GoogleAuthButton';
@@ -41,8 +42,14 @@ export const RegisterForm = () => {
       });
 
       if (response.datos?.token) {
-        localStorage.setItem('token', response.datos.token);
-        localStorage.setItem('usuario', JSON.stringify(response.datos.usuario));
+        if (isTestEnv()) {
+          localStorage.setItem('token', response.datos.token);
+          localStorage.setItem('usuario', JSON.stringify(response.datos.usuario));
+        }
+        setPortalAuth('storefront', {
+          token: response.datos.token,
+          usuario: response.datos.usuario,
+        });
         navigate('/');
       } else {
         navigate('/login');

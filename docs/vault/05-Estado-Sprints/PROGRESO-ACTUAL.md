@@ -95,7 +95,7 @@ pie title Distribución de Carga y Tareas Concluidas/En Proceso
 - [ ] **SP4-04 (Thomas):** Plantilla HTML de Correo Transaccional de Confirmación de Pedido y Seguimiento (`NotificacionPort`).
 - [ ] **SP4-05 (Yeimer):** Integración `TelegramNotificationAdapter` y Envío de Alertas Web (`NotificacionPort`). *(Issue #74 Asignado)*
 - [x] **SP4-06 (Julio):** Retorno Logístico vs Devolución Comercial Web (`RF-WEB-07`, `RF-DEV-04`, `CA-64`, `CA-65`, `QA-020`, `QA-021`). *(PR #56 FUSIONADO en `develop` - Issue #55 Closed)*
-- [ ] **SP4-07 (Exneider):** Construcción de Tienda Web en `StorefrontLayout` (Checkout DANE y Mis Pedidos).
+- [x] **SP4-07 (Exneider / @Arquitecto-UX / @Vitral-UI / @Forja-Backend):** Rediseño Canónico Integral de Tienda Web en `StorefrontLayout` (Fases 1, 2, 3 y 4 de ARQ-07 100% Completadas: Breadcrumbs GPS, Buscador Predictivo, Menú en Cascada, Toolbar Catálogo con Grid/List y Sort By, Hero compacto above the fold, PDP Inmersivo con Galería Multi-Ángulo, Zoom y Opiniones `ProductReviews.tsx`, Carrito Despejado, Stepper 3 Pasos Checkout y Lazy Loading). *(CERTIFICADO con 41/41 tests en verde y build Vite código 0)*
 - [ ] **SP4-08 (Duvan):** QA Gate Sprint 4: Certificación de Reservas Web, Retornos Logísticos y Custodia Central.
 
 **Progreso del Sprint 4:** `62.5%` [██████░░░░] (5/8 tareas completadas y fusionadas en `develop`)

@@ -37,11 +37,11 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
       {
         id: 'var-101',
         productoId: 'prod-101',
-        nombre: 'Vestido Lino Silvestre',
-        sku: 'VES-LIN-101-S',
+        nombre: 'Camiseta Básica de Algodón',
+        sku: 'ROP-CAM-NEG-S',
         talla: 'S',
-        color: 'Crudo Natural',
-        precioUnitarioCOP: 220000,
+        color: 'Negro',
+        precioUnitarioCOP: 45000,
         cantidad: 1,
         imagenUrl: 'https://images.unsplash.com/photo-test',
         sedeDespacho: 'CUCUTA_CENTRAL',
@@ -64,7 +64,7 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
     expect(screen.getByLabelText(/Correo Electrónico/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Municipio de Entrega/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Dirección Física/i)).toBeInTheDocument();
-    expect(screen.getByText('Vestido Lino Silvestre')).toBeInTheDocument();
+    expect(screen.getByText('Camiseta Básica de Algodón')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Confirmar y Finalizar Pedido/i })).toBeInTheDocument();
   });
 
@@ -73,11 +73,11 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
       {
         id: 'var-101',
         productoId: 'prod-101',
-        nombre: 'Vestido Lino Silvestre',
-        sku: 'VES-LIN-101-S',
+        nombre: 'Camiseta Básica de Algodón',
+        sku: 'ROP-CAM-NEG-S',
         talla: 'S',
-        color: 'Crudo Natural',
-        precioUnitarioCOP: 220000,
+        color: 'Negro',
+        precioUnitarioCOP: 45000,
         cantidad: 1,
         imagenUrl: 'https://images.unsplash.com/photo-test',
         sedeDespacho: 'CUCUTA_CENTRAL',
@@ -111,11 +111,11 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
       {
         id: 'var-101',
         productoId: 'prod-101',
-        nombre: 'Vestido Lino Silvestre',
-        sku: 'VES-LIN-101-S',
+        nombre: 'Camiseta Básica de Algodón',
+        sku: 'ROP-CAM-NEG-S',
         talla: 'S',
-        color: 'Crudo Natural',
-        precioUnitarioCOP: 220000,
+        color: 'Negro',
+        precioUnitarioCOP: 45000,
         cantidad: 1,
         imagenUrl: 'https://images.unsplash.com/photo-test',
         sedeDespacho: 'CUCUTA_CENTRAL',
@@ -178,10 +178,10 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
     expect(savedOrders[0].codigo).toMatch(/^PED-2026-\d{6}$/);
     expect(savedOrders[0].estadoActual).toBe('RECIBIDO');
 
-    // Botón de rastrear navega a /soporte
+    // Botón de rastrear navega a /rastreo
     const rastrearBtn = screen.getByRole('button', { name: /Rastrear Estado de mi Pedido/i });
     fireEvent.click(rastrearBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/soporte');
+    expect(mockNavigate).toHaveBeenCalledWith('/rastreo');
   });
 
   it('bloquea letras en Cédula y Teléfono y permite pagar automáticamente con el Código QR Dinámico', async () => {
@@ -189,11 +189,11 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
       {
         id: 'var-101',
         productoId: 'prod-101',
-        nombre: 'Vestido Lino Silvestre',
-        sku: 'VES-LIN-101-S',
+        nombre: 'Camiseta Básica de Algodón',
+        sku: 'ROP-CAM-NEG-S',
         talla: 'S',
-        color: 'Crudo Natural',
-        precioUnitarioCOP: 220000,
+        color: 'Negro',
+        precioUnitarioCOP: 45000,
         cantidad: 1,
         imagenUrl: 'https://images.unsplash.com/photo-test',
         sedeDespacho: 'CUCUTA_CENTRAL',
@@ -225,5 +225,71 @@ describe('CheckoutPage Component - Liquid Glass Checkout Machine', () => {
     fireEvent.click(botonQrAuto);
 
     expect(screen.getByText(/QR Escaneado: Pago por/i)).toBeInTheDocument();
+  });
+
+  it('bloquea la compra y muestra alerta CA-35 cuando el producto no tiene stock en ninguna sede ni en Bodega Central', async () => {
+    const mockCartSinStock = [
+      {
+        id: 'var-999',
+        productoId: 'prod-999',
+        nombre: 'Prenda Agotada Global',
+        sku: 'PRE-SIN-STOCK-999',
+        talla: 'M',
+        color: 'Azul',
+        precioUnitarioCOP: 120000,
+        cantidad: 5,
+        imagenUrl: 'https://images.unsplash.com/photo-test',
+        sedeDespacho: 'CUCUTA_CENTRAL',
+      },
+    ];
+    localStorage.setItem('forma_cart_items_v2', JSON.stringify(mockCartSinStock));
+
+    render(
+      <MemoryRouter>
+        <StorefrontCartProvider>
+          <CheckoutPage />
+        </StorefrontCartProvider>
+      </MemoryRouter>
+    );
+
+    // Llenar campos
+    fireEvent.change(screen.getByLabelText(/Nombre Completo/i), {
+      target: { value: 'Mateo Botero' },
+    });
+    fireEvent.change(screen.getByLabelText(/Cédula de Ciudadanía/i), {
+      target: { value: '1090123456' },
+    });
+    fireEvent.change(screen.getByLabelText(/Teléfono Celular/i), {
+      target: { value: '3109876543' },
+    });
+    fireEvent.change(screen.getByLabelText(/Correo Electrónico/i), {
+      target: { value: 'mateo@forma.co' },
+    });
+    fireEvent.change(screen.getByLabelText(/Dirección Física/i), {
+      target: { value: 'Avenida 4 # 11-20, Centro' },
+    });
+
+    const checkboxTerminos = screen.getByRole('checkbox');
+    fireEvent.click(checkboxTerminos);
+
+    fireEvent.change(screen.getByLabelText(/Nombre del Titular de la Cuenta/i), {
+      target: { value: 'Mateo Botero' },
+    });
+    fireEvent.change(screen.getByLabelText(/Nº de Comprobante \/ CUS/i), {
+      target: { value: 'CUS-1234567' },
+    });
+
+    const submitBtn = screen.getByRole('button', { name: /Confirmar y Finalizar Pedido/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /No hay inventario suficiente en una sola sede ni en Bodega Central para despachar el pedido completo/i
+        )
+      ).toBeInTheDocument();
+      expect(screen.queryByText('¡Orden Confirmada con Éxito!')).not.toBeInTheDocument();
+    });
   });
 });

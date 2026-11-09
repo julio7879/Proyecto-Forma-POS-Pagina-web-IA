@@ -8,7 +8,7 @@ describe('FormaLogo Component - Isotipo y Wordmark Oficial FORMA', () => {
     const logoWrapper = screen.getByTestId('forma-logo-horizontal');
     expect(logoWrapper).toBeInTheDocument();
     expect(screen.getByText('FORMA')).toBeInTheDocument();
-    expect(screen.getByText('ATELIER & OMNIPOS')).toBeInTheDocument();
+    expect(screen.getByText('ATELIER & ALTA COSTURA')).toBeInTheDocument();
 
     // Comprueba que el SVG está presente
     const svg = container.querySelector('svg');
@@ -16,11 +16,11 @@ describe('FormaLogo Component - Isotipo y Wordmark Oficial FORMA', () => {
     expect(svg).toHaveAttribute('viewBox', '0 0 100 100');
   });
 
-  it('renderiza la variante "full" con el subtítulo completo "COLOMBIA • ATELIER & OMNIPOS"', () => {
+  it('renderiza la variante "full" con el subtítulo completo "COLOMBIA • ATELIER & ALTA COSTURA"', () => {
     render(<FormaLogo variant="full" size="lg" theme="dark" />);
     const logoWrapper = screen.getByTestId('forma-logo-full');
     expect(logoWrapper).toBeInTheDocument();
-    expect(screen.getByText('COLOMBIA • ATELIER & OMNIPOS')).toBeInTheDocument();
+    expect(screen.getByText('COLOMBIA • ATELIER & ALTA COSTURA')).toBeInTheDocument();
   });
 
   it('renderiza la variante "icon" conteniendo únicamente el monograma SVG', () => {
@@ -49,7 +49,7 @@ describe('FormaLogo Component - Isotipo y Wordmark Oficial FORMA', () => {
 
   it('permite ocultar el subtítulo cuando showSubtitle es false', () => {
     render(<FormaLogo variant="horizontal" showSubtitle={false} />);
-    expect(screen.queryByText('ATELIER & OMNIPOS')).not.toBeInTheDocument();
+    expect(screen.queryByText('ATELIER & ALTA COSTURA')).not.toBeInTheDocument();
     expect(screen.getByText('FORMA')).toBeInTheDocument();
   });
 

@@ -167,4 +167,18 @@ describe('CatalogPage - Catálogo Público Storefront (SP1-09)', () => {
       expect(screen.queryByText('Camiseta Básica de Algodón')).not.toBeInTheDocument();
     });
   });
+
+  it('sincroniza reactivamente desde searchParams con categoria=Cosméticos y subcategoria=Aceites', async () => {
+    const params = new URLSearchParams('categoria=Cosméticos&subcategoria=Aceites');
+    render(<CatalogPage searchParams={params} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Cosméticos Botánicos' })).toBeInTheDocument();
+      expect(screen.getByText('Aceite Facial Nutritivo Sacha Inchi 30ml')).toBeInTheDocument();
+      expect(screen.queryByText('Camiseta Básica de Algodón')).not.toBeInTheDocument();
+    });
+
+    const botonAceites = screen.getByRole('button', { name: 'Aceites' });
+    expect(botonAceites).toHaveClass('bg-[#661521]');
+  });
 });

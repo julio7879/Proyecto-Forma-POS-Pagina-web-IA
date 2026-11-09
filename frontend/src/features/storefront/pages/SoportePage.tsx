@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   Truck,
   ShieldCheck,
@@ -37,7 +38,7 @@ const CIUDADES_SIMULADOR_DANE: CiudadDaneSimulador[] = [
     codigoDane: '54001',
     municipio: 'Cúcuta',
     departamento: 'Norte de Santander',
-    sedeOptimaAsignada: 'Punto Centro (54001) o Punto Caobos (54001)',
+    sedeOptimaAsignada: '1.ª opción: Punto Centro (54001) · 2.ª opción: Punto Caobos (54001)',
     sedeRespaldo: 'Bodega Central Cúcuta (54001)',
     tarifaFijaFormateadaCOP: '$8.000 COP',
     tiempoEstimado: 'Mismo día (3 a 6 horas hábiles)',
@@ -49,7 +50,7 @@ const CIUDADES_SIMULADOR_DANE: CiudadDaneSimulador[] = [
     codigoDane: '54498',
     municipio: 'Ocaña',
     departamento: 'Norte de Santander',
-    sedeOptimaAsignada: 'Punto Ocaña (54498)',
+    sedeOptimaAsignada: '1.ª opción: Punto Ocaña (54498)',
     sedeRespaldo: 'Punto Centro Cúcuta (54001)',
     tarifaFijaFormateadaCOP: '$9.500 COP',
     tiempoEstimado: 'Mismo día o 24 horas hábiles',
@@ -61,7 +62,7 @@ const CIUDADES_SIMULADOR_DANE: CiudadDaneSimulador[] = [
     codigoDane: '68001',
     municipio: 'Bucaramanga',
     departamento: 'Santander',
-    sedeOptimaAsignada: 'Punto Bucaramanga (68001)',
+    sedeOptimaAsignada: '1.ª opción: Punto Bucaramanga (68001)',
     sedeRespaldo: 'Punto Centro Cúcuta (54001)',
     tarifaFijaFormateadaCOP: '$10.000 COP',
     tiempoEstimado: '24 horas hábiles (Área Metropolitana)',
@@ -73,7 +74,7 @@ const CIUDADES_SIMULADOR_DANE: CiudadDaneSimulador[] = [
     codigoDane: '11001',
     municipio: 'Bogotá D.C.',
     departamento: 'Cundinamarca / Distrito Capital',
-    sedeOptimaAsignada: 'Punto Bucaramanga (68001)',
+    sedeOptimaAsignada: '1.ª opción: Punto Bucaramanga (68001) · 2.ª opción: Punto Centro Cúcuta (54001)',
     sedeRespaldo: 'Punto Centro Cúcuta (54001)',
     tarifaFijaFormateadaCOP: '$16.500 COP',
     tiempoEstimado: '24 a 48 horas hábiles vía aérea/troncal',
@@ -85,13 +86,49 @@ const CIUDADES_SIMULADOR_DANE: CiudadDaneSimulador[] = [
     codigoDane: '05001',
     municipio: 'Medellín',
     departamento: 'Antioquia',
-    sedeOptimaAsignada: 'Punto Bucaramanga (68001) o Punto Ocaña (54498)',
+    sedeOptimaAsignada: '1.ª opción: Punto Bucaramanga (68001) · 2.ª opción: Punto Ocaña (54498)',
     sedeRespaldo: 'Bodega Central Cúcuta (54001)',
     tarifaFijaFormateadaCOP: '$18.000 COP',
     tiempoEstimado: '2 a 3 días hábiles',
     tipoCobertura: 'Cobertura Nacional Consolidada',
     explicacionRuta:
       'Selecciona la sede con disponibilidad completa más próxima a la Troncal del Magdalena para entregar todo tu pedido en una sola caja sellada.',
+  },
+  {
+    codigoDane: '76001',
+    municipio: 'Cali',
+    departamento: 'Valle del Cauca',
+    sedeOptimaAsignada: '1.ª opción: Punto Bucaramanga (68001) · 2.ª opción: Bodega Central Cúcuta (54001)',
+    sedeRespaldo: 'Bodega Central Cúcuta (54001)',
+    tarifaFijaFormateadaCOP: '$18.000 COP',
+    tiempoEstimado: '2 a 4 días hábiles vía troncal occidente',
+    tipoCobertura: 'Cobertura Nacional Suroccidente',
+    explicacionRuta:
+      'Despacho prioritario desde Hub Bucaramanga o consolidación central para entrega en un único envío asegurado.',
+  },
+  {
+    codigoDane: '08001',
+    municipio: 'Barranquilla',
+    departamento: 'Atlántico',
+    sedeOptimaAsignada: '1.ª opción: Punto Ocaña (54498) · 2.ª opción: Punto Bucaramanga (68001)',
+    sedeRespaldo: 'Bodega Central Cúcuta (54001)',
+    tarifaFijaFormateadaCOP: '$18.000 COP',
+    tiempoEstimado: '2 a 3 días hábiles vía Troncal del Caribe',
+    tipoCobertura: 'Cobertura Caribe Colombiano',
+    explicacionRuta:
+      'Despacho optimizado desde el nodo norte más cercano con disponibilidad total de inventario.',
+  },
+  {
+    codigoDane: '13001',
+    municipio: 'Cartagena',
+    departamento: 'Bolívar',
+    sedeOptimaAsignada: '1.ª opción: Punto Ocaña (54498) · 2.ª opción: Bodega Central Cúcuta (54001)',
+    sedeRespaldo: 'Bodega Central Cúcuta (54001)',
+    tarifaFijaFormateadaCOP: '$18.000 COP',
+    tiempoEstimado: '2 a 3 días hábiles vía Troncal del Caribe',
+    tipoCobertura: 'Cobertura Caribe Colombiano',
+    explicacionRuta:
+      'Despacho directo desde sede Ocaña o Bodega Central asegurando empaque editorial libre de fraccionamientos.',
   },
 ];
 
@@ -135,7 +172,7 @@ const PREGUNTAS_FRECUENTES: PreguntaFrecuente[] = [
 
 export const SoportePage: React.FC = () => {
   const [daneSeleccionado, setDaneSeleccionado] = useState<string>('54001');
-  const [faqAbiertaId, setFaqAbiertaId] = useState<string>(PREGUNTAS_FRECUENTES[0].id);
+  const [faqAbiertaId, setFaqAbiertaId] = useState<string | null>(null);
 
   const ciudadActualDane =
     CIUDADES_SIMULADOR_DANE.find((c) => c.codigoDane === daneSeleccionado) ||
@@ -143,6 +180,14 @@ export const SoportePage: React.FC = () => {
 
   return (
     <div className="space-y-12 relative py-2">
+      <div className="mb-2">
+        <Breadcrumbs
+          items={[
+            { label: 'Inicio', href: '/' },
+            { label: 'Centro de Soporte & Envíos DANE', isCurrent: true },
+          ]}
+        />
+      </div>
       {/* =====================================================================
           1. ENCABEZADO EDITORIAL DEL CENTRO DE AYUDA & WHATSAPP OFICIAL
           ===================================================================== */}
@@ -168,7 +213,7 @@ export const SoportePage: React.FC = () => {
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
                 <a
-                  href="https://wa.me/573158004210?text=Hola%20FORMA%20Boutique%2C%20necesito%20asesor%C3%ADa%20con%20mi%20compra"
+                  href="https://wa.me/573223602525?text=Hola%20FORMA%20Boutique%2C%20necesito%20asesor%C3%ADa%20con%20mi%20compra"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-extrabold uppercase tracking-wider shadow-lg transition-all active:scale-95"
@@ -207,7 +252,7 @@ export const SoportePage: React.FC = () => {
                     </div>
                   </div>
                   <span className="font-mono-tabular text-xs font-bold text-[#661521] bg-[#661521]/10 px-2.5 py-1 rounded-full">
-                    +57 315 800 4210
+                    +57 322 360 2525
                   </span>
                 </div>
 
@@ -236,7 +281,7 @@ export const SoportePage: React.FC = () => {
                 </div>
 
                 <a
-                  href="https://wa.me/573158004210"
+                  href="https://wa.me/573223602525?text=Hola%20FORMA%20Boutique%2C%20necesito%20asesor%C3%ADa%20personalizada"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-extrabold flex items-center justify-center gap-2 transition-colors"
@@ -618,7 +663,11 @@ export const SoportePage: React.FC = () => {
               </Link>
 
               <Link
-                to="/"
+                to="/#catalogo-grid"
+                onClick={() => {
+                  const el = document.getElementById('catalogo-grid');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
                 className="min-h-[48px] inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#661521] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#4A0E17] transition-all shadow-md"
               >
                 <span>Volver al Catálogo</span>

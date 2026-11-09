@@ -110,15 +110,17 @@ export const PosArqueoPage: React.FC = () => {
   );
   const [vendedorNombre, setVendedorNombre] = useState<string>(() => {
     try {
-      const raw = localStorage.getItem('usuario');
+      const raw = localStorage.getItem('forma_pos_usuario') || localStorage.getItem('usuario');
       if (raw) {
         const parsed = JSON.parse(raw);
-        return parsed.nombreCompleto || parsed.nombre || 'Carlos Mendoza';
+        if (parsed.rol !== 'CLIENTE') {
+          return parsed.nombreCompleto || parsed.nombre || 'Camilo Mendoza';
+        }
       }
     } catch {
       /* noop */
     }
-    return 'Carlos Mendoza';
+    return 'Camilo Mendoza';
   });
 
   const [, setStoreTick] = useState(0);

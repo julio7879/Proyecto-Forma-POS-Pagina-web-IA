@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { EmailService } from '../../shared/infrastructure/email/EmailService.js';
-import type { NotificarPedidoWebDTO, NotificarBienvenidaDTO } from './notificaciones.schema.js';
+import type { NotificarPedidoWebDTO, NotificarBienvenidaDTO, NotificarEstadoPedidoDTO } from './notificaciones.schema.js';
 
 export class NotificacionesController {
   static async notificarPedidoWeb(req: Request, res: Response) {
@@ -42,6 +42,30 @@ export class NotificacionesController {
     res.status(200).json({
       ok: true,
       mensaje: 'Correo de bienvenida enviado exitosamente',
+      previewUrl: resultado.previewUrl || null,
+      messageId: resultado.messageId,
+    });
+  }
+
+  static async notificarEstadoPedido(req: Request, res: Response) {
+    const dto = req.body as NotificarEstadoPedidoDTO;
+    const emailService = EmailService.getInstance();
+
+    const resultado = await emailService.enviarActualizacionEstadoPedido({
+      codigo: dto.codigo,
+      clienteNombre: dto.clienteNombre,
+      clienteEmail: dto.clienteEmail,
+      nuevoEstado: dto.nuevoEstado,
+      nuevoEstadoTexto: dto.nuevoEstadoTexto,
+      descripcionEstado: dto.descripcionEstado,
+      sedeAsignada: dto.sedeAsignada,
+      guiaTransportadora: dto.guiaTransportadora,
+      transportadora: dto.transportadora,
+    });
+
+    res.status(200).json({
+      ok: true,
+      mensaje: 'Notificación de cambio de estado enviada exitosamente',
       previewUrl: resultado.previewUrl || null,
       messageId: resultado.messageId,
     });

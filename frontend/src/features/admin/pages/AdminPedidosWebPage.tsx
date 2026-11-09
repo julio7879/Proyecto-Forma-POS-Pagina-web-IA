@@ -26,6 +26,9 @@ import {
   getWebOrders,
   registrarPagoWeb,
   eliminarPedidoWeb,
+  transicionarPedidoWeb,
+  obtenerStockSede,
+  obtenerSedesConStockParaPedido,
   mismaSede,
   WEB_ORDERS_EVENT,
   PedidoWebRecord,
@@ -184,6 +187,37 @@ export const AdminPedidosWebPage: React.FC = () => {
     setTimeout(() => setMensajeExito(null), 4000);
   };
 
+  const handleAvanzarEstadoAdmin = (nuevoEstado: EstadoPedidoWeb) => {
+    if (!pedidoSeleccionado) return;
+    const guia =
+      pedidoSeleccionado.guiaTransportadora ||
+      `TCC-${pedidoSeleccionado.codigoDaneDestino || '54001'}-00${Math.floor(100 + Math.random() * 900)}`;
+
+    const res = transicionarPedidoWeb(
+      pedidoSeleccionado.codigo,
+      nuevoEstado,
+      adminNombre,
+      {
+        sedeAsignada: 'Bodega Central',
+        ...(nuevoEstado === 'LISTO_DESPACHO'
+          ? {
+              guiaTransportadora: guia,
+              transportadora: pedidoSeleccionado.transportadora || 'Coordinadora / TCC Prioritario',
+            }
+          : {}),
+      },
+      nuevoEstado === 'EN_PREPARACION'
+        ? 'Alistamiento iniciado por Administración desde Bodega Central (Centro de Producción).'
+        : nuevoEstado === 'LISTO_DESPACHO'
+        ? `Empacado y listo para despacho desde Centro de Producción. Guía: ${guia}`
+        : 'Entregado a conductor de transportadora desde Bodega Central.'
+    );
+    if (res) {
+      setMensajeExito(`Pedido #${pedidoSeleccionado.codigo} avanzado a estado ${nuevoEstado}.`);
+      setTimeout(() => setMensajeExito(null), 4000);
+    }
+  };
+
   const timelineActividad = useMemo<ActivityTimelineItem[]>(() => {
     if (!pedidoSeleccionado) return [];
     return (pedidoSeleccionado.historial || []).map((h, idx) => ({
@@ -214,11 +248,11 @@ export const AdminPedidosWebPage: React.FC = () => {
       header: 'Pedido',
       render: (p) => (
         <div>
-          <span className="font-mono font-bold text-xs text-[#741C2B] block">
+          <span className="font-mono font-black text-xs text-[#741C2B] dark:text-[#E5BE90] block">
             #{p.codigo}
           </span>
           {p.guiaTransportadora && (
-            <span className="font-mono text-[10px] text-[#77736E]">
+            <span className="font-mono text-[10px] text-[#475569] dark:text-white/50 font-medium">
               Guía: {p.guiaTransportadora}
             </span>
           )}
@@ -229,7 +263,7 @@ export const AdminPedidosWebPage: React.FC = () => {
       key: 'fecha',
       header: 'Fecha',
       render: (p) => (
-        <span className="text-xs text-[#77736E] font-mono">
+        <span className="text-xs text-[#475569] dark:text-white/70 font-mono font-medium">
           {new Date(p.fechaCreacionIso).toLocaleDateString('es-CO', {
             timeZone: 'America/Bogota',
             day: '2-digit',
@@ -243,15 +277,15 @@ export const AdminPedidosWebPage: React.FC = () => {
       header: 'Cliente / Ciudad',
       render: (p) => (
         <div className="text-xs">
-          <div className="font-bold text-[#292827]">{p.cliente}</div>
-          <div className="text-[11px] text-[#77736E]">{p.ciudadDestino}</div>
+          <div className="font-bold text-[#0F172A] dark:text-white">{p.cliente}</div>
+          <div className="text-[11px] text-[#475569] dark:text-white/60 font-medium">{p.ciudadDestino}</div>
         </div>
       ),
     },
     {
       key: 'sede',
       header: 'Sede Despacho',
-      render: (p) => <span className="text-xs font-medium text-[#292827]">{p.sedeAsignada}</span>,
+      render: (p) => <span className="text-xs font-bold text-[#0F172A] dark:text-white/90">{p.sedeAsignada}</span>,
     },
     {
       key: 'estadoEntrega',
@@ -278,7 +312,7 @@ export const AdminPedidosWebPage: React.FC = () => {
       header: 'Total COP',
       align: 'right',
       render: (p) => (
-        <span className="font-mono font-bold text-xs text-[#292827]">
+        <span className="font-mono font-black text-xs text-[#0F172A] dark:text-white tabular-nums">
           {formatCOP(p.totalCOP)}
         </span>
       ),
@@ -309,7 +343,7 @@ export const AdminPedidosWebPage: React.FC = () => {
               setPedidoSeleccionado(p);
               setDrawerTab('detalle');
             }}
-            className="p-1.5 rounded-xl border border-[#E7E0D8] bg-white text-[#741C2B] hover:bg-[#F5F3EF] transition-colors cursor-pointer shadow-2xs"
+            className="p-1.5 rounded-xl border border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/10 text-[#741C2B] dark:text-[#E5BE90] hover:bg-slate-200 dark:hover:bg-white/20 transition-colors cursor-pointer shadow-2xs"
             title="Inspeccionar Pedido"
           >
             <Eye className="w-4 h-4" />
@@ -373,10 +407,10 @@ export const AdminPedidosWebPage: React.FC = () => {
           value={sedeFiltro}
           onChange={(e) => setSedeFiltro(e.target.value)}
           aria-label="Filtrar por sede"
-          className="px-3 py-2 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#292827] cursor-pointer focus:outline-none focus:border-[#741C2B]"
+          className="px-3 py-2 bg-white dark:bg-[#141822]/70 border border-slate-300 dark:border-white/[0.09] rounded-xl text-xs font-bold text-[#0F172A] dark:text-white cursor-pointer focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
         >
           {SEDES_ADMIN.map((s) => (
-            <option key={s} value={s}>
+            <option key={s} value={s} className="bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white">
               {s}
             </option>
           ))}
@@ -386,12 +420,12 @@ export const AdminPedidosWebPage: React.FC = () => {
           value={filtroCobro}
           onChange={(e) => setFiltroCobro(e.target.value)}
           aria-label="Filtrar por estado de cobro"
-          className="px-3 py-2 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#292827] cursor-pointer focus:outline-none focus:border-[#741C2B]"
+          className="px-3 py-2 bg-white dark:bg-[#141822]/70 border border-slate-300 dark:border-white/[0.09] rounded-xl text-xs font-bold text-[#0F172A] dark:text-white cursor-pointer focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
         >
-          <option value="TODOS">Todos los Recaudos</option>
-          <option value="PENDIENTE_VERIFICACION">Transferencias Por Verificar</option>
-          <option value="PENDIENTE_RECAUDO">Contraentrega Pendiente</option>
-          <option value="PAGADO">Pagado y Conciliado</option>
+          <option value="TODOS" className="bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white">Todos los Recaudos</option>
+          <option value="PENDIENTE_VERIFICACION" className="bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white">Transferencias Por Verificar</option>
+          <option value="PENDIENTE_RECAUDO" className="bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white">Contraentrega Pendiente</option>
+          <option value="PAGADO" className="bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white">Pagado y Conciliado</option>
         </select>
       </FilterBar>
 
@@ -430,7 +464,7 @@ export const AdminPedidosWebPage: React.FC = () => {
         }}
       >
         <div className="space-y-2">
-          <label className="text-xs font-bold text-[#292827] block">
+          <label className="text-xs font-bold text-white/90 block">
             Referencia Bancaria o Comprobante (CUS / Remesa):
           </label>
           <input
@@ -438,7 +472,7 @@ export const AdminPedidosWebPage: React.FC = () => {
             value={referenciaBancaria}
             onChange={(e) => setReferenciaBancaria(e.target.value)}
             placeholder="Ej: CUS-849201 / TR-0042"
-            className="w-full px-3 py-2 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-mono font-bold text-[#292827] focus:outline-none focus:border-[#741C2B]"
+            className="w-full px-3 py-2 rounded-xl bg-[#141822] border border-white/20 text-xs font-mono font-bold text-white focus:outline-none focus:border-[#C49A68]"
           />
         </div>
       </ConfirmDialog>
@@ -476,31 +510,53 @@ export const AdminPedidosWebPage: React.FC = () => {
           onTabChange={(t) => setDrawerTab(t as any)}
           activityItems={timelineActividad}
           footerActions={
-            pedidoSeleccionado.estadoCobro !== 'PAGADO' ? (
+            <div className="flex flex-col gap-2 w-full">
+              {/* Acciones de Alistamiento / Despacho desde Bodega Central */}
+              {['RECIBIDO', 'CONFIRMADO'].includes(pedidoSeleccionado.estado) && (
+                <button
+                  type="button"
+                  onClick={() => handleAvanzarEstadoAdmin('EN_PREPARACION')}
+                  className="w-full py-2.5 px-4 rounded-[12px] bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Package className="w-4 h-4 text-emerald-200" />
+                  <span>Alistar en Bodega Central (Centro de Producción)</span>
+                </button>
+              )}
+              {pedidoSeleccionado.estado === 'EN_PREPARACION' && (
+                <button
+                  type="button"
+                  onClick={() => handleAvanzarEstadoAdmin('LISTO_DESPACHO')}
+                  className="w-full py-2.5 px-4 rounded-[12px] bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Package className="w-4 h-4 text-amber-200" />
+                  <span>Marcar Listo para Despacho</span>
+                </button>
+              )}
+              {pedidoSeleccionado.estado === 'LISTO_DESPACHO' && (
+                <button
+                  type="button"
+                  onClick={() => handleAvanzarEstadoAdmin('DESPACHADO')}
+                  className="w-full py-2.5 px-4 rounded-[12px] bg-[#1C1311] hover:bg-[#3D2620] text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Truck className="w-4 h-4 text-[#C49A68]" />
+                  <span>Despachar con Transportadora</span>
+                </button>
+              )}
+
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPedidoAConfirmar(pedidoSeleccionado);
-                    setReferenciaBancaria('');
-                  }}
-                  className="flex-1 w-full py-2.5 px-4 rounded-[12px] bg-[#741C2B] hover:bg-[#5E1622] text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-[#C49A68]" />
-                  <span>Conciliar y Marcar como Pagado</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPedidoAEliminar(pedidoSeleccionado)}
-                  className="py-2.5 px-3 rounded-[12px] bg-red-50 hover:bg-red-100 text-[#C44848] font-bold text-xs border border-red-200 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                  title="Eliminar pedido permanentemente"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Eliminar</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex justify-end w-full">
+                {pedidoSeleccionado.estadoCobro !== 'PAGADO' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPedidoAConfirmar(pedidoSeleccionado);
+                      setReferenciaBancaria('');
+                    }}
+                    className="flex-1 w-full py-2.5 px-4 rounded-[12px] bg-[#741C2B] hover:bg-[#5E1622] text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-[#C49A68]" />
+                    <span>Conciliar y Marcar como Pagado</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setPedidoAEliminar(pedidoSeleccionado)}
@@ -511,7 +567,7 @@ export const AdminPedidosWebPage: React.FC = () => {
                   <span>Eliminar Pedido</span>
                 </button>
               </div>
-            )
+            </div>
           }
         >
           <div className="space-y-4">
@@ -553,6 +609,12 @@ export const AdminPedidosWebPage: React.FC = () => {
                     <div>
                       <span className="text-[#77736E]">Sede Asignada:</span>{' '}
                       <strong>{pedidoSeleccionado.sedeAsignada}</strong>
+                      {obtenerSedesConStockParaPedido(pedidoSeleccionado.productos).length > 0 && (
+                        <div className="text-[11px] text-emerald-700 mt-1">
+                          Sedes con inventario disponible:{' '}
+                          <strong>{obtenerSedesConStockParaPedido(pedidoSeleccionado.productos).join(', ')}</strong>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <span className="text-[#77736E]">Transportadora:</span>{' '}
@@ -580,13 +642,21 @@ export const AdminPedidosWebPage: React.FC = () => {
                       key={`prod-drawer-${idx}`}
                       className="p-3 bg-[#F5F3EF] rounded-[12px] border border-[#E7E0D8] flex items-center justify-between gap-3 text-xs"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-bold text-[#292827]">{pr.nombre}</div>
                         <div className="text-[11px] text-[#77736E] font-mono">
                           SKU: {pr.sku} · Talla: {pr.talla} · {pr.cantidad} ud(s)
                         </div>
+                        <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-mono">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                            Bodega Central: {obtenerStockSede(pr.sku, 'Bodega Central')} uds
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200">
+                            {pedidoSeleccionado.sedeAsignada}: {obtenerStockSede(pr.sku, pedidoSeleccionado.sedeAsignada)} uds
+                          </span>
+                        </div>
                       </div>
-                      <span className="font-mono font-bold text-[#292827]">
+                      <span className="font-mono font-bold text-[#292827] shrink-0">
                         {formatCOP(pr.precioUnitarioCOP * pr.cantidad)}
                       </span>
                     </div>

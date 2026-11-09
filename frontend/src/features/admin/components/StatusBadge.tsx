@@ -19,23 +19,23 @@ export interface StatusBadgeProps {
 }
 
 const VARIANT_STYLES: Record<StatusBadgeVariant, string> = {
-  success: 'bg-[#27845C]/10 text-[#27845C] border-[#27845C]/25',
-  warning: 'bg-[#B77925]/10 text-[#B77925] border-[#B77925]/25',
-  error: 'bg-[#C44848]/10 text-[#C44848] border-[#C44848]/25',
-  neutral: 'bg-[#77736E]/10 text-[#292827] border-[#E7E0D8]',
-  champagne: 'bg-[#C49A68]/15 text-[#741C2B] border-[#C49A68]/35 font-bold',
-  vino: 'bg-[#741C2B] text-white border-[#741C2B] font-bold shadow-xs',
-  info: 'bg-sky-50 text-sky-800 border-sky-200',
+  success: 'bg-[#10B981]/20 text-[#34D399] border-[#10B981]/40',
+  warning: 'bg-[#F59E0B]/20 text-[#FBBF24] border-[#F59E0B]/40',
+  error: 'bg-[#EF4444]/20 text-[#F87171] border-[#EF4444]/40',
+  neutral: 'bg-white/10 text-white border-white/20',
+  champagne: 'bg-[#C49A68]/20 text-[#E5BE90] border-[#C49A68]/40 font-bold',
+  vino: 'bg-[#741C2B] text-white border-white/20 font-bold shadow-xs',
+  info: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
 };
 
 const DOT_STYLES: Record<StatusBadgeVariant, string> = {
-  success: 'bg-[#27845C]',
-  warning: 'bg-[#B77925]',
-  error: 'bg-[#C44848]',
-  neutral: 'bg-[#77736E]',
-  champagne: 'bg-[#C49A68]',
+  success: 'bg-[#34D399]',
+  warning: 'bg-[#FBBF24]',
+  error: 'bg-[#F87171]',
+  neutral: 'bg-white/60',
+  champagne: 'bg-[#E5BE90]',
   vino: 'bg-white',
-  info: 'bg-sky-600',
+  info: 'bg-sky-400',
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
@@ -49,6 +49,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
   const badgeClasses = [
     'inline-flex items-center gap-1.5 rounded-lg border font-semibold tracking-wide transition-colors',
+    `status-badge-${variant}`,
     VARIANT_STYLES[variant] || VARIANT_STYLES.neutral,
     sizeClasses,
     className,
@@ -58,14 +59,16 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   return (
     <span className={badgeClasses}>
-      {dot ? (
+      {dot && (
         <span
-          className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT_STYLES[variant] || ''}`}
+          className={`w-1.5 h-1.5 rounded-full ${DOT_STYLES[variant] || DOT_STYLES.neutral}`}
           aria-hidden="true"
-        ></span>
-      ) : null}
-      {Icon ? <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /> : null}
+        />
+      )}
+      {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
       <span>{label}</span>
     </span>
   );
 };
+
+export default StatusBadge;

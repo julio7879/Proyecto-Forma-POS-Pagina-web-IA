@@ -694,10 +694,12 @@ export const PosTerminalPage: React.FC = () => {
     let vendedorNombre = 'Carlos Mendoza';
     let sedeNombre = 'Punto Centro (Cúcuta)';
     try {
-      const rawUser = localStorage.getItem('usuario');
+      const rawUser = localStorage.getItem('forma_pos_usuario') || localStorage.getItem('usuario');
       if (rawUser) {
         const parsedUser = JSON.parse(rawUser);
-        vendedorNombre = parsedUser.nombreCompleto || parsedUser.nombre || 'Carlos Mendoza';
+        if (parsedUser.rol !== 'CLIENTE') {
+          vendedorNombre = parsedUser.nombreCompleto || parsedUser.nombre || 'Camilo Mendoza';
+        }
       }
       const rawSede = localStorage.getItem('forma_pos_sede');
       if (rawSede) {

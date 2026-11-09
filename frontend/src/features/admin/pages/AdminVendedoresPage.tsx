@@ -514,28 +514,28 @@ export const AdminVendedoresPage: React.FC = () => {
       </div>
 
       {/* Barra de Búsqueda y Filtro por Sede */}
-      <div className="bg-white p-3 rounded-2xl border border-[#E7E0D8] flex flex-col sm:flex-row items-center gap-3 shadow-xs">
+      <div className="backdrop-blur-2xl bg-white/[0.07] p-3.5 rounded-3xl border border-white/[0.14] flex flex-col sm:flex-row items-center gap-3 shadow-md text-white">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#77736E]" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-white/50" />
           <input
             type="text"
             value={filtroTexto}
             onChange={(e) => setFiltroTexto(e.target.value)}
             placeholder="Buscar por nombre, correo o teléfono..."
-            className="w-full pl-9 pr-4 py-2 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-semibold text-[#292827] placeholder-[#77736E] focus:outline-none focus:border-[#741C2B]"
+            className="w-full pl-9 pr-4 py-2 bg-black/30 border border-white/10 rounded-xl text-xs font-semibold text-white placeholder-white/40 focus:outline-none focus:border-[#C49A68]"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-3.5 h-3.5 text-[#77736E] shrink-0" />
+          <Filter className="w-3.5 h-3.5 text-white/50 shrink-0" />
           <select
             value={filtroSede}
             onChange={(e) => setFiltroSede(e.target.value)}
-            className="px-3 py-2 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#292827] cursor-pointer w-full sm:w-auto focus:outline-none focus:border-[#741C2B]"
+            className="px-3 py-2 bg-black/40 border border-white/15 rounded-xl text-xs font-bold text-white cursor-pointer w-full sm:w-auto focus:outline-none focus:border-[#C49A68]"
           >
-            <option value="todas">Todas las Sedes Físicas</option>
+            <option value="todas" className="bg-[#1C080E] text-white">Todas las Sedes Físicas</option>
             {ubicaciones.map((u) => (
-              <option key={u.id} value={u.id.toString()}>
+              <option key={u.id} value={u.id.toString()} className="bg-[#1C080E] text-white">
                 {u.nombre}
               </option>
             ))}
@@ -545,28 +545,28 @@ export const AdminVendedoresPage: React.FC = () => {
 
       {/* Tabla Principal de Vendedores */}
       {isLoading ? (
-        <div className="bg-white p-12 rounded-2xl border border-[#E7E0D8] text-center text-[#77736E] flex flex-col items-center gap-2 shadow-xs">
-          <Loader2 className="w-6 h-6 animate-spin text-[#741C2B]" />
+        <div className="backdrop-blur-2xl bg-white/[0.07] p-12 rounded-3xl border border-white/[0.14] text-center text-white/60 flex flex-col items-center gap-2 shadow-md">
+          <Loader2 className="w-6 h-6 animate-spin text-[#E5BE90]" />
           <span className="text-xs font-bold">Cargando nómina de vendedores...</span>
         </div>
       ) : error ? (
-        <div className="bg-rose-50 border border-rose-200 text-[#C44848] p-4 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-xs">
+        <div className="bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#F87171] p-4 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-xs">
           <AlertCircle className="w-4 h-4" />
           <span>{error}</span>
         </div>
       ) : vendedoresFiltrados.length === 0 ? (
-        <div className="bg-white p-12 text-center rounded-2xl border border-[#E7E0D8] shadow-xs">
-          <Users className="w-8 h-8 text-[#C49A68] mx-auto mb-2 opacity-60" />
-          <p className="text-xs font-bold text-[#292827]">
+        <div className="backdrop-blur-2xl bg-white/[0.07] p-12 text-center rounded-3xl border border-white/[0.14] shadow-md text-white">
+          <Users className="w-8 h-8 text-[#E5BE90] mx-auto mb-2 opacity-60" />
+          <p className="text-xs font-bold text-white">
             No se encontraron vendedores registrados o coincidentes con los filtros.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E7E0D8] overflow-hidden shadow-xs">
+        <div className="backdrop-blur-2xl bg-white/[0.07] rounded-3xl border border-white/[0.14] overflow-hidden shadow-xl text-white">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#E7E0D8] bg-[#F5F3EF] text-[11px] font-semibold text-[#77736E] uppercase tracking-wider">
+                <tr className="border-b border-white/10 bg-white/[0.04] text-[11px] font-semibold text-white/60 uppercase tracking-wider">
                   <th className="px-5 py-3.5">Vendedor</th>
                   <th className="px-5 py-3.5">Sede Asignada (Edición Rápida)</th>
                   <th className="px-5 py-3.5">Permisos Operativos</th>
@@ -574,7 +574,7 @@ export const AdminVendedoresPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E7E0D8]">
+              <tbody className="divide-y divide-white/[0.07]">
                 {vendedoresFiltrados.map((v) => {
                   const isSelected = selectedVendedor?.id === v.id;
                   return (
@@ -583,26 +583,26 @@ export const AdminVendedoresPage: React.FC = () => {
                       onClick={() => setSelectedVendedor(v)}
                       className={`transition-colors h-14 cursor-pointer ${
                         isSelected
-                          ? 'bg-[#741C2B]/5 border-l-4 border-l-[#741C2B]'
-                          : 'hover:bg-[#F5F3EF]/60'
+                          ? 'bg-[#741C2B]/35 border-l-4 border-l-[#C49A68]'
+                          : 'hover:bg-white/[0.06]'
                       }`}
                     >
                       {/* Información del Vendedor */}
                       <td className="px-5 py-3">
-                        <div className="font-bold text-[#292827] text-xs flex items-center gap-2">
+                        <div className="font-bold text-white text-xs flex items-center gap-2">
                           <span>{v.nombreCompleto}</span>
                           {v.ubicacion?.nombre?.includes('Bucaramanga') && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-[#F5F3EF] text-[#741C2B] border border-[#E7E0D8]">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-[#E5BE90] border border-white/15">
                               <Sparkles className="w-2.5 h-2.5 text-[#C49A68]" /> Bucaramanga
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-[#77736E] font-mono tabular-nums flex items-center gap-1.5 mt-0.5">
-                          <Mail className="w-3 h-3 text-[#741C2B]" />
+                        <div className="text-[11px] text-white/60 font-mono tabular-nums flex items-center gap-1.5 mt-0.5">
+                          <Mail className="w-3 h-3 text-[#E5BE90]" />
                           <span>{v.correo}</span>
                         </div>
                         {v.telefono && (
-                          <div className="text-[11px] text-[#77736E] font-mono flex items-center gap-1.5 mt-0.5">
+                          <div className="text-[11px] text-white/60 font-mono flex items-center gap-1.5 mt-0.5">
                             <Phone className="w-3 h-3 text-[#C49A68]" />
                             <span>{v.telefono}</span>
                           </div>
@@ -617,19 +617,19 @@ export const AdminVendedoresPage: React.FC = () => {
                               value={v.ubicacionId || ''}
                               disabled={reasingnandoId === v.id}
                               onChange={(e) => handleCambioRapidoSede(v.id, Number(e.target.value))}
-                              className="w-full pl-7 pr-3 py-1.5 bg-[#F5F3EF] rounded-xl text-xs font-semibold text-[#292827] border border-[#E7E0D8] cursor-pointer hover:bg-white disabled:opacity-50 focus:outline-none focus:border-[#741C2B]"
+                              className="w-full pl-7 pr-3 py-1.5 bg-black/40 rounded-xl text-xs font-semibold text-white border border-white/15 cursor-pointer hover:bg-black/60 disabled:opacity-50 focus:outline-none focus:border-[#C49A68]"
                               title="Cambiar punto de venta asignado para este vendedor"
                             >
                               {ubicaciones.map((u) => (
-                                <option key={u.id} value={u.id}>
+                                <option key={u.id} value={u.id} className="bg-[#1C080E] text-white">
                                   {u.nombre}
                                 </option>
                               ))}
                             </select>
-                            <Store className="w-3 h-3 text-[#741C2B] absolute left-2.5 top-2.5 pointer-events-none" />
+                            <Store className="w-3 h-3 text-[#E5BE90] absolute left-2.5 top-2.5 pointer-events-none" />
                           </div>
                           {reasingnandoId === v.id && (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#741C2B]" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E5BE90]" />
                           )}
                         </div>
                       </td>
@@ -638,27 +638,27 @@ export const AdminVendedoresPage: React.FC = () => {
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap gap-1 max-w-sm">
                           {v.permVender && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#741C2B] text-white">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#741C2B] text-white border border-[#912537]">
                               Venta POS
                             </span>
                           )}
                           {v.permCaja && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#292827] text-white">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-white border border-white/20">
                               Caja
                             </span>
                           )}
                           {v.permDescuentoManual && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F5F3EF] text-[#741C2B] border border-[#E7E0D8]">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-[#E5BE90] border border-white/15">
                               Descuentos
                             </span>
                           )}
                           {v.permDevoluciones && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-[#C44848] border border-rose-200">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EF4444]/20 text-[#F87171] border border-[#EF4444]/40">
                               Devolución
                             </span>
                           )}
                           {v.permPedidosWeb && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">
                               Web
                             </span>
                           )}
@@ -668,12 +668,12 @@ export const AdminVendedoresPage: React.FC = () => {
                       {/* Estado Activo / Inactivo */}
                       <td className="px-5 py-3">
                         {v.activo ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-[#34D399] font-bold bg-[#10B981]/20 px-2.5 py-1 rounded-full border border-[#10B981]/40">
                             <CheckCircle2 className="w-3 h-3" />
                             <span>Activo</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-[#77736E] font-medium bg-[#F5F3EF] px-2.5 py-1 rounded-full border border-[#E7E0D8]">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-white/50 font-medium bg-white/10 px-2.5 py-1 rounded-full border border-white/15">
                             <XCircle className="w-3 h-3" />
                             <span>Inactivo</span>
                           </span>
@@ -687,10 +687,10 @@ export const AdminVendedoresPage: React.FC = () => {
                             setModalError(null);
                             setEditingVendedor({ ...v });
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#292827] hover:text-[#741C2B] hover:bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white hover:text-[#E5BE90] bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
                           title="Editar permisos completos y datos"
                         >
-                          <Edit2 className="w-3 h-3 text-[#741C2B]" />
+                          <Edit2 className="w-3 h-3 text-[#E5BE90]" />
                           <span>Editar</span>
                         </button>
                       </td>

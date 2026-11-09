@@ -26,6 +26,7 @@ import type {
   NoPuedoDespacharInput,
   RetornoLogisticoInput,
   DevolucionComercialWebInput,
+  TransicionarPedidoWebInput,
 } from './pedidoWeb.schema.js';
 
 export class PedidoWebService {
@@ -1277,6 +1278,221 @@ export class PedidoWebService {
    * Ejecuta el barrido del worker TTL de reservas web vencidas (> 24h por transferencia).
    * Libera stock blando con InventoryLedgerService y cancela pedidos (CA-39, QA-015).
    */
+  /**
+   * RF-WEB-05 / RN-WEB-15 / RN-WEB-18 / RN-INV-04: Transiciona el estado de un pedido web
+   * sincronizando atómicamente reservas blandas, reservas duras y descarga física en Kardex.
+   */
+  static async transicionarEstado(
+    pedidoIdOrCodigo: number | string,
+    data: TransicionarPedidoWebInput,
+    user: UserAuthSnapshot,
+    _idempotencyKey?: string
+  ) {
+    return prisma.$transaction(async (tx) => {
+      let pedidoId = typeof pedidoIdOrCodigo === 'number' ? pedidoIdOrCodigo : Number(pedidoIdOrCodigo);
+      if (isNaN(pedidoId) || (typeof pedidoIdOrCodigo === 'string' && pedidoIdOrCodigo.startsWith('PED-'))) {
+        const found = await tx.pedidoWeb.findFirst({
+          where: { referenciaLegible: String(pedidoIdOrCodigo) },
+          select: { id: true },
+        });
+        if (found) {
+          pedidoId = found.id;
+        }
+      }
+
+      const pedido = await tx.pedidoWeb.findUnique({
+        where: { id: pedidoId },
+        include: { lineas: true, ubicacionAsignada: true },
+      });
+
+      if (!pedido) {
+        throw AppError.notFound(`Pedido web #${pedidoIdOrCodigo} no encontrado`);
+      }
+
+      const { nuevoEstado, transportadora, numeroGuia, observacion, referenciaPagoRecaudo } = data;
+
+      if (pedido.estadoPedido === nuevoEstado) {
+        return pedido;
+      }
+
+      if (['CANCELADO', 'NO_ENTREGADO'].includes(pedido.estadoPedido)) {
+        throw AppError.unprocessable(`No se puede transicionar un pedido en estado final '${pedido.estadoPedido}'.`);
+      }
+
+      const updateData: Prisma.PedidoWebUpdateInput = {
+        estadoPedido: nuevoEstado,
+        version: { increment: 1 },
+      };
+
+      if (transportadora) updateData.transportadora = transportadora;
+      if (numeroGuia) updateData.numeroGuia = numeroGuia;
+      if (referenciaPagoRecaudo) updateData.referenciaPagoRecaudo = referenciaPagoRecaudo;
+
+      const ordenCanonicaLineas = [...pedido.lineas].sort((a, b) => a.varianteId - b.varianteId);
+
+      if (nuevoEstado === 'CONFIRMADO') {
+        updateData.fechaConfirmacion = new Date();
+      } else if (nuevoEstado === 'EN_PREPARACION') {
+        updateData.fechaEnPreparacion = new Date();
+        if (pedido.tieneReservaActiva) {
+          for (const linea of ordenCanonicaLineas) {
+            await InventoryLedgerService.registrarMovimiento(tx, {
+              tipo: 'ENDURECIMIENTO_RESERVA_WEB',
+              ubicacionId: pedido.ubicacionAsignadaId,
+              varianteId: linea.varianteId,
+              cantidadConSigno: linea.cantidad,
+              afectaSaldo: 'RESERVADO_DURO',
+              documentoTipo: 'PEDIDO_WEB',
+              documentoId: pedido.id,
+              usuarioId: user.id,
+              motivo: `Alistamiento iniciado pedido #${pedido.referenciaLegible}`,
+            });
+          }
+        }
+      } else if (nuevoEstado === 'ENVIADO') {
+        updateData.fechaEnvio = new Date();
+        if (pedido.tieneReservaActiva) {
+          if (pedido.estadoPedido === 'RECIBIDO' || pedido.estadoPedido === 'CONFIRMADO') {
+            for (const linea of ordenCanonicaLineas) {
+              await InventoryLedgerService.registrarMovimiento(tx, {
+                tipo: 'ENDURECIMIENTO_RESERVA_WEB',
+                ubicacionId: pedido.ubicacionAsignadaId,
+                varianteId: linea.varianteId,
+                cantidadConSigno: linea.cantidad,
+                afectaSaldo: 'RESERVADO_DURO',
+                documentoTipo: 'PEDIDO_WEB',
+                documentoId: pedido.id,
+                usuarioId: user.id,
+                motivo: `Endurecimiento previo a despacho pedido #${pedido.referenciaLegible}`,
+              });
+            }
+          }
+          for (const linea of ordenCanonicaLineas) {
+            await InventoryLedgerService.registrarMovimiento(tx, {
+              tipo: 'DESPACHO_WEB',
+              ubicacionId: pedido.ubicacionAsignadaId,
+              varianteId: linea.varianteId,
+              cantidadConSigno: -linea.cantidad,
+              afectaSaldo: 'FISICO',
+              documentoTipo: 'PEDIDO_WEB',
+              documentoId: pedido.id,
+              usuarioId: user.id,
+              motivo: `Despacho de pedido web #${pedido.referenciaLegible}`,
+            });
+          }
+          updateData.tieneReservaActiva = false;
+        }
+      } else if (nuevoEstado === 'ENTREGADO') {
+        updateData.fechaEntrega = new Date();
+        if (pedido.tieneReservaActiva) {
+          if (pedido.estadoPedido === 'RECIBIDO' || pedido.estadoPedido === 'CONFIRMADO') {
+            for (const linea of ordenCanonicaLineas) {
+              await InventoryLedgerService.registrarMovimiento(tx, {
+                tipo: 'ENDURECIMIENTO_RESERVA_WEB',
+                ubicacionId: pedido.ubicacionAsignadaId,
+                varianteId: linea.varianteId,
+                cantidadConSigno: linea.cantidad,
+                afectaSaldo: 'RESERVADO_DURO',
+                documentoTipo: 'PEDIDO_WEB',
+                documentoId: pedido.id,
+                usuarioId: user.id,
+                motivo: `Endurecimiento por entrega pedido #${pedido.referenciaLegible}`,
+              });
+            }
+          }
+          for (const linea of ordenCanonicaLineas) {
+            await InventoryLedgerService.registrarMovimiento(tx, {
+              tipo: 'DESPACHO_WEB',
+              ubicacionId: pedido.ubicacionAsignadaId,
+              varianteId: linea.varianteId,
+              cantidadConSigno: -linea.cantidad,
+              afectaSaldo: 'FISICO',
+              documentoTipo: 'PEDIDO_WEB',
+              documentoId: pedido.id,
+              usuarioId: user.id,
+              motivo: `Entrega confirmada y descarga física pedido #${pedido.referenciaLegible}`,
+            });
+          }
+          updateData.tieneReservaActiva = false;
+        }
+        updateData.ventaReconocida = true;
+        updateData.fechaReconocimientoVenta = new Date();
+        updateData.mesReconocimientoColombia = ColombiaTime.toMesNegocioColombia(new Date());
+        updateData.ubicacionDespacho = { connect: { id: pedido.ubicacionAsignadaId } };
+        updateData.estadoPago = 'PAGADO';
+      } else if (nuevoEstado === 'CANCELADO') {
+        updateData.fechaCancelacion = new Date();
+        updateData.estadoPago = 'ANULADO';
+        if (pedido.tieneReservaActiva) {
+          if (pedido.estadoPedido === 'EN_PREPARACION') {
+            for (const linea of ordenCanonicaLineas) {
+              await InventoryLedgerService.registrarMovimiento(tx, {
+                tipo: 'LIBERACION_RESERVA_WEB',
+                ubicacionId: pedido.ubicacionAsignadaId,
+                varianteId: linea.varianteId,
+                cantidadConSigno: -linea.cantidad,
+                afectaSaldo: 'RESERVADO_DURO',
+                documentoTipo: 'PEDIDO_WEB',
+                documentoId: pedido.id,
+                usuarioId: user.id,
+                motivo: `Cancelación pedido web #${pedido.referenciaLegible}`,
+              });
+            }
+          } else {
+            for (const linea of ordenCanonicaLineas) {
+              await InventoryLedgerService.registrarMovimiento(tx, {
+                tipo: 'LIBERACION_RESERVA_WEB',
+                ubicacionId: pedido.ubicacionAsignadaId,
+                varianteId: linea.varianteId,
+                cantidadConSigno: -linea.cantidad,
+                afectaSaldo: 'RESERVADO_BLANDO',
+                documentoTipo: 'PEDIDO_WEB',
+                documentoId: pedido.id,
+                usuarioId: user.id,
+                motivo: `Cancelación pedido web #${pedido.referenciaLegible}`,
+              });
+            }
+          }
+          updateData.tieneReservaActiva = false;
+        }
+      }
+
+      const pedidoActualizado = await tx.pedidoWeb.update({
+        where: { id: pedido.id },
+        data: updateData,
+        include: { lineas: true, ubicacionAsignada: true, cliente: true },
+      });
+
+      await tx.historialEstadoPedidoWeb.create({
+        data: {
+          pedidoId: pedido.id,
+          estadoPedido: nuevoEstado,
+          estadoPago: pedidoActualizado.estadoPago,
+          usuarioId: user.id,
+          observacion: observacion || `Transición a ${nuevoEstado}`,
+          fechaHora: new Date(),
+        },
+      });
+
+      await tx.registroAuditoria.create({
+        data: {
+          usuarioId: user.id,
+          accion: `TRANSICION_PEDIDO_WEB_${nuevoEstado}`,
+          entidadTipo: 'PedidoWeb',
+          entidadId: String(pedido.id),
+          datosMinimos: {
+            pedidoId: pedido.id,
+            referenciaLegible: pedido.referenciaLegible,
+            estadoAnterior: pedido.estadoPedido,
+            nuevoEstado,
+          },
+        },
+      });
+
+      return pedidoActualizado;
+    });
+  }
+
   static async ejecutarWorkerExpiracion(usuarioId: number = 1, fechaCorte?: Date) {
     return WebOrderTtlWorker.ejecutarBarridoExpiracion(prisma, fechaCorte ?? new Date(), usuarioId);
   }

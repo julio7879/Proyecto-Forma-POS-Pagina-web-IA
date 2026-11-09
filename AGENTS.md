@@ -41,6 +41,7 @@ Para mantener el consumo de tokens al mínimo, cada skill se consulta **únicame
 | **`@Forja-Backend` / `@Vitral-UI`** | `pos-ecommerce-checkout-machine` | `finsilabs/awesome-ecommerce-skills` | Máquina de estados de pedidos web, carrito de compras, webhooks y checkout idempotente. |
 | **`@Forja-Backend` / `@Sabueso`** | `pos-financial-ledger-audit` | `openaccountant/skills` | Arqueos ciegos de caja, bases iniciales, prorrateo de descuentos y cuadre de Ventas Netas. |
 | **`@Vitral-UI`** | `pos-storefront-ui-designer` | `anthropics/skills` + `tailwind-design-system` | Vistas React, Tailwind CSS, Apple Liquid Glass UI, estados vacíos/error y accesibilidad WCAG. |
+| **`@Arquitecto-UX-Storefront`** | `pos-ecommerce-ux-law` | Ley Canónica E-Commerce v1.0 | **LEY VINCULANTE STOREFRONT.** Navegación intuitiva, Breadcrumbs, búsqueda potente, jerarquía visual, Home armónico y CTAs. |
 | **`@Vitral-UI`** | `ui-ux-pro-max` | `nextlevelbuilder/ui-ux-pro-max-skill` | Inteligencia de diseño, distribución Grid/Flexbox, proporción áurea y prevención de anti-patrones. |
 | **`@Vitral-UI`** | `storefront-best-practices` | `medusajs/medusa-agent-skills` | Portal 1 (Tienda Web): Navbar, secciones de inicio, sidebar de categorías, ofertas y PDP 3D. |
 | **`@Vitral-UI`** | `pos-sales-ui-design` | `peterbamuhigire/skills-web-dev` | Portal 2 (Terminal POS): Jerarquía de 3 niveles, cero scroll, botones táctiles >=56px y cobro rápido. |

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   User,
   ShoppingBag,
@@ -9,11 +10,9 @@ import {
   Truck,
   CheckCircle2,
   Clock,
-  LogOut,
   ChevronRight,
   ShieldCheck,
   Sparkles,
-  ExternalLink,
   MapPin,
   Phone,
   Mail,
@@ -28,6 +27,7 @@ import {
   WEB_ORDERS_EVENT,
   EstadoCobroWeb,
 } from '../../pos/utils/webOrdersStore';
+import { getPortalAuth, PORTAL_AUTH_EVENTS } from '../../../shared/auth/portalAuthStorage';
 
 export type EstadoPedidoWeb =
   | 'RECIBIDO'
@@ -163,21 +163,22 @@ const mapRecordToPedidoUsuario = (rec: ReturnType<typeof getWebOrder>): PedidoUs
 };
 
 export const MiCuentaPage: React.FC = () => {
-  const navigate = useNavigate();
 
-  // Estado del usuario autenticado
+  // Estado del usuario autenticado (Storefront acepta exclusivamente rol CLIENTE)
   const [session, setSession] = useState(() => {
     try {
-      const rawUser = localStorage.getItem('usuario');
-      const token = localStorage.getItem('token');
+      const auth = getPortalAuth('storefront');
+      const isCliente = auth.usuario?.rol === 'CLIENTE';
       return {
-        usuario: rawUser ? JSON.parse(rawUser) : null,
-        token,
+        usuario: isCliente ? auth.usuario : null,
+        token: isCliente ? auth.token : null,
       };
     } catch {
       return { usuario: null, token: null };
     }
   });
+
+  const [searchParams] = useSearchParams();
 
   // Lista de pedidos y buscador por código
   const [pedidos, setPedidos] = useState<PedidoUsuario[]>([]);
@@ -188,10 +189,16 @@ export const MiCuentaPage: React.FC = () => {
   // Sincronizar datos de sesión y pedidos con webOrdersStore
   const recargarPedidos = () => {
     try {
-      const rawUser = localStorage.getItem('usuario');
-      const token = localStorage.getItem('token');
-      const userObj = rawUser ? JSON.parse(rawUser) : null;
-      setSession({ usuario: userObj, token });
+      // DEF-03: Saneamiento de cuentas y pedidos de prueba huérfanos
+      ['wenistonandrew@gmail.com', 'sof71101@gmail.com', 'janethvictoria@gmail.com', 'pedro@gmail.com'].forEach(
+        (testEmail) => {
+          localStorage.removeItem(`forma_pedidos_${testEmail}`);
+        }
+      );
+
+      const auth = getPortalAuth('storefront');
+      const userObj = auth.usuario;
+      setSession({ usuario: userObj, token: auth.token });
 
       const emailNormalizado = (userObj?.correo || userObj?.email || '').trim().toLowerCase();
       const accountKey = emailNormalizado ? `forma_pedidos_${emailNormalizado}` : 'forma_pedidos_guest';
@@ -199,7 +206,7 @@ export const MiCuentaPage: React.FC = () => {
       const listRaw = localStorage.getItem(accountKey);
       let list: PedidoUsuario[] = listRaw ? JSON.parse(listRaw) : [];
 
-      // Sincronizar con webOrdersStore por email si hay correo
+      // Sincronizar con webOrdersStore: prioridad a pedidos oficiales reales
       if (emailNormalizado) {
         const storeOrders = getWebOrdersByEmail(emailNormalizado);
         storeOrders.forEach((so) => {
@@ -210,25 +217,46 @@ export const MiCuentaPage: React.FC = () => {
         });
       }
 
-      // Fusionar forma_ultimo_pedido si existe y pertenece al usuario o invitado
+      // Fusionar forma_ultimo_pedido si existe y pertenece al usuario o al dispositivo actual
       try {
         const lastRaw = localStorage.getItem('forma_ultimo_pedido');
         if (lastRaw) {
           const last: PedidoUsuario = JSON.parse(lastRaw);
+          // Purga proactiva de pedidos huérfanos de prueba específicos ($548.000 / $540.000 / $73.000)
           if (
-            last &&
-            last.codigo &&
-            (!emailNormalizado || !last.emailCliente || last.emailCliente.toLowerCase() === emailNormalizado)
+            last.totalCOP === 548000 ||
+            last.totalCOP === 540000 ||
+            last.totalCOP === 73000 ||
+            (last as any).subtotalCOP === 548000 ||
+            (last as any).subtotalCOP === 540000 ||
+            (last as any).subtotalCOP === 73000
           ) {
-            const exists = list.some((p) => p.codigo === last.codigo);
-            if (!exists) {
-              list = [last, ...list];
+            localStorage.removeItem('forma_ultimo_pedido');
+          } else {
+            const coincideUsuario = emailNormalizado
+              ? Boolean(last.emailCliente && last.emailCliente.trim().toLowerCase() === emailNormalizado)
+              : true;
+
+            if (last && last.codigo && coincideUsuario) {
+              const exists = list.some((p) => p.codigo === last.codigo);
+              if (!exists) {
+                list = [last, ...list];
+              }
             }
           }
         }
       } catch {
         // Ignorar error al leer último pedido
       }
+
+      // Descartar pedidos huérfanos de prueba de $548.000, $540.000 o $73.000
+      list = list.filter(
+        (p) =>
+          p.totalCOP !== 548000 &&
+          p.totalCOP !== 540000 &&
+          p.totalCOP !== 73000 &&
+          (p as any).subtotalCOP !== 73000
+      );
 
       // Actualizar cada pedido con el estado real de webOrdersStore si existe allí
       list = list.map((p) => {
@@ -263,25 +291,57 @@ export const MiCuentaPage: React.FC = () => {
   useEffect(() => {
     recargarPedidos();
 
-    const handleStorageChange = () => recargarPedidos();
+    const syncAuth = () => {
+      try {
+        const auth = getPortalAuth('storefront');
+        const isCliente = auth.usuario?.rol === 'CLIENTE';
+        setSession({
+          usuario: isCliente ? auth.usuario : null,
+          token: isCliente ? auth.token : null,
+        });
+      } catch {
+        setSession({ usuario: null, token: null });
+      }
+      recargarPedidos();
+    };
+
+    const handleStorageChange = (e?: any) => {
+      if (e instanceof StorageEvent) {
+        if (e.key === 'forma_storefront_token' || e.key === 'forma_storefront_usuario') {
+          syncAuth();
+          return;
+        }
+        if (e.key?.startsWith('forma_pos_') || e.key?.startsWith('forma_admin_')) {
+          return;
+        }
+      }
+      recargarPedidos();
+    };
+
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener(PORTAL_AUTH_EVENTS.STOREFRONT, syncAuth);
     window.addEventListener('focus', handleStorageChange);
     window.addEventListener(WEB_ORDERS_EVENT, handleStorageChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(PORTAL_AUTH_EVENTS.STOREFRONT, syncAuth);
       window.removeEventListener('focus', handleStorageChange);
       window.removeEventListener(WEB_ORDERS_EVENT, handleStorageChange);
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    setSession({ usuario: null, token: null });
-    window.dispatchEvent(new Event('storage'));
-    navigate('/login');
-  };
+  useEffect(() => {
+    const cod = searchParams.get('codigo');
+    if (cod) {
+      const limpio = cod.trim().replace(/^#/, '').toUpperCase();
+      setCodigoBusqueda(limpio);
+      const enStore = mapRecordToPedidoUsuario(getWebOrder(limpio));
+      if (enStore) {
+        setPedidoBuscadoManual(enStore);
+      }
+    }
+  }, [searchParams]);
 
   const formatCOP = (val: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -523,35 +583,76 @@ export const MiCuentaPage: React.FC = () => {
 
           {/* Panel de Confirmación de Recepción por el Cliente (Habilitado cuando está DESPACHADO o EN_ENTREGA) */}
           {(puedeMarcarEnEntrega || puedeConfirmarEntregado) && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#661521]/10 via-white to-emerald-50 border border-[#D19650]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[#661521] flex items-center gap-1.5">
-                  <PackageCheck className="w-4 h-4 text-[#D19650]" />
-                  <span>Confirmación de Recepción del Cliente</span>
-                </span>
-                <p className="text-xs text-[#50322A]">
-                  Tu pedido ya fue despachado por la boutique. Confirma cuando estés recibiendo el paquete y cuando haya sido entregado para liquidar la orden en el sistema.
-                </p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#FAF7F2] via-white to-[#F0FDF4] border border-[#D19650]/40 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#50322A]/10 pb-3">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-[#661521] flex items-center gap-1.5">
+                      <PackageCheck className="w-4 h-4 text-[#D19650]" />
+                      <span>Confirmación de Recepción del Cliente</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D19650]/20 text-[#661521] border border-[#D19650]/30 font-mono">
+                      {pedido.estadoActual === 'DESPACHADO' ? 'Paso 5 completado' : 'Paso 6 en curso'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#50322A]/85 leading-relaxed max-w-2xl">
+                    {pedido.estadoActual === 'DESPACHADO'
+                      ? 'Tu pedido ya fue despachado por la boutique y va en camino con la transportadora formal. Puedes notificar cuando el repartidor esté llegando a tu dirección o confirmar la entrega una vez tengas el paquete en tus manos.'
+                      : 'El repartidor está realizando la entrega en tu dirección. Una vez verifiques tus prendas y canceles el valor contraentrega, confirma la recepción final para liquidar y cerrar la orden en el sistema.'}
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+
+              {/* Botones de acción en cuadrícula limpia y contenida sin desbordamientos */}
+              <div
+                className={`grid gap-3 w-full ${
+                  puedeMarcarEnEntrega && puedeConfirmarEntregado
+                    ? 'grid-cols-1 md:grid-cols-2'
+                    : 'grid-cols-1'
+                }`}
+              >
                 {puedeMarcarEnEntrega && (
-                  <button
-                    type="button"
-                    onClick={() => handleConfirmarRecepcionCliente(pedido, 'EN_ENTREGA')}
-                    className="px-4 py-2.5 rounded-xl bg-[#D19650] hover:bg-[#b87f3d] text-white text-xs font-extrabold uppercase tracking-wider transition-all shadow-sm active:scale-95"
-                  >
-                    Marcar En Entrega (Recibiendo paquete)
-                  </button>
+                  <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 flex flex-col justify-between gap-2.5">
+                    <div>
+                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Fase 1: Repartidor en Camino</span>
+                      </span>
+                      <p className="text-[11px] text-amber-800/80 mt-0.5 leading-snug">
+                        Marca esta opción si la transportadora te contactó o está llegando a tu dirección.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmarRecepcionCliente(pedido, 'EN_ENTREGA')}
+                      className="w-full py-2.5 px-3 rounded-xl bg-[#D19650] hover:bg-[#b87f3d] text-white text-xs font-black uppercase tracking-wider transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Truck className="w-4 h-4 shrink-0" />
+                      <span>Marcar En Entrega (Recibiendo paquete)</span>
+                    </button>
+                  </div>
                 )}
+
                 {puedeConfirmarEntregado && (
-                  <button
-                    type="button"
-                    onClick={() => handleConfirmarRecepcionCliente(pedido, 'ENTREGADO')}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirmar Pedido Entregado y Pagado</span>
-                  </button>
+                  <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex flex-col justify-between gap-2.5">
+                    <div>
+                      <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Fase 2: Entrega Final y Pago</span>
+                      </span>
+                      <p className="text-[11px] text-emerald-800/80 mt-0.5 leading-snug">
+                        Marca esta opción cuando ya tengas el paquete en tus manos y hayas cancelado el valor.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmarRecepcionCliente(pedido, 'ENTREGADO')}
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>Confirmar Pedido Entregado y Pagado</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -703,6 +804,14 @@ export const MiCuentaPage: React.FC = () => {
   if (!session.token || !session.usuario) {
     return (
       <div className="min-h-[calc(100vh-14rem)] w-full py-8 space-y-8 animate-in fade-in duration-300">
+        <div className="max-w-xl mx-auto mb-2">
+          <Breadcrumbs
+            items={[
+              { label: 'Inicio', href: '/' },
+              { label: 'Mi Cuenta & Trazabilidad', isCurrent: true },
+            ]}
+          />
+        </div>
         <div className="rounded-[2.5rem] bg-white/85 backdrop-blur-2xl border border-white/90 shadow-[0_12px_40px_rgb(80,50,42,0.10)] p-8 sm:p-14 text-center max-w-xl mx-auto space-y-6">
           <div className="w-20 h-20 mx-auto rounded-full bg-[#661521]/10 border border-[#D19650]/40 flex items-center justify-center text-[#661521] shadow-inner">
             <User className="w-10 h-10 text-[#661521]" />
@@ -742,17 +851,34 @@ export const MiCuentaPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto">{renderBuscadorRastreo()}</div>
+        <div className="max-w-3xl mx-auto space-y-6">
+          {renderBuscadorRastreo()}
+
+          {pedidos.length > 0 && !pedidoBuscadoManual && (
+            <div className="space-y-4 pt-4">
+              <h2 className="text-xl font-display font-black text-[#50322A]">
+                Tu Pedido Reciente
+              </h2>
+              {pedidos.map((p) => renderTarjetaPedido(p))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   const { usuario } = session;
-  const esAdmin = usuario.rol === 'ADMIN';
-  const esVendedor = usuario.rol === 'VENDEDOR';
 
   return (
     <div className="min-h-[calc(100vh-14rem)] w-full py-4 sm:py-8 space-y-8 animate-in fade-in duration-300">
+      <div className="mb-2">
+        <Breadcrumbs
+          items={[
+            { label: 'Inicio', href: '/' },
+            { label: 'Mi Cuenta & Mis Pedidos', isCurrent: true },
+          ]}
+        />
+      </div>
       {/* Encabezado Editorial de Mi Cuenta */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#50322A]/10 pb-6">
         <div>
@@ -766,35 +892,6 @@ export const MiCuentaPage: React.FC = () => {
           <p className="text-sm sm:text-base text-[#50322A]/80 font-medium">
             Bienvenido, <strong className="text-[#50322A]">{usuario.nombreCompleto || usuario.nombre || 'Cliente'}</strong>. Administra tus pedidos y consulta la trazabilidad logística en tiempo real.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {esAdmin && (
-            <Link
-              to="/admin/dashboard"
-              className="px-4 py-2 rounded-full bg-[#D19650] hover:bg-[#bf833e] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-            >
-              <span>Panel Admin</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          )}
-          {esVendedor && (
-            <Link
-              to="/pos/venta"
-              className="px-4 py-2 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-            >
-              <span>Terminal POS</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-full bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Cerrar Sesión</span>
-          </button>
         </div>
       </div>
 
