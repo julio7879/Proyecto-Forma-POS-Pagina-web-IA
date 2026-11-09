@@ -57,7 +57,10 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const isTest = import.meta.env.MODE === 'test';
+  const googleClientId =
+    import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+    (!isTest ? '342333810050-dqo87t5rq8a6fpnfrhr7fva4fe3d1pl5.apps.googleusercontent.com' : '');
 
   const ejecutarGoogleAuth = async (payload: {
     googleId: string;
