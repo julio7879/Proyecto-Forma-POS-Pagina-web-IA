@@ -8,6 +8,7 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 | [`tablero-auditoria.html`](tablero-auditoria.html) | Vista visual derivada, autocontenida (sin dependencias). | Ábrelo en el navegador; se puede imprimir. |
 | [`F0-EJECUCION.md`](F0-EJECUCION.md) | Registro de F0: cambios, evidencia de tests y pendientes humanos. | Léelo antes de mergear a `main`. |
 | [`F1-EJECUCION.md`](F1-EJECUCION.md) | Registro de F1: backlog único, tablero generado, SSOT y limpieza de ramas. | Léelo para entender de dónde sale el estado actual. |
+| [`F2-EJECUCION.md`](F2-EJECUCION.md) | Registro de F2: IDs RN, arqueo, CA, 35/16 y generador obsoleto archivado. | Léelo antes de tocar reglas o RF. |
 
 > **Regla de esta carpeta:** el `.md` es la fuente; el `.html` es una vista. Si cambia uno, se regenera el otro. No crear una tercera copia.
 
@@ -21,4 +22,4 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 
 ## Siguiente paso
 
-**F1 ejecutado** en `test/sandbox-testeo` (`4db1e70`): backlog único de 46 tareas, `PROGRESO` generado y SSOT. Quedan 2 ramas locales (`main` y `test`). Después, **F2: verdad normativa** (41 IDs, fórmula de arqueo, 33 → 35 modelos).
+**F2 ejecutado** en `test/sandbox-testeo` (`d9e4f1f`): 0 IDs RN fantasma, arqueo único, 35/16 y CA-08 corregido. Después, **F3: verdad del harness** (5 vs 4 etapas, skills duplicadas y `ask_user_question`).

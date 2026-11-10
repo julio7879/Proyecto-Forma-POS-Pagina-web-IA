@@ -3,7 +3,7 @@ id: QA-PLAN-2026-11
 titulo: "Plan de Saneamiento Documental y QA Integral"
 proyecto: FORMA SPOS
 fecha: 2026-11-10
-estado: F0 ejecutado; F1 pendiente
+estado: F0, F1 y F2 ejecutados; F3 pendiente
 alcance: [docs/vault, harness, frontend, backend, infraestructura]
 ---
 
@@ -15,9 +15,11 @@ alcance: [docs/vault, harness, frontend, backend, infraestructura]
 
 > **Corrección de contexto confirmada por el usuario (10-nov-2026, 16:23).** El proyecto **ya no se trabaja en equipo**. Una sola persona desarrolla en `test/sandbox-testeo` y publica en `main`. Esto **corrige el hallazgo P0-02**: no hay un «GitFlow invertido» por incumplimiento, sino una documentación que sigue describiendo 6 personas, PRs y una rama `develop` que ya no se usan. Dato adicional verificado: `test/sandbox-testeo` es local, su último commit es del **5-nov** y está **19 commits por detrás de `main`**; es ancestro de `main`, así que hoy no aporta cambios nuevos. Antes de retomarla hay que actualizarla.
 
-> **F0 ejecutado (10-nov-2026, 16:49).** Commit `211609c` en `test/sandbox-testeo`: **P0-04, P0-05 y P0-09 cerrados** (QR autenticado, secretos fuera del árbol, backdoors admin eliminados) y CORS con allowlist. P0-03 (POS en `localStorage`) y P0-06 (fórmula de arqueo) siguen abiertos. Evidencia y pendientes humanos en [`F0-EJECUCION.md`](F0-EJECUCION.md).
+> **F0 ejecutado (10-nov-2026, 16:49).** Commit `211609c` en `test/sandbox-testeo`: **P0-04, P0-05 y P0-09 cerrados** (QR autenticado, secretos fuera del árbol, backdoors admin eliminados) y CORS con allowlist. P0-03 (POS en `localStorage`) sigue abierto; P0-06 (fórmula de arqueo) se cerró en F2. Evidencia y pendientes humanos en [`F0-EJECUCION.md`](F0-EJECUCION.md).
 
 > **F1 ejecutado (10-nov-2026, 16:56).** Commit `4db1e70`: backlog único de **46 tareas** (`backlog.yaml`), `PROGRESO-ACTUAL.md` generado desde él, `SSOT.md`, `AGENTS.md §0` y limpieza a **2 ramas locales** (`main` y `test`). Avance verificado: **27/46 = 58.7 %**; 5 tareas quedan como «declaradas» y no cuentan como hechas. Evidencia en [`F1-EJECUCION.md`](F1-EJECUCION.md).
+
+> **F2 ejecutado (10-nov-2026, 17:05).** Commit `d9e4f1f`: **0 IDs RN citados sin definición**, arqueo único (`RN-CAJ-06`), **35/16** modelos, CA-08 solo en traslados, CA-52 en caja y `GESTIONAR_CATALOGO` reemplazado por rol `ADMIN`. Se archivó el generador obsoleto `generate-vault.mjs`. Evidencia en [`F2-EJECUCION.md`](F2-EJECUCION.md).
 
 **Cómo leer este documento**
 
@@ -288,6 +290,7 @@ flowchart TD
 - **Evidencia:** `PROGRESO-ACTUAL.md:18`, `:19`, `:107-112`, `:118`; `PLAN-MAESTRO-SPRINTS.md:22-111`.
 - **Por qué importa:** no se puede decidir qué cerrar, qué demostrar ni qué cobrar.
 - **Fix:** un solo backlog con IDs inmutables; el tablero se genera; se elimina toda cifra escrita a mano.
+- **Estado:** ✅ Cerrado en F1 (`4db1e70`): `backlog.yaml` + `PROGRESO` generado.
 
 #### P0-02 · El proceso documentado ya no existe y la rama de trabajo está 19 commits atrás
 
@@ -295,6 +298,7 @@ flowchart TD
 - **Evidencia:** `git log -1 test/sandbox-testeo` = `e9eb3ef` (5-nov); `git rev-list --left-right --count test...main` = `0 19`; `git merge-base --is-ancestor` = sí; `PROGRESO-ACTUAL.md:27-32` (pie de 6 personas); `MATRIZ-ROLES-Y-TAREAS.md:72-73` (GitFlow); `develop` 20 commits atrás.
 - **Por qué importa:** (a) retomar `test/sandbox-testeo` sin actualizarla significa programar sobre el estado del 5-nov y arrastrar conflictos; (b) el tablero sigue midiendo tareas y porcentajes de un equipo inexistente, así que no sirve para decidir; (c) `develop` y las ramas viejas hacen ambiguo qué es la verdad.
 - **Fix:** declarar el flujo real (`test/sandbox-testeo` → `main`) en `AGENTS.md` y en el `SSOT`; **fast-forward de `test` a `main`** antes de retomarla; etiquetar y archivar `develop` + ramas viejas (revisar primero las 5 sin fusionar); reescribir `MATRIZ-ROLES` y el pie del tablero como «histórico» o «1 persona»; sustituir la aprobación por PR por CI + checklist de auto-revisión.
+- **Estado:** ✅ Cerrado en F1 (`4db1e70`): flujo solo documentado, `develop` archivada y 2 ramas locales.
 
 #### P0-03 · El POS no persiste ventas ni caja
 
@@ -323,6 +327,7 @@ flowchart TD
 - **Evidencia:** `RN-CAJ-VTA...:18-29` vs `MOD-07-Sesiones-Caja.md:22` y `Matriz-CA:37`.
 - **Por qué importa:** con la fórmula corta, una caja con sangría o gasto menor arroja un faltante ficticio. Es dinero.
 - **Fix:** una sola fórmula (la integral) en los tres documentos; si `CA-15` describe un caso sin movimientos, declararlo como subconjunto.
+- **Estado:** ✅ Cerrado en F2 (`d9e4f1f`): fórmula integral en `RN-CAJ-06`, `MOD-07` y `CA-15`.
 
 #### P0-07 · El harness tiene dos linajes y las copias pierden la regla de parada
 
@@ -363,6 +368,8 @@ flowchart TD
 | **P1-12** | CA-08 se usa para compra y traslado; CA-52/53 no tienen RF; `GESTIONAR_CATALOGO` no está en los 11 permisos | `Matriz-CA:21,100-101`; `MOD-05:7,21`; `MOD-03:50`; `RN-ROL-02:18,29-39` | Un criterio certifica dos flujos; el 403 es inalcanzable | Un CA por flujo; alinear permisos o la regla |
 | **P1-13** | El contrato de entorno valida solo 5 variables y el deploy no aplica migraciones | `env.ts:7-12`; `render.yaml:8-9` | Render arranca «healthy» sin Telegram/SMTP/Google y con el esquema sin migrar | Validar las 7 variables; `prisma migrate deploy` en build/start; `/health` refleja integraciones |
 | **P1-14** | CI con caché mal apuntado y sin job de deploy; dos `vercel.json` compiten | `.github/workflows/ci.yml:29,60`; `vercel.json`; `frontend/vercel.json` | El caché no se invalida al cambiar el lockfile; CI verde no despliega; el deploy depende de qué config lea Vercel | `cache-dependency-path: '**/package-lock.json'`; job de Deploy Hook; una sola config de Vercel |
+
+> **F2 cerró P1-01, P1-02 y P1-12.** Quedan P1-03 a P1-11, P1-13 y P1-14.
 
 ### 5.3 P2 — Higiene (10)
 
@@ -575,7 +582,7 @@ flowchart TD
 | :---: | :--- | :--- | :--- | :---: |
 | **F0** | Seguridad y congelamiento | ✅ Código ejecutado 10-nov (`211609c`): token fuera del árbol, backdoors admin eliminados, QR con JWT, CORS allowlist | 0 credenciales en el árbol; QR exige JWT | Hecho en código |
 | **F1** | Verdad operativa | ✅ Ejecutado 10-nov (`4db1e70`): backlog único, `PROGRESO` generado, `test` alineada, `develop` archivada y 2 ramas locales | El tablero coincide con git; flujo solo documentado; 0 tareas sin evidencia | Hecho |
-| **F2** | Verdad normativa | 41 IDs definidos o repuntados; fórmula de arqueo única; 33 → 35 | `check-ids` en verde; 0 contradicciones P0 | 3-5 días |
+| **F2** | Verdad normativa | ✅ Ejecutado 10-nov (`d9e4f1f`): 0 IDs RN fantasma, arqueo único, 35/16, CA-08/52 y permiso corregidos | `check-ids` en verde; 0 contradicciones P0 | Hecho |
 | **F3** | Verdad del harness | 5 etapas en todos lados; un root de skills; `ask_user_question` | Paridad de skills; `CLAUDE.md` puntero | 2-3 días |
 | **F4** | Verdad del diseño | Paleta decidida; 14 mandamientos publicados; ARQ-01 vs ARQ-07 resuelto | 1 ley por portal; 0 paletas huérfanas | 3-5 días |
 | **F5** | Verdad del código | POS persistente, QR seguro, idempotencia atómica, workers, RBAC | P0 cerrados; tests reproducibles | 1-2 semanas |
@@ -655,7 +662,7 @@ gantt
 | Métrica | Hoy | Meta |
 | :--- | :---: | :---: |
 | Fuentes de verdad declaradas | 6 | **1** (`SSOT.md`) |
-| IDs `RN-*` citados sin definición | 41 | **0** |
+| IDs `RN-*` citados sin definición | 0 (F2) | **0** |
 | Enlaces internos rotos | 0 reales (1 falso positivo y 2 canvas que Obsidian resuelve) | **0** |
 | Notas sin frontmatter | 4 | **0** |
 | Configuraciones de deploy activas | 4 archivos (3 proveedores) | **1** |
@@ -663,11 +670,13 @@ gantt
 | Proceso documentado | 6 personas / GitFlow | **1 persona / `test` → `main`** |
 | Secretos en el repo | 0 en el árbol; token en historial | **0** (token rotado) |
 | Conteos de tests distintos | 5-7 | **1** (salida de `vitest`) |
-| P0 abiertos | 6 (3 cerrados en F0) | **0** |
+| P0 abiertos | 3 (6 cerrados: 3 en F0, 2 en F1, 1 en F2) | **0** |
 | Cobertura de trazabilidad RF → CA → QA | parcial | **100 %** de los 44 RF |
 | Tiempo de *onboarding* de un dev nuevo | horas | **< 1 hora** con el MOC + SSOT |
 
 > **F1 ya cumplió** las metas de «ramas locales = 2» y «proceso documentado = 1 persona / `test` → `main`». Las demás métricas siguen abiertas.
+
+> **F2 ya cumplió** los IDs RN (0 fantasma) y el conteo de modelos (35/16). Las demás métricas siguen abiertas.
 
 ---
 
