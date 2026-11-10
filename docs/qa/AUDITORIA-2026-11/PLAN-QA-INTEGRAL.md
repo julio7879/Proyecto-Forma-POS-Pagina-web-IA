@@ -21,6 +21,8 @@ alcance: [docs/vault, harness, frontend, backend, infraestructura]
 
 > **F2 ejecutado (10-nov-2026, 17:05).** Commit `d9e4f1f`: **0 IDs RN citados sin definición**, arqueo único (`RN-CAJ-06`), **35/16** modelos, CA-08 solo en traslados, CA-52 en caja y `GESTIONAR_CATALOGO` reemplazado por rol `ADMIN`. Se archivó el generador obsoleto `generate-vault.mjs`. Evidencia en [`F2-EJECUCION.md`](F2-EJECUCION.md).
 
+> **F3 ejecutado (10-nov-2026, 17:11).** Commit `802131c`: `CLAUDE.md` puntero, **5 etapas**, `ask_user_question`, `.claude/skills` sincronizado (4/6 divergentes corregidas), catálogo **19 + 14** y `react-shadcn-admin` en `@Vitral-UI`. Evidencia en [`F3-EJECUCION.md`](F3-EJECUCION.md).
+
 **Cómo leer este documento**
 
 | Si tienes… | Lee… |
@@ -335,6 +337,7 @@ flowchart TD
 - **Evidencia:** `AGENTS.md:10-17`, `:30-52`; `CLAUDE.md:9-26`; `.claude/skills/pos-kardex-transaction/SKILL.md` (16 líneas) vs `.agent/...` (17, con regla 7).
 - **Por qué importa:** la conducta que define al escuadrón (detenerse antes de suponer) no existe en la mitad de los puntos de entrada.
 - **Fix:** `AGENTS.md` como único harness; `CLAUDE.md` como puntero de 5 líneas; un solo root de skills; test de paridad en CI.
+- **Estado:** ✅ Cerrado en F3 (`802131c`): `CLAUDE.md` puntero, `ask_user_question` y `.claude` sincronizado.
 
 #### P0-08 · La «ley» de e-commerce no contiene los 14 mandamientos
 
@@ -369,7 +372,7 @@ flowchart TD
 | **P1-13** | El contrato de entorno valida solo 5 variables y el deploy no aplica migraciones | `env.ts:7-12`; `render.yaml:8-9` | Render arranca «healthy» sin Telegram/SMTP/Google y con el esquema sin migrar | Validar las 7 variables; `prisma migrate deploy` en build/start; `/health` refleja integraciones |
 | **P1-14** | CI con caché mal apuntado y sin job de deploy; dos `vercel.json` compiten | `.github/workflows/ci.yml:29,60`; `vercel.json`; `frontend/vercel.json` | El caché no se invalida al cambiar el lockfile; CI verde no despliega; el deploy depende de qué config lea Vercel | `cache-dependency-path: '**/package-lock.json'`; job de Deploy Hook; una sola config de Vercel |
 
-> **F2 cerró P1-01, P1-02 y P1-12.** Quedan P1-03 a P1-11, P1-13 y P1-14.
+> **F2 cerró P1-01, P1-02 y P1-12; F3 cerró P1-09 y P1-10.** Quedan P1-03 a P1-08, P1-11, P1-13 y P1-14.
 
 ### 5.3 P2 — Higiene (10)
 
@@ -583,7 +586,7 @@ flowchart TD
 | **F0** | Seguridad y congelamiento | ✅ Código ejecutado 10-nov (`211609c`): token fuera del árbol, backdoors admin eliminados, QR con JWT, CORS allowlist | 0 credenciales en el árbol; QR exige JWT | Hecho en código |
 | **F1** | Verdad operativa | ✅ Ejecutado 10-nov (`4db1e70`): backlog único, `PROGRESO` generado, `test` alineada, `develop` archivada y 2 ramas locales | El tablero coincide con git; flujo solo documentado; 0 tareas sin evidencia | Hecho |
 | **F2** | Verdad normativa | ✅ Ejecutado 10-nov (`d9e4f1f`): 0 IDs RN fantasma, arqueo único, 35/16, CA-08/52 y permiso corregidos | `check-ids` en verde; 0 contradicciones P0 | Hecho |
-| **F3** | Verdad del harness | 5 etapas en todos lados; un root de skills; `ask_user_question` | Paridad de skills; `CLAUDE.md` puntero | 2-3 días |
+| **F3** | Verdad del harness | ✅ Ejecutado 10-nov (`802131c`): `CLAUDE.md` puntero, 5 etapas, `ask_user_question`, `.claude` sincronizado y catálogo 19+14 | Paridad de skills; harness único | Hecho |
 | **F4** | Verdad del diseño | Paleta decidida; 14 mandamientos publicados; ARQ-01 vs ARQ-07 resuelto | 1 ley por portal; 0 paletas huérfanas | 3-5 días |
 | **F5** | Verdad del código | POS persistente, QR seguro, idempotencia atómica, workers, RBAC | P0 cerrados; tests reproducibles | 1-2 semanas |
 | **F6** | Guardrails | CI con los 9 controles | Un cambio incompatible falla el PR | 3-5 días |
@@ -670,13 +673,15 @@ gantt
 | Proceso documentado | 6 personas / GitFlow | **1 persona / `test` → `main`** |
 | Secretos en el repo | 0 en el árbol; token en historial | **0** (token rotado) |
 | Conteos de tests distintos | 5-7 | **1** (salida de `vitest`) |
-| P0 abiertos | 3 (6 cerrados: 3 en F0, 2 en F1, 1 en F2) | **0** |
+| P0 abiertos | 2 (7 cerrados: 3 en F0, 2 en F1, 1 en F2, 1 en F3) | **0** |
 | Cobertura de trazabilidad RF → CA → QA | parcial | **100 %** de los 44 RF |
 | Tiempo de *onboarding* de un dev nuevo | horas | **< 1 hora** con el MOC + SSOT |
 
 > **F1 ya cumplió** las metas de «ramas locales = 2» y «proceso documentado = 1 persona / `test` → `main`». Las demás métricas siguen abiertas.
 
 > **F2 ya cumplió** los IDs RN (0 fantasma) y el conteo de modelos (35/16). Las demás métricas siguen abiertas.
+
+> **F3 ya cumplió** el harness único, la parada con `ask_user_question` y la paridad de skills. Quedan 2 P0.
 
 ---
 

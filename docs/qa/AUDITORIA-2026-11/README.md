@@ -9,6 +9,7 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 | [`F0-EJECUCION.md`](F0-EJECUCION.md) | Registro de F0: cambios, evidencia de tests y pendientes humanos. | Léelo antes de mergear a `main`. |
 | [`F1-EJECUCION.md`](F1-EJECUCION.md) | Registro de F1: backlog único, tablero generado, SSOT y limpieza de ramas. | Léelo para entender de dónde sale el estado actual. |
 | [`F2-EJECUCION.md`](F2-EJECUCION.md) | Registro de F2: IDs RN, arqueo, CA, 35/16 y generador obsoleto archivado. | Léelo antes de tocar reglas o RF. |
+| [`F3-EJECUCION.md`](F3-EJECUCION.md) | Registro de F3: `CLAUDE.md` puntero, `ask_user_question`, skills sincronizadas y catálogo. | Léelo antes de editar una skill. |
 
 > **Regla de esta carpeta:** el `.md` es la fuente; el `.html` es una vista. Si cambia uno, se regenera el otro. No crear una tercera copia.
 
@@ -22,4 +23,4 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 
 ## Siguiente paso
 
-**F2 ejecutado** en `test/sandbox-testeo` (`d9e4f1f`): 0 IDs RN fantasma, arqueo único, 35/16 y CA-08 corregido. Después, **F3: verdad del harness** (5 vs 4 etapas, skills duplicadas y `ask_user_question`).
+**F3 ejecutado** en `test/sandbox-testeo` (`802131c`): un solo harness de 5 etapas, `ask_user_question`, `.claude` sincronizado y catálogo 19+14. Después, **F4: verdad del diseño** (paleta, 14 mandamientos y reglas de ARQ-07/08).
