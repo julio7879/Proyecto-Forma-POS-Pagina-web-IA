@@ -7,6 +7,7 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 | [`PLAN-QA-INTEGRAL.md`](PLAN-QA-INTEGRAL.md) | **Documento canónico.** Diagnóstico, 9 P0, 14 P1, 10 P2, solución, roadmap, accesos y anexos. | Empieza por §0 y §3. |
 | [`tablero-auditoria.html`](tablero-auditoria.html) | Vista visual derivada, autocontenida (sin dependencias). | Ábrelo en el navegador; se puede imprimir. |
 | [`F0-EJECUCION.md`](F0-EJECUCION.md) | Registro de F0: cambios, evidencia de tests y pendientes humanos. | Léelo antes de mergear a `main`. |
+| [`F1-EJECUCION.md`](F1-EJECUCION.md) | Registro de F1: backlog único, tablero generado, SSOT y limpieza de ramas. | Léelo para entender de dónde sale el estado actual. |
 
 > **Regla de esta carpeta:** el `.md` es la fuente; el `.html` es una vista. Si cambia uno, se regenera el otro. No crear una tercera copia.
 
@@ -20,4 +21,4 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 
 ## Siguiente paso
 
-**F0 ejecutado** en `test/sandbox-testeo` (`211609c`). Antes de mergear a `main`: rotar el token de Telegram y las contraseñas semilla (ver [`F0-EJECUCION.md`](F0-EJECUCION.md)). Después, **F1: verdad operativa**.
+**F1 ejecutado** en `test/sandbox-testeo` (`4db1e70`): backlog único de 46 tareas, `PROGRESO` generado y SSOT. Quedan 2 ramas locales (`main` y `test`). Después, **F2: verdad normativa** (41 IDs, fórmula de arqueo, 33 → 35 modelos).

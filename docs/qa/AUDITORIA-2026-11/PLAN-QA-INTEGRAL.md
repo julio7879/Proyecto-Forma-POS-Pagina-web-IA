@@ -17,6 +17,8 @@ alcance: [docs/vault, harness, frontend, backend, infraestructura]
 
 > **F0 ejecutado (10-nov-2026, 16:49).** Commit `211609c` en `test/sandbox-testeo`: **P0-04, P0-05 y P0-09 cerrados** (QR autenticado, secretos fuera del árbol, backdoors admin eliminados) y CORS con allowlist. P0-03 (POS en `localStorage`) y P0-06 (fórmula de arqueo) siguen abiertos. Evidencia y pendientes humanos en [`F0-EJECUCION.md`](F0-EJECUCION.md).
 
+> **F1 ejecutado (10-nov-2026, 16:56).** Commit `4db1e70`: backlog único de **46 tareas** (`backlog.yaml`), `PROGRESO-ACTUAL.md` generado desde él, `SSOT.md`, `AGENTS.md §0` y limpieza a **2 ramas locales** (`main` y `test`). Avance verificado: **27/46 = 58.7 %**; 5 tareas quedan como «declaradas» y no cuentan como hechas. Evidencia en [`F1-EJECUCION.md`](F1-EJECUCION.md).
+
 **Cómo leer este documento**
 
 | Si tienes… | Lee… |
@@ -572,7 +574,7 @@ flowchart TD
 | Fase | Objetivo | Entregable | Criterio de salida | Esfuerzo |
 | :---: | :--- | :--- | :--- | :---: |
 | **F0** | Seguridad y congelamiento | ✅ Código ejecutado 10-nov (`211609c`): token fuera del árbol, backdoors admin eliminados, QR con JWT, CORS allowlist | 0 credenciales en el árbol; QR exige JWT | Hecho en código |
-| **F1** | Verdad operativa | `backlog.yaml` + `PROGRESO` generado + `test` alineada + `develop` archivada | El tablero coincide con git; flujo solo documentado; 0 tareas sin evidencia | 1-2 días |
+| **F1** | Verdad operativa | ✅ Ejecutado 10-nov (`4db1e70`): backlog único, `PROGRESO` generado, `test` alineada, `develop` archivada y 2 ramas locales | El tablero coincide con git; flujo solo documentado; 0 tareas sin evidencia | Hecho |
 | **F2** | Verdad normativa | 41 IDs definidos o repuntados; fórmula de arqueo única; 33 → 35 | `check-ids` en verde; 0 contradicciones P0 | 3-5 días |
 | **F3** | Verdad del harness | 5 etapas en todos lados; un root de skills; `ask_user_question` | Paridad de skills; `CLAUDE.md` puntero | 2-3 días |
 | **F4** | Verdad del diseño | Paleta decidida; 14 mandamientos publicados; ARQ-01 vs ARQ-07 resuelto | 1 ley por portal; 0 paletas huérfanas | 3-5 días |
@@ -664,6 +666,8 @@ gantt
 | P0 abiertos | 6 (3 cerrados en F0) | **0** |
 | Cobertura de trazabilidad RF → CA → QA | parcial | **100 %** de los 44 RF |
 | Tiempo de *onboarding* de un dev nuevo | horas | **< 1 hora** con el MOC + SSOT |
+
+> **F1 ya cumplió** las metas de «ramas locales = 2» y «proceso documentado = 1 persona / `test` → `main`». Las demás métricas siguen abiertas.
 
 ---
 
