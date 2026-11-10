@@ -28,6 +28,8 @@ commit: 20fd212
 
 > `Declarado` significa que el tablero anterior lo daba por certificado, pero no hay PR, commit ni salida de test reproducible. **No cuenta como hecho.**
 
+> **Responsable** es la atribución histórica del Plan Maestro. La operación actual es **1 persona**; no implica un equipo vigente.
+
 ## 2. Resumen por sprint
 
 | Sprint | Tareas | Hechas | En curso | Declaradas | Pendientes | Avance verificado |

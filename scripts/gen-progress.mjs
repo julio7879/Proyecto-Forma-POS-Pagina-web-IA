@@ -170,6 +170,10 @@ function build(meta, tareas) {
     '> `Declarado` significa que el tablero anterior lo daba por certificado, pero no hay PR, commit ni salida de test reproducible. **No cuenta como hecho.**'
   );
   lineas.push('');
+  lineas.push(
+    '> **Responsable** es la atribución histórica del Plan Maestro. La operación actual es **1 persona**; no implica un equipo vigente.'
+  );
+  lineas.push('');
   lineas.push('## 2. Resumen por sprint');
   lineas.push('');
   lineas.push('| Sprint | Tareas | Hechas | En curso | Declaradas | Pendientes | Avance verificado |');
