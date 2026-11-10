@@ -69,7 +69,15 @@
 
 ---
 
-## 5. Criterio de salida de F0
+## 5. Publicación
+
+- `main` actualizado por fast-forward y publicado: `f56bf49..5f118fd`.
+- GitHub reportó: **«Bypassed rule violations for refs/heads/main: Changes must be made through a pull request»**. La regla de PR sigue activa en el repositorio; el push la saltó por permisos de administrador. En F1 hay que decidir si se elimina para el flujo solo (`test` → `main`) o si se adopta PR.
+- El push dispara los deploys de Vercel/Render. **Ojo:** quitar el token de `render.yaml` no borra el valor que ya está guardado en Render; por eso la rotación en BotFather/Render es obligatoria.
+
+---
+
+## 6. Criterio de salida de F0
 
 - [x] Token fuera de los archivos versionados.
 - [x] Sin auto-login admin ni bypass offline en el frontend.
