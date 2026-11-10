@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FORMA SPOS · Auditoría integral · 10 nov 2026</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#14171c; --panel2:#191d23; --line:#272d36;
+    --text:#e8eaed; --muted:#9aa3ae; --dim:#6f7883;
+    --red:#f2555a; --amber:#f2b544; --green:#3dd68c; --blue:#6ea8fe; --violet:#b69cff;
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 80px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:42px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:.08em;font-size:13px}
+  .brand .mark{width:28px;height:28px;border:1px solid #3a424d;border-radius:8px;display:grid;place-items:center;color:var(--amber);font-size:14px}
+  .meta{color:var(--dim);font-size:12px;letter-spacing:.04em}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #4a2a2a;background:#1e1416;color:#ffb3b6;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:currentColor}
+  h1{font-size:clamp(30px,4.6vw,54px);line-height:1.04;letter-spacing:-.03em;margin:0 0 18px;font-weight:800}
+  h1 span{color:var(--amber)}
+  .lede{max-width:840px;color:#c3c9d1;font-size:17px;margin:0 0 24px}
+  .lede strong{color:#fff}
+  .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 15px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:13px;font-weight:600}
+  .btn.primary{background:var(--text);color:#0b0d10;border-color:var(--text)}
+  .section{margin-top:54px}
+  .kicker{color:var(--amber);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px}
+  h2{font-size:24px;letter-spacing:-.02em;margin:0 0 8px}
+  .sub{color:var(--muted);font-size:14px;max-width:780px;margin:0 0 22px}
+  .grid{display:grid;gap:14px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px}
+  .kpi .n{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .kpi .l{color:var(--muted);font-size:12px;margin-top:7px}
+  .kpi .tag{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:10px}
+  .kpi.red .n{color:var(--red)} .kpi.amber .n{color:var(--amber)} .kpi.green .n{color:var(--green)} .kpi.blue .n{color:var(--blue)}
+  .sem{grid-template-columns:repeat(3,1fr)}
+  .sem-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px;display:flex;gap:12px;align-items:flex-start}
+  .sem-card .dot{margin-top:5px;flex:0 0 auto}
+  .sem-card b{display:block;font-size:13px;margin-bottom:3px}
+  .sem-card small{color:var(--muted);font-size:12px;line-height:1.35;display:block}
+  .r{color:var(--red)} .a{color:var(--amber)} .g{color:var(--green)} .b{color:var(--blue)} .v{color:var(--violet)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .panel h3{margin:0 0 4px;font-size:14px}
+  .panel p{margin:0;color:var(--muted);font-size:12.5px}
+  .source{display:flex;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:8px;font-size:12px;background:var(--panel2)}
+  .source span{color:var(--muted)}
+  .source em{font-style:normal;color:#d5d9df;font-size:11px}
+  .synd{grid-template-columns:repeat(2,1fr)}
+  .synd-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .synd-card .num{font-size:11px;color:var(--amber);font-weight:700;letter-spacing:.12em}
+  .synd-card h3{font-size:15px;margin:5px 0 6px}
+  .synd-card p{margin:0;color:var(--muted);font-size:12.5px}
+  .p0{grid-template-columns:repeat(3,1fr)}
+  .p0-card{background:linear-gradient(180deg,#181316,#14171c);border:1px solid #3a2528;border-radius:14px;padding:15px}
+  .p0-card .code{font-size:10px;color:var(--red);letter-spacing:.12em;font-weight:700}
+  .p0-card h3{font-size:13.5px;line-height:1.3;margin:6px 0 7px}
+  .p0-card p{margin:0;color:var(--muted);font-size:11.5px}
+  .p0-card code{color:#cfd5dd;background:#22262c;padding:1px 5px;border-radius:4px;font-size:10.5px}
+  .swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .swatch{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+  .swatch .bar{height:52px}
+  .swatch .txt{padding:11px 12px}
+  .swatch b{font-size:12px;display:block}
+  .swatch small{color:var(--muted);font-size:11px;display:block;margin-top:3px}
+  .check{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed #242a32;font-size:12.5px}
+  .check:last-child{border-bottom:0}
+  .check .ic{flex:0 0 18px;font-weight:800}
+  .check span{color:#cfd5dd}
+  .check small{color:var(--dim);display:block;font-size:11px}
+  .road{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+  .phase{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 10px;min-height:104px}
+  .phase .f{font-size:10px;color:var(--amber);font-weight:800;letter-spacing:.12em}
+  .phase b{display:block;font-size:11.5px;line-height:1.25;margin:6px 0 5px}
+  .phase small{color:var(--dim);font-size:10.5px}
+  .needs{grid-template-columns:repeat(4,1fr)}
+  .need{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}
+  .need b{font-size:13px;display:block;margin-bottom:5px}
+  .need p{margin:0;color:var(--muted);font-size:11.5px}
+  .need .pri{display:inline-block;margin-top:9px;font-size:10px;letter-spacing:.08em;color:var(--amber);border:1px solid #4a3a1a;background:#1e1a12;border-radius:999px;padding:3px 8px}
+  .decisions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .decision{border-left:2px solid var(--amber);padding:8px 0 8px 12px;color:#cfd5dd;font-size:12.5px}
+  .decision b{color:#fff}
+  footer{margin-top:64px;border-top:1px solid var(--line);padding-top:18px;color:var(--dim);font-size:11.5px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .badge{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+  @media (max-width:920px){
+    .kpis{grid-template-columns:repeat(2,1fr)} .sem{grid-template-columns:1fr 1fr}
+    .cols,.synd,.p0,.swatches{grid-template-columns:1fr} .road{grid-template-columns:repeat(2,1fr)}
+    .needs{grid-template-columns:1fr 1fr} .decisions{grid-template-columns:1fr}
+  }
+  @media (max-width:560px){ .kpis,.sem,.needs{grid-template-columns:1fr} .road{grid-template-columns:1fr} }
+  @media print{
+    body{background:#fff;color:#111} .panel,.kpi,.sem-card,.synd-card,.p0-card,.phase,.need,.swatch{background:#fff;border-color:#ddd}
+    .lede,.sub,.kpi .l,.sem-card small,.synd-card p,.p0-card p,.need p,.phase small,.meta,footer{color:#444}
+    h1 span{color:#a16207} .topbar{border-color:#ddd}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand"><span class="mark">F</span> FORMA SPOS <span class="badge">Auditoría</span></div>
+    <div class="meta">10 NOV 2026 · 7 subagentes + revisión manual · 68 notas · 53 archivos de test · operación: 1 persona · test → main</div>
+  </div>
+
+  <span class="pill"><span class="dot"></span> NO APTO PARA UN RELEASE DECLARADO «100 %»</span>
+  <h1>El producto existe.<br><span>La verdad sobre el producto, no.</span></h1>
+  <p class="lede">
+    Seis fuentes de verdad se contradicen: el vault, dos harness, tres leyes de diseño, el tablero, git y el código.
+    Tres de esas contradicciones tocan <strong>dinero, inventario o seguridad</strong>. La buena noticia: el dominio y la base de datos son sólidos.
+  </p>
+  <div class="hero-actions">
+    <a class="btn primary" href="PLAN-QA-INTEGRAL.md">Abrir el plan completo →</a>
+    <a class="btn" href="#p0">Ver los 9 P0</a>
+    <a class="btn" href="#diseno">Diseño ARQ-07/08</a>
+    <a class="btn" href="#necesito">Qué necesito</a>
+  </div>
+  <p class="meta" style="margin-top:10px">Vista derivada. La fuente canónica es <code>PLAN-QA-INTEGRAL.md</code>.</p>
+
+  <section class="section">
+    <div class="kicker">Radiografía</div>
+    <h2>Lo que hay, en números</h2>
+    <p class="sub">Conteos verificados contra el repositorio local en <code>f56bf49</code> (main) + 9 archivos modificados. Los conteos de test son estáticos: no sustituyen una ejecución.</p>
+    <div class="grid kpis">
+      <div class="kpi green"><div class="n">35</div><div class="l">modelos / 16 enums</div><div class="tag">35 tablas creadas</div></div>
+      <div class="kpi green"><div class="n">13</div><div class="l">figuras ARQ-07</div><div class="tag">existen y resuelven</div></div>
+      <div class="kpi blue"><div class="n">53</div><div class="l">archivos de test</div><div class="tag">25 back · 28 front</div></div>
+      <div class="kpi amber"><div class="n">68</div><div class="l">notas en el vault</div><div class="tag">4 sin frontmatter</div></div>
+      <div class="kpi red"><div class="n">41</div><div class="l">IDs RN citados sin definir</div><div class="tag">de 98 reglas</div></div>
+      <div class="kpi red"><div class="n">6</div><div class="l">fuentes de verdad</div><div class="tag">0 reglas de precedencia</div></div>
+      <div class="kpi red"><div class="n">4</div><div class="l">configs de deploy</div><div class="tag">3 proveedores</div></div>
+      <div class="kpi red"><div class="n">9</div><div class="l">hallazgos P0</div><div class="tag">0 cerrados</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Semáforo QA</div>
+    <h2>Nueve dimensiones, una conclusión</h2>
+    <p class="sub">No es una crisis de código: es una crisis de verdad. El dominio y los datos están bien; la operación, la gestión y la seguridad no.</p>
+    <div class="grid sem">
+      <div class="sem-card"><span class="dot g"></span><div><b>Negocio y alcance</b><small>Claro y coherente; el problema es guest checkout/pasarela, no el concepto.</small></div></div>
+      <div class="sem-card"><span class="dot a"></span><div><b>Reglas de dominio</b><small>98 RN, 65 CA, 44 RF. Pero 41 IDs sin definir y dos fórmulas de arqueo.</small></div></div>
+      <div class="sem-card"><span class="dot g"></span><div><b>Base de datos</b><small>35 modelos = 35 tablas, constraints e índices. La doc dice 33/15.</small></div></div>
+      <div class="sem-card"><span class="dot a"></span><div><b>Backend</b><small>Servicios y transacciones existen; fallan idempotencia, workers y RBAC.</small></div></div>
+      <div class="sem-card"><span class="dot r"></span><div><b>Frontend / POS</b><small>El POS guarda en localStorage; el QR aprueba pagos sin JWT; reseñas semilla.</small></div></div>
+      <div class="sem-card"><span class="dot a"></span><div><b>Diseño ARQ-07/08</b><small>La UI cumple bastante; hay 6 documentos y 3 paletas sin precedencia.</small></div></div>
+      <div class="sem-card"><span class="dot r"></span><div><b>Harness</b><small>Dos linajes (5 vs 4 etapas), skills duplicadas divergentes y tool inexistente.</small></div></div>
+      <div class="sem-card"><span class="dot r"></span><div><b>Gestión y trazabilidad</b><small>Estado contradictorio, proceso de 6 personas para 1, gates sin evidencia.</small></div></div>
+      <div class="sem-card"><span class="dot r"></span><div><b>Infra y seguridad</b><small>Token duplicado, admin en el bundle, CORS abierto, workers apagados.</small></div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Causa raíz</div>
+    <h2>No son 40 problemas: son 7 síndromes</h2>
+    <div class="grid synd">
+      <div class="synd-card"><div class="num">S1</div><h3>Doble contabilidad del estado</h3><p>Plan, tablero, informe QA y git cuentan cuatro versiones. El Sprint 5 está en 0 % y en 100 % en el mismo archivo; las asignaciones son de un equipo que ya no existe.</p></div>
+      <div class="synd-card"><div class="num">S2</div><h3>La ley sin articulado</h3><p>Se citan «14 mandamientos»; ARQ-07 no los enumera y la skill y el agente dan listas distintas.</p></div>
+      <div class="synd-card"><div class="num">S3</div><h3>Dos linajes del harness</h3><p>AGENTS.md impone 5 etapas; CLAUDE.md, 4 y sin parada. Cuatro skills duplicadas pierden la regla «prohibido suponer».</p></div>
+      <div class="synd-card"><div class="num">S4</div><h3>Tres constituciones visuales</h3><p>Índigo, Obsidian Navy y vinotinto/champagne. Seis documentos y ninguna regla de qué ley gana.</p></div>
+      <div class="synd-card"><div class="num">S5</div><h3>El código que simula</h3><p>El POS calcula IVA y stock en el navegador y guarda en localStorage. El badge 360° no gira; las reseñas son semilla.</p></div>
+      <div class="synd-card"><div class="num">S6</div><h3>Seguridad de demostración</h3><p>Token en render.yaml y .env.example, auto-login admin en el bundle, CORS sin allowlist, QR público.</p></div>
+      <div class="synd-card"><div class="num">S7</div><h3>Trazabilidad rota</h3><p>Plan → tarea → commit → test no cierra. La rama <code>test</code> está 19 atrás; «50 tests POS» son 9; el gate S2 no tiene resultados.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="p0">
+    <div class="kicker">Prioridad 0</div>
+    <h2>Nueve cosas que se cierran antes de cualquier release</h2>
+    <p class="sub">Ordenadas por riesgo. Las primeras cinco son de seguridad o dinero y no esperan a la documentación.</p>
+    <div class="grid p0">
+      <div class="p0-card"><div class="code">P0-09</div><h3>Credenciales admin en el bundle</h3><p><code>apiClient.ts:66-80</code> hace auto-login con correo y contraseña de admin cuando una ruta devuelve 401. Extraíble por cualquiera.</p></div>
+      <div class="p0-card"><div class="code">P0-05</div><h3>Token duplicado + CORS + 4 deploys</h3><p>Token en <code>render.yaml</code> y <code>.env.example</code>; <code>cors()</code> abierto; Vercel raíz + frontend, Render y Railway.</p></div>
+      <div class="p0-card"><div class="code">P0-04</div><h3>El QR permite cobrar sin pagar</h3><p><code>/api/qr-pago/aprobar</code> sin JWT crea la sesión <code>PAGADA</code>; el POS confirma la venta al leerla.</p></div>
+      <div class="p0-card"><div class="code">P0-03</div><h3>El POS no persiste nada</h3><p>IVA y stock en el cliente; venta a <code>localStorage</code>; <code>POST /api/ventas-pos</code> nunca se invoca. Sin Kardex ni caja.</p></div>
+      <div class="p0-card"><div class="code">P0-06</div><h3>Dos fórmulas de arqueo</h3><p>RN-CAJ-06 incluye sangrías/gastos; RF-CAJ-03 y CA-15 los ignoran. Una caja con gasto arroja faltante ficticio.</p></div>
+      <div class="p0-card"><div class="code">P0-01</div><h3>El estado es imposible</h3><p>Sprint 5: 0 % y 100 %. Global: 56,5 % y 100 %. Total 46, pero las filas suman 40, el detalle 38 y el plan 45.</p></div>
+      <div class="p0-card"><div class="code">P0-02</div><h3>El proceso documentado ya no existe</h3><p>6 personas en el papel, 1 en la realidad. <code>test/sandbox-testeo</code> está 19 commits atrás y es local.</p></div>
+      <div class="p0-card"><div class="code">P0-07</div><h3>Dos harness, una parada perdida</h3><p>5 etapas vs 4 pasos; <code>ask_question</code> no existe; las copias <code>.claude</code> de 4 skills pierden la regla anti-suposición.</p></div>
+      <div class="p0-card"><div class="code">P0-08</div><h3>La ley sin sus 14 mandamientos</h3><p>ARQ-07 no los enumera; SKI y AGE-09 dan dos listas. AGE-09 cita un artefacto que no existe.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="diseno">
+    <div class="kicker">Foco de diseño</div>
+    <h2>Tres paletas, dos leyes, ninguna precedencia</h2>
+    <p class="sub">El problema no es la calidad de la UI. Es que «ajustar según la ley» hoy es ambiguo: hay tres leyes y seis documentos.</p>
+    <div class="swatches">
+      <div class="swatch"><div class="bar" style="background:linear-gradient(135deg,#4F46E5,#4338CA)"></div><div class="txt"><b>Índigo · #4F46E5</b><small>ARQ-06 · design.md · brief.md</small></div></div>
+      <div class="swatch"><div class="bar" style="background:linear-gradient(135deg,#1A2138,#0D1322)"></div><div class="txt"><b>Obsidian Navy · #1A2138</b><small>GUIA-LIQUID-GLASS-v2 · «erradica el índigo»</small></div></div>
+      <div class="swatch"><div class="bar" style="background:linear-gradient(135deg,#741C2B 0 55%,#C49A68 55% 100%)"></div><div class="txt"><b>Vinotinto + champagne</b><small>ARQ-08 · solo admin · cero transparencias</small></div></div>
+    </div>
+
+    <div class="cols" style="margin-top:16px">
+      <div class="panel">
+        <h3>ARQ-07 · Storefront <span class="badge">≈75 %</span></h3>
+        <p style="margin-bottom:8px">13 figuras existen. Lo que falta no es UI menor: es alcance.</p>
+        <div class="check"><span class="ic g">✓</span><span>Breadcrumbs, búsqueda predictiva, grid/list, zoom real<small>Breadcrumbs.tsx · PredictiveSearch · CatalogToolbar</small></span></div>
+        <div class="check"><span class="ic g">✓</span><span>Checkout de 3 pasos con barra de progreso<small>CheckoutPage.tsx:1096-1120</small></span></div>
+        <div class="check"><span class="ic a">!</span><span>Filtro por material ausente<small>ARQ-07 §26.2 / Fig. 11</small></span></div>
+        <div class="check"><span class="ic r">✗</span><span>Vista 360°: solo badge, sin giro<small>ProductDetailModal.tsx:187-193</small></span></div>
+        <div class="check"><span class="ic r">✗</span><span>Reseñas semilla marcadas «verificadas»<small>ProductReviews.tsx:21-54,110</small></span></div>
+        <div class="check"><span class="ic r">✗</span><span>Guest checkout y PCI-DSS<small>ARQ-01 los excluye; el checkout exige login</small></span></div>
+      </div>
+      <div class="panel">
+        <h3>ARQ-08 · Dashboard <span class="badge">el más alineado</span></h3>
+        <p style="margin-bottom:8px">El layout está implementado casi al detalle. La regla es la que no cuadra.</p>
+        <div class="check"><span class="ic g">✓</span><span>4 KPIs de 95 px<small>AdminDashboardPage.tsx:403-478</small></span></div>
+        <div class="check"><span class="ic g">✓</span><span>Línea 65 % + dona 35 %<small>:483-507</small></span></div>
+        <div class="check"><span class="ic g">✓</span><span>Histograma 50 % + monitores<small>:512-686</small></span></div>
+        <div class="check"><span class="ic g">✓</span><span>Scroll interno 220 px<small>max-h-[220px]</small></span></div>
+        <div class="check"><span class="ic a">!</span><span>«5-6 tarjetas» vs 9 bloques reales<small>La ley contradice su propio layout</small></span></div>
+        <div class="check"><span class="ic a">!</span><span>«Pantalla única» sin tope de alto<small>main tiene overflow-y-auto</small></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Solución</div>
+    <h2>Una sola fuente, cuatro capas, nueve controles</h2>
+    <p class="sub">El principio: <strong>definir una vez, citar siempre, verificar en CI</strong>. Hoy la misma regla se copia en ley, skill, agente, MOC y canvas; cada copia deriva.</p>
+    <div class="cols">
+      <div class="panel">
+        <h3>Hoy · 6 fuentes</h3>
+        <div class="source"><span>Vault RN/RF/CA</span><em>41 IDs sin definir</em></div>
+        <div class="source"><span>AGENTS.md</span><em>5 etapas</em></div>
+        <div class="source"><span>CLAUDE.md</span><em>4 pasos, sin parada</em></div>
+        <div class="source"><span>ARQ-06/07/08 + design</span><em>3 paletas</em></div>
+        <div class="source"><span>PROGRESO</span><em>56,5 % vs 100 %</em></div>
+        <div class="source"><span>Git / código</span><em>POS demo, develop atrás</em></div>
+      </div>
+      <div class="panel">
+        <h3>Objetivo · 1 SSOT</h3>
+        <div class="source"><span>SSOT.md</span><em>qué es canónico y qué derivado</em></div>
+        <div class="source"><span>01-Reglas-Dominio</span><em>única definición de RN</em></div>
+        <div class="source"><span>AGENTS.md</span><em>único harness (5 etapas)</em></div>
+        <div class="source"><span>.agent/skills</span><em>único root</em></div>
+        <div class="source"><span>backlog.yaml</span><em>PROGRESO generado</em></div>
+        <div class="source"><span>CI</span><em>links, IDs, paridad, secretos</em></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Plan</div>
+    <h2>Siete fases, en este orden</h2>
+    <p class="sub">F0 no espera: hay un login admin embebido y un QR que permite cobrar sin pagar. La documentación puede esperar 48 horas; eso no.</p>
+    <div class="grid road">
+      <div class="phase"><div class="f">F0</div><b>Seguridad y congelamiento</b><small>Rotar token · borrar backdoor · cerrar QR · CORS · repo limpio<br><strong>6-8 h</strong></small></div>
+      <div class="phase"><div class="f">F1</div><b>Verdad operativa</b><small>Backlog único · PROGRESO generado · test alineada · develop archivada<br><strong>1-2 d</strong></small></div>
+      <div class="phase"><div class="f">F2</div><b>Verdad normativa</b><small>41 IDs · arqueo único · 33→35 · CA/RF<br><strong>3-5 d</strong></small></div>
+      <div class="phase"><div class="f">F3</div><b>Verdad del harness</b><small>5 etapas · un root · ask_user_question<br><strong>2-3 d</strong></small></div>
+      <div class="phase"><div class="f">F4</div><b>Verdad del diseño</b><small>Paleta · 14 mandamientos · guest checkout<br><strong>3-5 d</strong></small></div>
+      <div class="phase"><div class="f">F5</div><b>Verdad del código</b><small>POS persistente · QR · idempotencia · workers<br><strong>1-2 sem</strong></small></div>
+      <div class="phase"><div class="f">F6</div><b>Guardrails</b><small>9 controles en CI · un deploy<br><strong>3-5 d</strong></small></div>
+    </div>
+  </section>
+
+  <section class="section" id="necesito">
+    <div class="kicker">Para seguir</div>
+    <h2>Qué necesito de ti</h2>
+    <p class="sub">Con esto puedo verificar producción, base de datos y PRs. Sin esto, solo puedo trabajar en local y quedarme en «declarado».</p>
+    <div class="grid needs">
+      <div class="need"><b>GitHub</b><p>Actions, protección de main y estado del repo. PRs ya no críticos.</p><span class="pri">MEDIA</span></div>
+      <div class="need"><b>Render</b><p>Servicio real, nombres de env, logs y healthcheck.</p><span class="pri">ALTA</span></div>
+      <div class="need"><b>Vercel</b><p>Proyecto, URL de producción, env de build y logs.</p><span class="pri">ALTA</span></div>
+      <div class="need"><b>Supabase</b><p>Migraciones, conteos de ventas/pedidos/caja y backups.</p><span class="pri">ALTA</span></div>
+    </div>
+    <div class="decisions">
+      <div class="decision"><b>1. Guest checkout:</b> ¿entra o no al MVP? ARQ-01 lo excluye; ARQ-07 lo exige.</div>
+      <div class="decision"><b>2. Pagos:</b> ¿transferencia/contraentrega o pasarela (Wompi/PayU/Bre-B)? ¿En qué fase?</div>
+      <div class="decision"><b>3. Paleta:</b> ¿índigo #4F46E5 o Navy + champagne? ¿Admin se queda en vinotinto?</div>
+      <div class="decision"><b>4. Alcance visual:</b> ¿360°/3D/AR es MVP o fase 2? ¿Reseñas reales o demo marcada?</div>
+      <div class="decision"><b>5. Fuente única:</b> ¿apruebas el vault como SSOT, AGENTS.md como harness y .agent/skills como único root?</div>
+    </div>
+  </section>
+
+  <footer>
+    <div>FORMA SPOS · Auditoría integral · 10 nov 2026 · 1 persona · test → main · evidencia en <code>f56bf49</code></div>
+    <div><a href="PLAN-QA-INTEGRAL.md">PLAN-QA-INTEGRAL.md</a> · vista derivada, no canónica</div>
+  </footer>
+
+</div>
+</body>
+</html>
