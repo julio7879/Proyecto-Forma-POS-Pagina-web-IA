@@ -203,12 +203,12 @@ export const AdminCajasPage: React.FC = () => {
       header: 'Apertura / Cierre',
       render: (s) => (
         <div className="text-[11px] space-y-0.5">
-          <div className="text-white/80 flex items-center gap-1 font-mono">
-            <span className="text-[#34D399] font-bold">Inicia:</span> {formatFechaHora(s.aperturaIso)}
+          <div className="text-[#0F172A] flex items-center gap-1 font-mono font-medium">
+            <span className="text-emerald-700 font-bold">Inicia:</span> {formatFechaHora(s.aperturaIso)}
           </div>
           {s.cierreIso && (
-            <div className="text-white/70 flex items-center gap-1 font-mono">
-              <span className="text-[#F87171] font-bold">Cierra:</span> {formatFechaHora(s.cierreIso)}
+            <div className="text-[#475569] flex items-center gap-1 font-mono font-medium">
+              <span className="text-rose-700 font-bold">Cierra:</span> {formatFechaHora(s.cierreIso)}
             </div>
           )}
         </div>
@@ -220,13 +220,13 @@ export const AdminCajasPage: React.FC = () => {
       align: 'right',
       render: (s) => {
         if (s.estado === 'ABIERTA') {
-          return <span className="text-xs text-white/60 italic">Turno en curso</span>;
+          return <span className="text-xs text-[#64748B] italic font-medium">Turno en curso</span>;
         }
         const dif = s.diferenciaCop || 0;
         return (
           <span
-            className={`font-mono text-xs font-bold ${
-              dif === 0 ? 'text-[#34D399]' : dif > 0 ? 'text-[#FBBF24]' : 'text-[#F87171]'
+            className={`font-mono text-xs font-black ${
+              dif === 0 ? 'text-emerald-700' : dif > 0 ? 'text-amber-800' : 'text-rose-700'
             }`}
           >
             {dif === 0 ? 'Cuadre Exacto' : formatCOP(dif)}
@@ -300,7 +300,7 @@ export const AdminCajasPage: React.FC = () => {
 
       {/* Estado Actual por Punto de Venta */}
       <div className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#77736E]">
+        <h3 className="text-xs font-black uppercase tracking-wider text-[#475569]">
           Estado Operativo por Punto de Venta
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -308,14 +308,14 @@ export const AdminCajasPage: React.FC = () => {
             <div
               key={sedeNombre}
               onClick={() => sesion && setSelectedSesion(sesion)}
-              className={`p-4 rounded-2xl backdrop-blur-2xl border transition-all ${
+              className={`p-4 rounded-2xl border transition-all ${
                 estaAbierta
-                  ? 'bg-[#10B981]/15 border-[#10B981]/40 shadow-md ring-1 ring-[#10B981]/25 hover:border-[#10B981]'
-                  : 'bg-white/[0.05] border-white/10 opacity-70 hover:opacity-90'
-              } ${sesion ? 'cursor-pointer hover:shadow-lg' : ''}`}
+                  ? 'bg-emerald-50/80 border-emerald-300 shadow-sm ring-1 ring-emerald-200 hover:border-emerald-500'
+                  : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
+              } ${sesion ? 'cursor-pointer hover:shadow-md' : ''}`}
             >
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="font-bold text-xs text-white truncate">{sedeNombre}</span>
+                <span className="font-bold text-xs text-[#0F172A] truncate">{sedeNombre}</span>
                 <StatusBadge
                   label={estaAbierta ? 'Caja Abierta' : 'Caja Cerrada'}
                   variant={estaAbierta ? 'success' : 'neutral'}
@@ -326,20 +326,20 @@ export const AdminCajasPage: React.FC = () => {
 
               {estaAbierta && sesion && resumen ? (
                 <div className="space-y-1 text-xs">
-                  <div className="text-[11px] text-white/70">
-                    Cajero: <strong className="text-white font-bold">{sesion.vendedor}</strong> · Turno #{sesion.turnoNumero}
+                  <div className="text-[11px] text-[#475569] font-medium">
+                    Cajero: <strong className="text-[#0F172A] font-bold">{sesion.vendedor}</strong> · Turno #{sesion.turnoNumero}
                   </div>
-                  <div className="flex justify-between text-white/70 pt-1 border-t border-white/10">
-                    <span>En gaveta:</span>
-                    <span className="font-mono font-bold text-[#E5BE90]">
+                  <div className="flex justify-between text-[#475569] pt-1 border-t border-emerald-200/80">
+                    <span className="font-medium">En gaveta:</span>
+                    <span className="font-mono font-black text-emerald-800">
                       {formatCOP(resumen.efectivoEsperadoCop)}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-1 text-xs text-white/50">
-                  <div>Sin turno activo</div>
-                  <div className="font-mono text-[11px] pt-1 text-white/40">$0 COP en gaveta</div>
+                <div className="space-y-1 text-xs text-[#64748B]">
+                  <div className="font-medium">Sin turno activo</div>
+                  <div className="font-mono text-[11px] pt-1 text-[#94A3B8] font-bold">$0 COP en gaveta</div>
                 </div>
               )}
             </div>

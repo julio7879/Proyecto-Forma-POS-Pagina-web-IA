@@ -19,17 +19,17 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   return (
     <div
       role="alert"
-      className={`relative rounded-3xl backdrop-blur-2xl bg-[#EF4444]/10 border border-[#EF4444]/30 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.3)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden text-white ${className}`}
+      className={`relative rounded-3xl bg-rose-50/90 border border-rose-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden text-[#0F172A] ${className}`}
     >
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#EF4444]/50 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-rose-300 to-transparent pointer-events-none" />
 
       <div className="flex items-start gap-3.5 relative z-10">
-        <div className="w-10 h-10 rounded-2xl bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#F87171] flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-300 text-rose-800 flex items-center justify-center shrink-0">
           <AlertTriangle className="w-5 h-5" />
         </div>
         <div>
-          <h4 className="text-[14px] font-black text-white">{title}</h4>
-          <p className="text-[13px] text-white/70 mt-0.5 leading-relaxed">
+          <h4 className="text-[14px] font-black text-rose-950">{title}</h4>
+          <p className="text-[13px] text-rose-800 mt-0.5 leading-relaxed font-medium">
             {message}
           </p>
         </div>
@@ -39,7 +39,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
         <button
           type="button"
           onClick={onRetry}
-          className="px-4 py-2 rounded-xl bg-[#EF4444] hover:bg-[#DC2626] text-white text-[13px] font-bold inline-flex items-center gap-2 transition-colors shrink-0 self-start sm:self-center cursor-pointer shadow-md relative z-10"
+          className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-[13px] font-bold inline-flex items-center gap-2 transition-colors shrink-0 self-start sm:self-center cursor-pointer shadow-sm relative z-10"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>{retryLabel}</span>

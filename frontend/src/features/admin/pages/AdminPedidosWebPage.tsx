@@ -287,7 +287,11 @@ export const AdminPedidosWebPage: React.FC = () => {
     {
       key: 'sede',
       header: 'Sede Despacho',
-      render: (p) => <span className="text-xs font-bold text-[#0F172A] dark:text-white/90">{p.sedeAsignada}</span>,
+      render: (p) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/15 text-[#0F172A] dark:text-white">
+          {p.sedeAsignada}
+        </span>
+      ),
     },
     {
       key: 'estadoEntrega',

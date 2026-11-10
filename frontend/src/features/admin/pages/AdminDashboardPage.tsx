@@ -407,11 +407,11 @@ export const AdminDashboardPage: React.FC = () => {
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
       >
         {/* KPI 1: Ventas Netas */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Ventas Netas</span>
-            <span className="px-2 py-0.5 rounded-full bg-[#10B981]/15 border border-[#10B981]/30 text-[#047857] dark:text-[#34D399] font-mono text-[10px] font-black">
+            <span className="text-xs font-black text-[#475569] dark:text-slate-400">Ventas Netas</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 font-mono text-[10px] font-black">
               {kpi.variacionTexto}
             </span>
           </div>
@@ -424,11 +424,11 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* KPI 2: Inventario Total */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Inventario Físico</span>
-            <span className="text-[11px] font-mono-tabular font-bold text-[#741C2B] dark:text-[#C49A68]">
+            <span className="text-xs font-black text-[#475569] dark:text-slate-400">Inventario Físico</span>
+            <span className="text-[11px] font-mono-tabular font-black text-[#741C2B] dark:text-[#C49A68]">
               {kpi.valorizadoInventarioTexto}
             </span>
           </div>
@@ -441,11 +441,11 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* KPI 3: Pedidos Web */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Pedidos Web Activos</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+            <span className="text-xs font-black text-[#475569] dark:text-slate-400">Pedidos Web Activos</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-2xs" />
           </div>
           <div
             data-testid="kpi-pedidos-activos"
@@ -456,15 +456,15 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* KPI 4: Estado de Cajas */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Estado de Caja</span>
+            <span className="text-xs font-black text-[#475569] dark:text-slate-400">Estado de Caja</span>
             <span
               className={`w-2.5 h-2.5 rounded-full ${
                 kpi.cajaAbierta
-                  ? 'bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                  : 'bg-slate-400 dark:bg-white/30'
+                  ? 'bg-emerald-600 shadow-2xs'
+                  : 'bg-slate-400 dark:bg-slate-600'
               }`}
             />
           </div>
@@ -507,177 +507,180 @@ export const AdminDashboardPage: React.FC = () => {
       </section>
 
       {/* =========================================================================
-          FILA 3: BAR CHART (COMPARATIVA ENTRE SUCURSALES EN COLUMNAS DOBLES)
-          ========================================================================= */}
-      <section aria-label="Comparación Comercial entre Sucursales">
-        <AdminBarComparisonChart
-          datosSedes={datosSedesComerciales}
-          sedeActiva={sedeActiva}
-          onSelectSede={seleccionarSede}
-        />
-      </section>
-
-      {/* =========================================================================
-          FILA 4: MONITORES INFERIORES: ALERTAS DE STOCK Y ACTIVIDAD EN VIVO
+          FILA 3: COMPARATIVA POR SUCURSALES Y MONITORES OPERATIVOS (PANTALLA ÚNICA)
           ========================================================================= */}
       <section
-        aria-label="Alertas y movimientos recientes"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2"
+        aria-label="Comparación comercial y monitores operativos"
+        className="grid grid-cols-1 lg:grid-cols-12 gap-6"
       >
-        {/* Columna 1: Alertas de Inventario Bajo */}
-        <div className="relative rounded-3xl admin-glass-panel p-6 shadow-xl space-y-4 overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
-
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#741C2B]/10 dark:bg-[#741C2B]/30 border border-[#741C2B]/30 dark:border-[#741C2B]/40 text-[#741C2B] dark:text-[#E5BE90] flex items-center justify-center shadow-xs">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-black text-[#0F172A] dark:text-white tracking-tight">
-                  Alertas de Inventario Bajo
-                </h3>
-                <span className="text-[11px] text-[#475569] dark:text-white/50 font-medium">
-                  {kpi.nombreSede} • Variantes con menor stock
-                </span>
-              </div>
-            </div>
-            <Link
-              to="/admin/inventario"
-              className="text-xs font-black text-[#741C2B] dark:text-[#C49A68] hover:text-[#52131E] dark:hover:text-[#E5BE90] flex items-center gap-1 transition-colors"
-            >
-              <span>Gestionar en Kardex</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="space-y-2.5">
-            {kpi.alertasInventario.map((item: AlertaInventarioItem) => (
-              <div
-                key={item.sku}
-                className="admin-glass-pill flex items-center justify-between gap-3 p-3.5 rounded-2xl transition-all"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono-tabular text-xs font-black text-[#741C2B] dark:text-[#E5BE90]">
-                      {item.sku}
-                    </span>
-                    <span
-                      className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                        item.estado === 'critico'
-                          ? 'bg-rose-100 dark:bg-[#741C2B]/40 border border-rose-300 dark:border-[#741C2B]/60 text-rose-800 dark:text-rose-200'
-                          : 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700/50 text-amber-900 dark:text-amber-200'
-                      }`}
-                    >
-                      {item.estado === 'critico' ? 'Agotado / Crítico' : 'Stock Bajo'}
-                    </span>
-                  </div>
-                  <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate mt-1">
-                    {item.nombre}
-                  </div>
-                  <div className="text-[10px] text-[#475569] dark:text-white/50 font-medium">{item.tallaColor}</div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-mono-tabular font-black text-[#0F172A] dark:text-white block tabular-nums">
-                    {item.disponible} unds
-                  </span>
-                  <span className="text-[10px] text-[#475569] dark:text-white/50 block tabular-nums font-medium">
-                    Umbral: {item.umbral}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Mitad Izquierda (6 columnas): Histograma Comparativo de Sucursales */}
+        <div className="lg:col-span-6 flex flex-col">
+          <AdminBarComparisonChart
+            datosSedes={datosSedesComerciales}
+            sedeActiva={sedeActiva}
+            onSelectSede={seleccionarSede}
+          />
         </div>
 
-        {/* Columna 2: Actividad Reciente en Vivo */}
-        <div className="relative rounded-3xl admin-glass-panel p-6 shadow-xl space-y-4 flex flex-col justify-between overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
+        {/* Mitad Derecha (6 columnas): Monitores Operativos (Alertas + Actividad) */}
+        <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Monitor 1: Alertas de Inventario Bajo */}
+          <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 overflow-hidden text-[#0F172A] dark:text-white flex flex-col justify-between">
+            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#741C2B]/10 dark:bg-[#C49A68]/15 border border-[#741C2B]/30 dark:border-[#C49A68]/30 text-[#741C2B] dark:text-[#E5BE90] flex items-center justify-center">
-                  <Truck className="w-4 h-4" />
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#741C2B]/10 dark:bg-[#741C2B]/20 border border-[#741C2B]/30 text-[#741C2B] dark:text-[#C49A68] flex items-center justify-center shadow-2xs">
+                  <AlertTriangle className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-[#0F172A] dark:text-white tracking-tight">
-                    Actividad y Movimientos en Vivo
+                  <h3 className="text-xs font-black text-[#0F172A] dark:text-white tracking-tight">
+                    Alertas de Inventario Bajo
                   </h3>
-                  <span className="text-[11px] text-[#475569] dark:text-white/50 font-medium">
-                    Ventas POS, órdenes web y traslados
+                  <span className="text-[10px] text-[#475569] dark:text-slate-400 font-bold">
+                    {kpi.nombreSede}
                   </span>
                 </div>
               </div>
               <Link
-                to="/admin/traslados"
-                className="text-xs font-black text-[#741C2B] dark:text-[#C49A68] hover:text-[#52131E] dark:hover:text-[#E5BE90] flex items-center gap-1 transition-colors"
+                to="/admin/inventario"
+                className="text-[11px] font-black text-[#741C2B] dark:text-[#C49A68] hover:text-[#52131E] dark:hover:text-white flex items-center gap-1 transition-colors"
               >
-                <span>Ver Traslados</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <span>Kardex</span>
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
-            {kpi.movimientosRecientes.length === 0 ? (
-              <div className="p-8 rounded-2xl admin-glass-pill text-center space-y-2">
-                <Clock className="w-8 h-8 text-[#741C2B] dark:text-[#C49A68] mx-auto opacity-70" />
-                <p className="text-xs font-bold text-[#0F172A] dark:text-white">
-                  Sin movimientos operativos registrados en esta vista
-                </p>
-                <p className="text-[11px] text-[#475569] dark:text-white/50 max-w-sm mx-auto">
-                  Las ventas en Terminal POS, pedidos de Tienda Web y traslados entre sedes se mostrarán aquí automáticamente en tiempo real.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {kpi.movimientosRecientes.map((mov) => (
-                  <div
-                    key={mov.id}
-                    className="admin-glass-pill flex items-center justify-between gap-3 p-3.5 rounded-2xl transition-all"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono-tabular text-xs font-black text-[#0F172A] dark:text-white">
-                          {mov.referencia.startsWith('#') ? mov.referencia : `#${mov.referencia}`}
-                        </span>
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-[#741C2B]/10 dark:bg-[#741C2B]/35 border border-[#741C2B]/30 dark:border-[#741C2B]/45 text-[#741C2B] dark:text-[#E5BE90]">
-                          {mov.estado}
-                        </span>
-                      </div>
-                      <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate mt-1">
-                        {mov.titulo}
-                      </div>
-                      <div className="text-[10px] text-[#475569] dark:text-white/50 truncate font-medium">
-                        {mov.detalle}
-                      </div>
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {kpi.alertasInventario.map((item: AlertaInventarioItem) => (
+                <div
+                  key={item.sku}
+                  className="bg-[#F8FAFC] dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 hover:border-[#741C2B]/30 hover:shadow-xs flex items-center justify-between gap-2.5 p-2.5 rounded-xl transition-all"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono-tabular text-[11px] font-black text-[#741C2B] dark:text-[#C49A68]">
+                        {item.sku}
+                      </span>
+                      <span
+                        className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                          item.estado === 'critico'
+                            ? 'bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+                            : 'bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300'
+                        }`}
+                      >
+                        {item.estado === 'critico' ? 'Crítico' : 'Bajo'}
+                      </span>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-mono-tabular font-black text-[#741C2B] dark:text-[#E5BE90] block tabular-nums">
-                        {mov.valorTexto}
-                      </span>
-                      <span className="text-[10px] text-[#475569] dark:text-white/40 block font-mono-tabular font-medium">
-                        {mov.fecha}
-                      </span>
+                    <div className="text-[11px] font-black text-[#0F172A] dark:text-white truncate mt-0.5">
+                      {item.nombre}
+                    </div>
+                    <div className="text-[9px] text-[#64748B] dark:text-slate-400 font-bold truncate">
+                      {item.tallaColor}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  <div className="text-right shrink-0">
+                    <span className="text-[11px] font-mono-tabular font-black text-[#0F172A] dark:text-white block tabular-nums">
+                      {item.disponible} uds
+                    </span>
+                    <span className="text-[9px] text-[#64748B] dark:text-slate-400 block tabular-nums font-bold">
+                      Umb: {item.umbral}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-200 dark:border-white/[0.08] flex items-center justify-between text-[11px] text-[#475569] dark:text-white/60">
-            <span className="inline-flex items-center gap-1.5 font-bold">
-              <Receipt className="w-3.5 h-3.5 text-[#741C2B] dark:text-[#C49A68]" />
-              <span>Sincronización directa con POS y Tienda Web</span>
-            </span>
-            <Link
-              to="/admin/reportes"
-              className="font-black text-[#741C2B] dark:text-[#C49A68] hover:text-[#52131E] dark:hover:text-[#E5BE90] transition-colors"
-            >
-              Ver Reportes →
-            </Link>
+          {/* Monitor 2: Actividad y Movimientos en Vivo */}
+          <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 overflow-hidden text-[#0F172A] dark:text-white flex flex-col justify-between">
+            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#741C2B]/10 dark:bg-[#741C2B]/20 border border-[#741C2B]/30 text-[#741C2B] dark:text-[#C49A68] flex items-center justify-center shadow-2xs">
+                    <Truck className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-[#0F172A] dark:text-white tracking-tight">
+                      Actividad y Movimientos en Vivo
+                    </h3>
+                    <span className="text-[10px] text-[#475569] dark:text-slate-400 font-bold">
+                      Flujo Omnicanal
+                    </span>
+                  </div>
+                </div>
+                <Link
+                  to="/admin/traslados"
+                  className="text-[11px] font-black text-[#741C2B] dark:text-[#C49A68] hover:text-[#52131E] dark:hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <span>Traslados</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {kpi.movimientosRecientes.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-[#F8FAFC] dark:bg-white/5 border border-slate-200 dark:border-white/10 text-center space-y-1.5">
+                  <Clock className="w-6 h-6 text-[#741C2B] dark:text-[#C49A68] mx-auto opacity-70" />
+                  <p className="text-[11px] font-black text-[#0F172A] dark:text-white">
+                    Sin movimientos en esta vista
+                  </p>
+                  <p className="text-[10px] text-[#475569] dark:text-slate-400 font-medium">
+                    Las ventas POS y pedidos web se reflejarán aquí.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {kpi.movimientosRecientes.map((mov) => (
+                    <div
+                      key={mov.id}
+                      className="bg-[#F8FAFC] dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 hover:border-[#741C2B]/30 hover:shadow-xs flex items-center justify-between gap-2.5 p-2.5 rounded-xl transition-all"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono-tabular text-[11px] font-black text-[#0F172A] dark:text-white">
+                            {mov.referencia.startsWith('#') ? mov.referencia : `#${mov.referencia}`}
+                          </span>
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-[#741C2B]/10 dark:bg-[#741C2B]/30 border border-[#741C2B]/25 text-[#741C2B] dark:text-[#C49A68]">
+                            {mov.estado}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-black text-[#0F172A] dark:text-white truncate mt-0.5">
+                          {mov.titulo}
+                        </div>
+                        <div className="text-[9px] text-[#64748B] dark:text-slate-400 truncate font-bold">
+                          {mov.detalle}
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-[11px] font-mono-tabular font-black text-[#741C2B] dark:text-[#C49A68] block tabular-nums">
+                          {mov.valorTexto}
+                        </span>
+                        <span className="text-[9px] text-[#64748B] dark:text-slate-400 block font-mono-tabular font-bold">
+                          {mov.fecha}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-[10px] text-[#475569] dark:text-slate-400">
+              <span className="inline-flex items-center gap-1 font-bold">
+                <Receipt className="w-3 h-3 text-[#741C2B] dark:text-[#C49A68]" />
+                <span>POS & Web</span>
+              </span>
+              <Link
+                to="/admin/reportes"
+                className="font-black text-[#741C2B] dark:text-[#C49A68] hover:text-[#52131E] dark:hover:text-white transition-colors"
+              >
+                Reportes →
+              </Link>
+            </div>
           </div>
         </div>
       </section>

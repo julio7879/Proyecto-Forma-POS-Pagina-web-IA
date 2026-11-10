@@ -42,28 +42,28 @@ export const KPIStatCard: React.FC<KPIStatCardProps> = ({
         }
       }}
       className={`
-        relative rounded-3xl backdrop-blur-2xl bg-white/[0.07] border transition-all duration-200 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.3)] overflow-hidden text-white
+        relative rounded-3xl bg-white border transition-all duration-200 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden text-[#0F172A]
         ${
           isActive
-            ? 'border-[#C49A68] ring-2 ring-[#C49A68]/30 shadow-lg'
-            : 'border-white/[0.14] hover:border-white/30'
+            ? 'border-[#741C2B] ring-2 ring-[#741C2B]/20 shadow-md'
+            : 'border-slate-200/90 hover:border-[#741C2B]/30 hover:shadow-md'
         }
         ${isClickable ? 'cursor-pointer active:scale-[0.99]' : ''}
         ${className}
       `}
     >
-      {/* Reflejo superior especular */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+      {/* Reflejo superior suave */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
       {/* Cabecera de la tarjeta: Título e Ícono */}
-      <div className="flex items-start justify-between gap-3 mb-3 relative z-10">
+      <div className="flex items-start justify-between gap-3 mb-2 relative z-10">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-white/70">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#475569]">
               {title}
             </span>
             {badge && (
-              <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-[#E5BE90]">
+              <span className="px-2 py-0.5 rounded-full bg-[#741C2B]/10 border border-[#741C2B]/20 text-[10px] font-black text-[#741C2B]">
                 {badge}
               </span>
             )}
@@ -71,24 +71,24 @@ export const KPIStatCard: React.FC<KPIStatCardProps> = ({
         </div>
 
         {Icon && (
-          <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 text-[#E5BE90] flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-10 h-10 rounded-2xl bg-[#741C2B]/10 border border-[#741C2B]/20 text-[#741C2B] flex items-center justify-center shrink-0 shadow-2xs">
             <Icon className="w-5 h-5" />
           </div>
         )}
       </div>
 
       {/* Valor Primario (Tabular mono estricto) */}
-      <div className="font-mono-tabular text-2xl sm:text-3xl font-display font-extrabold text-white tracking-tight relative z-10">
+      <div className="font-mono-tabular text-2xl sm:text-3xl font-display font-black text-[#0F172A] tracking-tight relative z-10 tabular-nums">
         {value}
       </div>
 
       {/* Footer: Variación porcentual y subtítulo */}
       {(variation || subtitle) && (
-        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-white/10 text-xs relative z-10">
+        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100 text-xs relative z-10">
           {variation && (
             <span
-              className={`inline-flex items-center gap-0.5 font-bold ${
-                variation.positive !== false ? 'text-[#34D399]' : 'text-[#F87171]'
+              className={`inline-flex items-center gap-0.5 font-black text-xs ${
+                variation.positive !== false ? 'text-emerald-700' : 'text-rose-700'
               }`}
             >
               {variation.positive !== false ? (
@@ -101,7 +101,7 @@ export const KPIStatCard: React.FC<KPIStatCardProps> = ({
           )}
 
           {subtitle && (
-            <span className="text-white/60 text-[11px] font-medium truncate ml-auto">
+            <span className="text-[#64748B] text-[11px] font-bold truncate ml-auto">
               {subtitle}
             </span>
           )}

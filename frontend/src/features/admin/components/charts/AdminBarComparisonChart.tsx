@@ -31,9 +31,9 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
   ];
 
   return (
-    <div className="relative rounded-3xl p-6 sm:p-7 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-black/10 dark:hover:border-white/20 group">
-      {/* Bisel superior especular suave */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
+    <div className="relative rounded-3xl p-5 sm:p-6 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 group text-[#0F172A] dark:text-white h-full flex flex-col justify-between">
+      {/* Bisel superior suave */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
       {/* Cabecera en Español: "Comparativa por Sucursales" */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -62,18 +62,18 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
       {/* Área del Histograma de Barras */}
       <div className="flex items-end gap-3 sm:gap-4 min-h-[200px] pt-4 pb-2">
         {/* Eje Y */}
-        <div className="flex flex-col justify-between h-44 text-[10px] sm:text-[11px] font-mono font-bold text-[#475569] dark:text-slate-400 select-none pr-1 sm:pr-2">
+        <div className="flex flex-col justify-between h-44 text-[10px] sm:text-[11px] font-mono font-black text-[#475569] dark:text-slate-400 select-none pr-1 sm:pr-2">
           {yAxisTicks.map((tick, index) => (
             <span key={`${tick}-${index}`}>{tick}</span>
           ))}
         </div>
 
         {/* Contenedor de las Columnas por Sede */}
-        <div className="flex-1 grid grid-cols-5 gap-2 sm:gap-4 h-44 border-b border-slate-300 dark:border-white/[0.08] pb-2 relative">
+        <div className="flex-1 grid grid-cols-5 gap-2 sm:gap-4 h-44 border-b border-slate-300 dark:border-white/15 pb-2 relative">
           {/* Líneas horizontales de guía */}
           <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="w-full border-b border-slate-200 dark:border-white/[0.04] border-dashed" />
+              <div key={i} className="w-full border-b border-slate-200 dark:border-white/10 border-dashed" />
             ))}
           </div>
 
@@ -105,10 +105,10 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
                 }}
                 className={`relative flex flex-col items-center justify-end h-full cursor-pointer transition-all duration-300 rounded-2xl p-1.5 sm:p-2 z-10 ${
                   isSelected
-                    ? 'bg-[#741C2B]/10 dark:bg-white/[0.08] ring-2 ring-[#741C2B] dark:ring-[#C49A68] shadow-sm'
+                    ? 'bg-[#741C2B]/10 dark:bg-[#741C2B]/20 ring-2 ring-[#741C2B] shadow-sm'
                     : isHovered
-                    ? 'bg-slate-100 dark:bg-white/[0.04]'
-                    : 'hover:bg-slate-50 dark:hover:bg-white/[0.025]'
+                    ? 'bg-slate-100 dark:bg-white/10'
+                    : 'hover:bg-slate-50 dark:hover:bg-white/5'
                 }`}
               >
                 {/* Par de Barras Estilizadas con tonos suaves */}
@@ -136,12 +136,14 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
 
                 {/* Etiqueta de la Sede en el Eje X */}
                 <span className={`text-[10px] sm:text-[11px] tracking-tight text-center truncate w-full ${
-                  isSelected ? 'text-[#741C2B] dark:text-[#E5BE90] font-black' : 'text-[#0F172A] dark:text-slate-200 font-bold'
+                  isSelected ? 'text-[#741C2B] dark:text-[#C49A68] font-black' : 'text-[#0F172A] dark:text-slate-200 font-bold'
                 }`}>
                   {s.label}
                 </span>
-                <span className="text-[9px] sm:text-[10px] text-[#475569] dark:text-slate-400 font-mono font-bold mt-0.5 tabular-nums">
-                  {realData?.ventasNetasTexto || '$0 COP'}
+
+                {/* Valor numérico en negrita */}
+                <span className="text-[10px] font-mono tabular-nums text-[#475569] font-black mt-0.5">
+                  {ventas > 0 ? `$${Math.round(ventas / 1000)}k` : '0 und'}
                 </span>
               </div>
             );
@@ -151,5 +153,3 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
     </div>
   );
 };
-
-export default AdminBarComparisonChart;

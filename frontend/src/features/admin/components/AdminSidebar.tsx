@@ -142,7 +142,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onCloseMobile,
   usuario,
   onLogout,
-  theme = 'dark',
+  theme = 'light',
 }) => {
   const isLight = theme === 'light';
   const location = useLocation();
@@ -313,7 +313,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                           className={({ isActive }) =>
                             `flex items-center justify-center p-2.5 rounded-2xl text-[13px] font-bold transition-all duration-200 border ${
                               isActive
-                                ? 'bg-[#741C2B]/30 text-white border-[#741C2B]/50 shadow-md shadow-[#741C2B]/20 ring-1 ring-[#C49A68]/20'
+                                ? isLight
+                                  ? 'bg-[#741C2B] text-white border-[#741C2B] shadow-sm'
+                                  : 'bg-[#741C2B]/30 text-white border-[#741C2B]/50 shadow-md shadow-[#741C2B]/20 ring-1 ring-[#C49A68]/20'
+                                : isLight
+                                ? 'text-[#475569] border-transparent hover:bg-[#F1F5F9] hover:text-[#0F172A]'
                                 : 'text-white/60 border-transparent hover:bg-white/[0.05] hover:text-white hover:border-white/[0.08]'
                             }`
                           }
@@ -321,7 +325,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                           {({ isActive }) => (
                             <Icon
                               className={`w-4 h-4 shrink-0 transition-transform ${
-                                isActive ? 'text-[#E5BE90]' : 'text-white/50'
+                                isActive
+                                  ? isLight ? 'text-white' : 'text-[#E5BE90]'
+                                  : isLight ? 'text-[#64748B]' : 'text-white/50'
                               }`}
                             />
                           )}
@@ -368,7 +374,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
                   {/* Sub-items del acordeón */}
                   {isExpanded && (
-                    <div className="mt-1 pl-3 pr-1 py-1 space-y-1 border-l-2 border-white/[0.08] ml-4 animate-in fade-in duration-150">
+                    <div className={`mt-1 pl-3 pr-1 py-1 space-y-1 border-l-2 ${isLight ? 'border-[#CBD5E1]' : 'border-white/[0.08]'} ml-4 animate-in fade-in duration-150`}>
                       {authorizedItems.map((item) => {
                         const Icon = item.icon;
                         return (

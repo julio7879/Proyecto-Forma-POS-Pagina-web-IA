@@ -39,18 +39,18 @@
 
 /* --- MODO DÍA EJECUTIVO --- */
 .admin-light-canvas {
-  background-color: #F8F6F2;
+  background-color: #F8FAFC;
   background-image:
     linear-gradient(118deg, rgba(255, 255, 255, 0.95) 0%, transparent 26%, rgba(255, 255, 255, 0.70) 48%, transparent 62%, rgba(255, 255, 255, 0.85) 84%),
-    radial-gradient(circle at 18% 22%, rgba(116, 28, 43, 0.05) 0%, transparent 48%),
-    radial-gradient(circle at 82% 16%, rgba(196, 154, 104, 0.08) 0%, transparent 44%),
-    radial-gradient(circle at 50% 50%, #FAF8F5 0%, #EDE7DE 100%);
+    radial-gradient(circle at 18% 22%, rgba(116, 28, 43, 0.03) 0%, transparent 48%),
+    radial-gradient(circle at 82% 16%, rgba(196, 154, 104, 0.04) 0%, transparent 44%),
+    radial-gradient(circle at 50% 50%, #F8FAFC 0%, #F1F5F9 100%);
   background-attachment: fixed;
-  color: #111827;
+  color: #0F172A;
 }
 
-/* Tipografía de Alto Contraste en Modo Día */
-.admin-light-canvas .text-white {
+/* Tipografía de Alto Contraste en Modo Día para elementos en superficie clara */
+.admin-light-canvas .text-white:not([class*="bg-[#741C2B]"]):not([class*="bg-[#5A1420]"]):not([class*="bg-[#5E1623]"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-amber-800"]):not([class*="bg-[#0F172A]"]):not([class*="bg-black"]):not([class*="bg-slate-900"]) {
   color: #0F172A !important;
 }
 
@@ -67,17 +67,35 @@
 .admin-light-canvas .text-white\/50,
 .admin-light-canvas .text-white\/40,
 .admin-light-canvas .text-slate-400,
-.admin-light-canvas .text-[#77736E] {
+.admin-light-canvas [class*="text-[#77736E]"] {
   color: #475569 !important;
 }
 
+/* Guardrails para asegurar que los botones oscuros de acción SIEMPRE tengan texto e iconos blanco puro (#FFFFFF) */
+.admin-light-canvas button[class*="bg-[#741C2B]"],
+.admin-light-canvas button[class*="bg-[#741C2B]"] *,
+.admin-light-canvas a[class*="bg-[#741C2B]"],
+.admin-light-canvas a[class*="bg-[#741C2B]"] *,
+.admin-light-canvas [class*="bg-[#741C2B]"].text-white,
+.admin-light-canvas [class*="bg-[#741C2B]"] .text-white,
+.admin-light-canvas button[class*="from-[#741C2B]"],
+.admin-light-canvas button[class*="from-[#741C2B]"] *,
+.admin-light-canvas button[class*="bg-emerald-"],
+.admin-light-canvas button[class*="bg-emerald-"] *,
+.admin-light-canvas button[class*="bg-rose-"],
+.admin-light-canvas button[class*="bg-rose-"] *,
+.admin-light-canvas [class*="bg-[#0F172A]"].text-white,
+.admin-light-canvas [class*="bg-[#0F172A]"] .text-white {
+  color: #FFFFFF !important;
+}
+
 /* Transformación de dorados pálidos (#E5BE90 / #C49A68) a Vinotinto Imperial o Bronce en modo día */
-.admin-light-canvas .text-[#E5BE90] {
+.admin-light-canvas [class*="text-[#E5BE90]"] {
   color: #741C2B !important;
   font-weight: 700;
 }
 
-.admin-light-canvas .text-[#C49A68] {
+.admin-light-canvas [class*="text-[#C49A68]"] {
   color: #741C2B !important;
   font-weight: 700;
 }
@@ -105,37 +123,23 @@
 }
 
 /* Background overrides para contenedores que tenían fondos oscuros fijos */
-.admin-light-canvas .bg-[#0C0F16]/75,
-.admin-light-canvas .bg-[#0A0D14]/85,
-.admin-light-canvas .bg-[#0A0D14]/75,
-.admin-light-canvas .bg-[#0A0D14],
-.admin-light-canvas .bg-[#11151E]/65,
-.admin-light-canvas .bg-[#11151E],
-.admin-light-canvas .bg-[#121620]/70,
-.admin-light-canvas .bg-[#141822]/60 {
+.admin-light-canvas [class*="bg-[#0C0F16]"],
+.admin-light-canvas [class*="bg-[#0A0D14]"],
+.admin-light-canvas [class*="bg-[#11151E]"],
+.admin-light-canvas [class*="bg-[#121620]"],
+.admin-light-canvas [class*="bg-[#141822]"] {
   background-color: rgba(255, 255, 255, 0.92) !important;
   border-color: rgba(0, 0, 0, 0.12) !important;
   color: #0F172A !important;
 }
 
-.admin-light-canvas .bg-white/[0.07],
-.admin-light-canvas .bg-white/[0.06],
-.admin-light-canvas .bg-white/[0.05],
-.admin-light-canvas .bg-white/[0.04],
-.admin-light-canvas .bg-white/[0.03],
-.admin-light-canvas .bg-white/10 {
+.admin-light-canvas [class*="bg-white/"] {
   background-color: rgba(255, 255, 255, 0.88) !important;
   border-color: rgba(0, 0, 0, 0.10) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }
 
-.admin-light-canvas .border-white/[0.08],
-.admin-light-canvas .border-white/[0.09],
-.admin-light-canvas .border-white/[0.10],
-.admin-light-canvas .border-white/[0.14],
-.admin-light-canvas .border-white/10,
-.admin-light-canvas .border-white/15,
-.admin-light-canvas .border-white/20 {
+.admin-light-canvas [class*="border-white/"] {
   border-color: rgba(0, 0, 0, 0.12) !important;
 }
 
@@ -247,20 +251,20 @@
 }
 
 /* Tablas y filas en Modo Día */
-.admin-light-canvas table th {
-  color: #1E293B !important;
-  background-color: #F1F5F9 !important;
-  border-bottom: 2px solid #E2E8F0 !important;
-  font-weight: 800 !important;
+.admin-light-canvas table thead:not([class*="bg-[#741C2B]"]) th:not([class*="bg-[#741C2B]"]):not([class*="text-white"]) {
+  color: #1E293B;
+  background-color: #F1F5F9;
+  border-bottom: 2px solid #CBD5E1;
+  font-weight: 800;
 }
 
 .admin-light-canvas table td {
-  color: #0F172A !important;
-  border-bottom: 1px solid #E2E8F0 !important;
+  color: #0F172A;
+  border-bottom: 1px solid #E2E8F0;
 }
 
 .admin-light-canvas table tr:hover td {
-  background-color: rgba(241, 245, 249, 0.70) !important;
+  background-color: rgba(241, 245, 249, 0.70);
 }
 
 /* --- MODO NOCHE HOMELAB OBSIDIAN --- */
@@ -269,12 +273,12 @@
   color: #FFFFFF;
 }
 
-.admin-dark-canvas .text-white/60,
-.admin-dark-canvas .text-white/50 {
+.admin-dark-canvas [class*="text-white/60"],
+.admin-dark-canvas [class*="text-white/50"] {
   color: #CBD5E1 !important;
 }
 
-.admin-dark-canvas .text-white/40 {
+.admin-dark-canvas [class*="text-white/40"] {
   color: #94A3B8 !important;
 }
 
@@ -341,7 +345,9 @@
 .admin-dark-canvas section.bg-white,
 .admin-dark-canvas [class*="bg-white"][class*="rounded-2xl"],
 .admin-dark-canvas [class*="bg-white"][class*="rounded-3xl"] {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: #151210 !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
 /* Modales, Diálogos y Drawers en Modo Noche: Siempre sólidos y 100% opacos para legibilidad */
@@ -357,10 +363,10 @@
   color: #F8FAFC !important;
 }
 
-.admin-dark-canvas .fixed.inset-0 > div .bg-[#FAF8F5],
-.admin-dark-canvas .fixed.inset-0 > div .bg-[#F5F3EF],
-.admin-dark-canvas [role="dialog"] .bg-[#FAF8F5],
-.admin-dark-canvas [role="dialog"] .bg-[#F5F3EF] {
+.admin-dark-canvas .fixed.inset-0 > div [class*="bg-[#FAF8F5]"],
+.admin-dark-canvas .fixed.inset-0 > div [class*="bg-[#F5F3EF]"],
+.admin-dark-canvas [role="dialog"] [class*="bg-[#FAF8F5]"],
+.admin-dark-canvas [role="dialog"] [class*="bg-[#F5F3EF]"] {
   background-color: #1E1A18 !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
 }

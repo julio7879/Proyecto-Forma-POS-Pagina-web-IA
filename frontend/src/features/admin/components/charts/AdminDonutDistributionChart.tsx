@@ -32,10 +32,10 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
   const sedes: SedeParticipacionItem[] = useMemo(() => {
     const palette: Record<string, string> = {
       'Bodega Central': '#741C2B', // Vinotinto Imperial
-      'Punto Centro': '#C49A68', // Champagne Gold
-      'Punto Caobos': '#2A855A', // Emerald
-      'Punto Ocaña': '#B45309', // Bronze
       'Punto Bucaramanga': '#8B2635', // Muted Wine
+      'Punto Centro': '#C49A68', // Champagne Gold
+      'Punto Caobos': '#059669', // Soft Emerald
+      'Punto Ocaña': '#D97706', // Soft Amber
     };
 
     if (sedesData && sedesData.length > 0) {
@@ -108,16 +108,16 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
   });
 
   return (
-    <div className="relative rounded-3xl p-6 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-black/10 dark:hover:border-white/20 flex flex-col justify-between h-full">
-      {/* Bisel superior especular suave */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
+    <div className="relative rounded-3xl p-6 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 flex flex-col justify-between h-full text-[#0F172A] dark:text-white">
+      {/* Bisel superior suave */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
       {/* Cabecera */}
       <div>
         <h3 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-white tracking-wide font-sans">
           Participación Comercial por Sede
         </h3>
-        <span className="text-[11px] text-[#475569] dark:text-white/60 block font-bold">
+        <span className="text-[11px] text-[#475569] dark:text-slate-400 block font-bold">
           Distribución de Facturación entre Puntos Físicos
         </span>
       </div>
@@ -125,13 +125,14 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
       {/* Anillo de Cristal */}
       <div className="relative flex items-center justify-center my-4">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-          {/* Anillo de fondo translúcido */}
+          {/* Anillo de fondo suave */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="transparent"
-            stroke="rgba(255, 255, 255, 0.05)"
+            stroke="#E2E8F0"
+            className="dark:stroke-white/10"
             strokeWidth={strokeWidth}
           />
 
@@ -160,7 +161,8 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
               cy={size / 2}
               r={radius}
               fill="transparent"
-              stroke="rgba(196, 154, 104, 0.15)"
+              stroke="#CBD5E1"
+              className="dark:stroke-white/20"
               strokeWidth={strokeWidth}
               strokeDasharray="6 6"
             />
@@ -169,7 +171,7 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
 
         {/* Centro de la Dona */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#741C2B] dark:text-[#E5BE90]">
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#741C2B] dark:text-[#C49A68]">
             Total
           </span>
           <span className="text-xl sm:text-2xl font-display font-black text-[#0F172A] dark:text-white tracking-tight">
@@ -185,32 +187,35 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
         </div>
       </div>
 
-      {/* Leyenda limpia y ordenada por sedes en 2x2 estilo Homelab Glass */}
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-white/[0.08]">
-        {sedes.map((s) => {
+      {/* Leyenda limpia y ordenada por sedes en cuadrícula balanceada */}
+      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+        {sedes.map((s, idx) => {
           const isSelected = sedeActiva === s.sedeKey;
+          const isFifth = idx === 4;
           return (
             <button
               key={s.sedeKey}
               type="button"
               onClick={() => onSelectSede(s.sedeKey)}
-              className={`flex items-center gap-2 p-2 rounded-xl text-left transition-all border ${
+              className={`flex items-center gap-2 p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                isFifth ? 'col-span-2' : ''
+              } ${
                 isSelected
-                  ? 'bg-[#741C2B]/10 dark:bg-white/[0.12] border-[#741C2B]/50 dark:border-[#C49A68]/60 text-[#0F172A] dark:text-white shadow-xs font-bold'
-                  : 'admin-glass-pill text-[#334155] dark:text-slate-300 hover:text-[#0F172A] dark:hover:text-white'
+                  ? 'bg-[#741C2B]/10 dark:bg-[#741C2B]/20 border-[#741C2B]/50 text-[#0F172A] dark:text-white shadow-xs font-black'
+                  : 'bg-[#F8FAFC] dark:bg-white/5 border-slate-200 dark:border-white/10 text-[#334155] dark:text-slate-300 hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 font-bold'
               }`}
             >
               <span
-                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
                 style={{ backgroundColor: s.color }}
               />
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-extrabold truncate leading-tight text-[#0F172A] dark:text-white">
-                  {s.nombre}
-                </div>
-                <div className="text-[11px] font-mono font-black text-[#741C2B] dark:text-[#E5BE90]">
+                <span className="text-[11px] block truncate leading-tight font-bold">
+                  {s.nombre.replace('Punto ', '')}
+                </span>
+                <span className="text-[10px] font-mono text-[#475569] dark:text-slate-400 font-black block tabular-nums">
                   {s.porcentaje}%
-                </div>
+                </span>
               </div>
             </button>
           );
@@ -219,5 +224,3 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
     </div>
   );
 };
-
-export default AdminDonutDistributionChart;

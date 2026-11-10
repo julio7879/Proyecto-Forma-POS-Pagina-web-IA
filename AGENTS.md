@@ -46,6 +46,7 @@ Para mantener el consumo de tokens al mínimo, cada skill se consulta **únicame
 | **`@Vitral-UI`** | `storefront-best-practices` | `medusajs/medusa-agent-skills` | Portal 1 (Tienda Web): Navbar, secciones de inicio, sidebar de categorías, ofertas y PDP 3D. |
 | **`@Vitral-UI`** | `pos-sales-ui-design` | `peterbamuhigire/skills-web-dev` | Portal 2 (Terminal POS): Jerarquía de 3 niveles, cero scroll, botones táctiles >=56px y cobro rápido. |
 | **`@Vitral-UI`** | `react-shadcn-admin` | `fusengine/agents` + `admin-panel` | Portal 3 (Dashboard Admin): Sidebar colapsable, tablas densas, KPIs ejecutivos y exportación Excel. |
+| **`@Vitral-Dashboard`** | `pos-dashboard-designer` | Ley Canónica Dashboards v1.0 | **LEY VINCULANTE DASHBOARDS.** Arquitectura de información, regla de 5-6 tarjetas, una sola pantalla, patrones F y Z, y paleta armónica sin estridencias (ARQ-08). |
 | **`@Sabueso-Hunter`** | `pos-adversarial-audit` / `security-audit` | Cloudflare Adversarial Review | Búsqueda exhaustiva de fallos de lógica, concurrencia, precios y fugas multisede. |
 | **`@Juez-Esceptico`** | `pos-adversarial-audit` | Cloudflare Adversarial Review | Desmonta falsas alarmas verificando constraints SQL, Zod y middlewares. |
 | **`@Centinela-QA`** | `pos-gitflow-pr-review` / `pos-sprint-progress-tracker` | GitFlow Gates | Revisión de PRs, verificación `tsc` + `vitest` y actualización del progreso en el vault. |

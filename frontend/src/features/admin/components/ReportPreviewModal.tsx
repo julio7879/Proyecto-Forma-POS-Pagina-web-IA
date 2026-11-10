@@ -73,28 +73,28 @@ export const ReportPreviewModal: React.FC<Props> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
     >
       <div
-        className="w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl border-2 border-[#E7E0D8] shadow-2xl overflow-hidden flex flex-col animate-scale-up"
+        className="w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl border border-[#CBD5E1] shadow-2xl overflow-hidden flex flex-col animate-scale-up text-[#0F172A]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera Modal */}
-        <div className="px-6 py-4.5 bg-[#FAF8F5] border-b border-[#E7E0D8] flex items-center justify-between">
+        <div className="px-6 py-4.5 bg-[#F8FAFC] border-b border-[#CBD5E1] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#27845C]/10 border border-[#27845C]/20 flex items-center justify-center text-[#27845C]">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-black text-[#741C2B] uppercase tracking-wider bg-[#741C2B]/10 px-2 py-0.5 rounded-md">
+                <span className="font-mono text-xs font-black text-[#741C2B] uppercase tracking-wider bg-[#741C2B]/10 px-2 py-0.5 rounded-md border border-[#741C2B]/30">
                   {reporte.codigo}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-md bg-white border border-[#CBD5E1] text-[10px] font-extrabold text-[#475569]">
+                <span className="px-2.5 py-0.5 rounded-md bg-white border border-[#CBD5E1] text-[10px] font-black text-[#475569]">
                   {reporte.areaTrabajo}
                 </span>
               </div>
-              <h3 className="text-base sm:text-lg font-black text-[#1C1311] font-display mt-0.5">
+              <h3 className="text-base sm:text-lg font-black text-[#0F172A] font-display mt-0.5">
                 {reporte.titulo}
               </h3>
             </div>
@@ -103,7 +103,7 @@ export const ReportPreviewModal: React.FC<Props> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-[#475569] hover:text-[#1C1311] hover:bg-[#E7E0D8]/50 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-[#475569] hover:text-[#0F172A] hover:bg-slate-200 transition-colors cursor-pointer"
             aria-label="Cerrar modal"
           >
             <X className="w-5 h-5" />
@@ -113,28 +113,28 @@ export const ReportPreviewModal: React.FC<Props> = ({
         {/* Cuerpo del Modal: Filtros y Previsualización */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
           {/* Descripción */}
-          <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E7E0D8] text-xs text-[#475569] leading-relaxed font-medium">
+          <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs text-[#475569] leading-relaxed font-bold">
             {reporte.descripcion}
           </div>
 
           {/* Barra de Configuración de Exportación */}
-          <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E7E0D8] space-y-3.5 shadow-2xs">
-            <div className="flex items-center gap-2 text-xs font-black text-[#1C1311] uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-[#C49A68]" />
+          <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#CBD5E1] space-y-3.5 shadow-2xs">
+            <div className="flex items-center gap-2 text-xs font-black text-[#0F172A] uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-[#741C2B]" />
               <span>Configuración del Libro Excel</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Filtro Periodo */}
               <div>
-                <label className="block text-[11px] font-extrabold text-[#475569] mb-1.5 flex items-center gap-1.5">
+                <label className="block text-[11px] font-black text-[#475569] mb-1.5 flex items-center gap-1.5">
                   <Calendar className="w-3 h-3 text-[#741C2B]" />
                   <span>Periodo de Consulta</span>
                 </label>
                 <select
                   value={periodo}
                   onChange={(e) => setPeriodo(e.target.value as any)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-[#CBD5E1] text-xs font-extrabold text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-2xs cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-[#CBD5E1] text-xs font-black text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-2xs cursor-pointer"
                 >
                   <option value="HOY">Hoy (Fecha Oficial)</option>
                   <option value="7DIAS">Últimos 7 Días</option>
@@ -145,14 +145,14 @@ export const ReportPreviewModal: React.FC<Props> = ({
 
               {/* Filtro Sede */}
               <div>
-                <label className="block text-[11px] font-extrabold text-[#475569] mb-1.5 flex items-center gap-1.5">
+                <label className="block text-[11px] font-black text-[#475569] mb-1.5 flex items-center gap-1.5">
                   <Store className="w-3 h-3 text-[#741C2B]" />
                   <span>Sede / Sucursal</span>
                 </label>
                 <select
                   value={sede}
                   onChange={(e) => setSede(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-[#CBD5E1] text-xs font-extrabold text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-2xs cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-[#CBD5E1] text-xs font-black text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-2xs cursor-pointer"
                 >
                   {SEDES_DISPONIBLES.map((s) => (
                     <option key={s} value={s}>
@@ -164,14 +164,14 @@ export const ReportPreviewModal: React.FC<Props> = ({
 
               {/* Contenido del Libro */}
               <div>
-                <label className="block text-[11px] font-extrabold text-[#475569] mb-1.5 flex items-center gap-1.5">
+                <label className="block text-[11px] font-black text-[#475569] mb-1.5 flex items-center gap-1.5">
                   <Layers className="w-3 h-3 text-[#741C2B]" />
                   <span>Contenido del Libro</span>
                 </label>
                 <select
                   value={modoContenido}
                   onChange={(e) => setModoContenido(e.target.value as any)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-[#CBD5E1] text-xs font-extrabold text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-2xs cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-[#CBD5E1] text-xs font-black text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-2xs cursor-pointer"
                 >
                   <option value="completo">Libro Completo (Resumen + Detalle)</option>
                   <option value="solo_resumen">Solo Resumen Ejecutivo</option>
@@ -191,12 +191,12 @@ export const ReportPreviewModal: React.FC<Props> = ({
                 {config.kpis.map((k, i) => (
                   <div
                     key={i}
-                    className="p-3.5 rounded-2xl bg-white border-2 border-[#E7E0D8] shadow-2xs text-center"
+                    className="p-3.5 rounded-2xl bg-white border border-[#CBD5E1] shadow-2xs text-center"
                   >
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#475569] truncate">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-[#475569] truncate">
                       {k.etiqueta}
                     </div>
-                    <div className="text-base font-black font-mono-tabular text-[#741C2B] mt-1">
+                    <div className="text-base font-black font-mono-tabular text-[#0F172A] mt-1">
                       {k.valor}
                     </div>
                   </div>
@@ -212,12 +212,12 @@ export const ReportPreviewModal: React.FC<Props> = ({
                 <TableIcon className="w-3.5 h-3.5 text-[#741C2B]" />
                 <span>Previsualización de Datos ({config.detalleFilas.length} registros totales)</span>
               </div>
-              <span className="text-[10px] font-extrabold text-[#475569]">
+              <span className="text-[10px] font-bold text-[#475569]">
                 Mostrando primeras {previewFilas.length} filas
               </span>
             </div>
 
-            <div className="rounded-2xl border-2 border-[#E7E0D8] overflow-hidden bg-white shadow-2xs">
+            <div className="rounded-2xl border border-[#CBD5E1] overflow-hidden bg-white shadow-2xs">
               <div className="overflow-x-auto max-h-56">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead className="bg-[#741C2B] text-white sticky top-0 z-10">
@@ -235,7 +235,7 @@ export const ReportPreviewModal: React.FC<Props> = ({
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E7E0D8]">
+                  <tbody className="divide-y divide-slate-200">
                     {previewFilas.length === 0 ? (
                       <tr>
                         <td
@@ -249,9 +249,9 @@ export const ReportPreviewModal: React.FC<Props> = ({
                       previewFilas.map((fila, rIdx) => (
                         <tr
                           key={rIdx}
-                          className={`h-9 ${rIdx % 2 === 1 ? 'bg-[#FAF8F5]' : 'bg-white'} hover:bg-[#F5F3EF] transition-colors`}
+                          className={`h-9 ${rIdx % 2 === 1 ? 'bg-[#F8FAFC]' : 'bg-white'} hover:bg-slate-100 transition-colors`}
                         >
-                          <td className="px-3.5 py-1.5 text-[11px] font-mono text-[#475569] text-center font-bold">
+                          <td className="px-3.5 py-1.5 text-[11px] font-mono text-[#0F172A] text-center font-black">
                             {rIdx + 1}
                           </td>
                           {config.detalleColumnas.map((col, cIdx) => (
@@ -275,7 +275,7 @@ export const ReportPreviewModal: React.FC<Props> = ({
         </div>
 
         {/* Pie del Modal con Botones */}
-        <div className="px-6 py-4 bg-[#FAF8F5] border-t border-[#E7E0D8] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-[#F8FAFC] border-t border-[#CBD5E1] flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs font-bold text-[#475569]">
             {exito && (
               <span className="text-[#27845C] font-black flex items-center gap-1.5">
@@ -290,7 +290,7 @@ export const ReportPreviewModal: React.FC<Props> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border-2 border-[#CBD5E1] bg-white hover:bg-[#F5F3EF] text-xs font-extrabold text-[#0F172A] transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-[#CBD5E1] bg-white hover:bg-slate-100 text-xs font-black text-[#0F172A] transition-colors cursor-pointer shadow-2xs"
             >
               Cancelar
             </button>
@@ -309,3 +309,5 @@ export const ReportPreviewModal: React.FC<Props> = ({
     </div>
   );
 };
+
+export default ReportPreviewModal;

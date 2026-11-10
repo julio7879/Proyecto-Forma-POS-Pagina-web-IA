@@ -72,7 +72,6 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
     }
 
     // Cuando existen ventas reales registradas en el POS o Web
-    // Mapeo cronológico exacto de la transacción (1 venta de $328.000 COP a las 16:00)
     const unidadesTotalesReales = Math.max(1, Math.round(ventasNetasTotalCop / 328000));
 
     switch (periodoActivo) {
@@ -222,45 +221,51 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
   const formatCOP = (num: number) => `$${num.toLocaleString('es-CO')} COP`;
 
   return (
-    <div className="relative rounded-3xl p-6 sm:p-7 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-black/10 dark:hover:border-white/20 group">
-      {/* Bisel superior especular suave */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
+    <div className="relative rounded-3xl p-6 sm:p-7 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 group text-[#0F172A] dark:text-white">
+      {/* Bisel superior suave */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
-      {/* Cabecera en Español: "Ventas por Horas" */}
-      <div className="flex items-center justify-between gap-4 mb-4">
+      {/* Cabecera adaptativa según período */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h3 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-white tracking-wide font-sans">
-            Ventas por Horas
+            {periodoActivo === 'HOY'
+              ? 'Ventas por Horas'
+              : periodoActivo === '7D'
+              ? 'Tendencia Semanal'
+              : periodoActivo === 'MES'
+              ? 'Facturación del Mes'
+              : 'Consolidado Anual 2026'}
           </h3>
-          <span className="text-[11px] text-[#475569] dark:text-white/60 block font-bold">
+          <span className="text-[11px] text-[#475569] dark:text-slate-400 block font-bold">
             Tendencia de Facturación en Vivo (Ventas Netas) • {sedeSeleccionada}
           </span>
         </div>
 
         {/* Toggle de Métrica */}
-        <div className="flex items-center rounded-xl p-1 bg-slate-100 dark:bg-[#121620]/70 border border-slate-300 dark:border-white/[0.08] backdrop-blur-md shadow-xs">
+        <div className="flex items-center rounded-xl p-1 bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-xs">
           <button
             type="button"
             onClick={() => setMetricaActiva('VENTAS')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               metricaActiva === 'VENTAS'
-                ? 'bg-white dark:bg-white/[0.14] text-[#741C2B] dark:text-white border border-slate-300 dark:border-white/[0.22] shadow-xs font-black'
-                : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white font-medium'
+                ? 'bg-white dark:bg-[#1E1A18] text-[#741C2B] dark:text-[#C49A68] border border-slate-200 dark:border-white/15 shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
             }`}
           >
-            <DollarSign className="w-3.5 h-3.5 text-[#741C2B] dark:text-[#E5BE90]" />
+            <DollarSign className="w-3.5 h-3.5 text-[#741C2B] dark:text-[#C49A68]" />
             <span>Ventas COP</span>
           </button>
           <button
             type="button"
             onClick={() => setMetricaActiva('UNIDADES')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               metricaActiva === 'UNIDADES'
-                ? 'bg-white dark:bg-white/[0.14] text-[#741C2B] dark:text-white border border-slate-300 dark:border-white/[0.22] shadow-xs font-black'
-                : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white font-medium'
+                ? 'bg-white dark:bg-[#1E1A18] text-[#741C2B] dark:text-[#C49A68] border border-slate-200 dark:border-white/15 shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
             }`}
           >
-            <ShoppingBag className="w-3.5 h-3.5 text-[#741C2B] dark:text-[#E5BE90]" />
+            <ShoppingBag className="w-3.5 h-3.5 text-[#741C2B] dark:text-[#C49A68]" />
             <span>Unidades</span>
           </button>
         </div>
@@ -271,11 +276,11 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
           <defs>
             <linearGradient id="goldCurveGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#C49A68" stopOpacity="0.16" />
+              <stop offset="0%" stopColor="#C49A68" stopOpacity="0.22" />
               <stop offset="100%" stopColor="#C49A68" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="wineCurveGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#741C2B" stopOpacity="0.10" />
+              <stop offset="0%" stopColor="#741C2B" stopOpacity="0.15" />
               <stop offset="100%" stopColor="#741C2B" stopOpacity="0.0" />
             </linearGradient>
           </defs>
@@ -291,7 +296,7 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
                 x2={width - paddingX}
                 y2={y}
                 className="chart-grid-line"
-                stroke="rgba(150,150,150,0.2)"
+                stroke="#E2E8F0"
                 strokeDasharray="4 4"
                 strokeWidth="1"
               />
@@ -299,13 +304,13 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
           })}
 
           {/* Etiquetas del Eje Y */}
-          <text x={paddingX - 10} y={getY(maxValor * 0.95)} textAnchor="end" className="chart-axis-label-y" fontSize="10" fontFamily="monospace" fontWeight="700">
+          <text x={paddingX - 10} y={getY(maxValor * 0.95)} textAnchor="end" fill="#475569" fontSize="10" fontFamily="monospace" fontWeight="800">
             {metricaActiva === 'VENTAS' ? (ventasNetasTotalCop > 0 ? (maxValor >= 1000000 ? `${Math.round(maxValor / 1000000)}M` : `${Math.round(maxValor / 1000)}k`) : '$0') : `${maxValor}u`}
           </text>
-          <text x={paddingX - 10} y={getY(maxValor * 0.5)} textAnchor="end" className="chart-axis-label-y" fontSize="10" fontFamily="monospace" fontWeight="700">
+          <text x={paddingX - 10} y={getY(maxValor * 0.5)} textAnchor="end" fill="#475569" fontSize="10" fontFamily="monospace" fontWeight="800">
             {metricaActiva === 'VENTAS' ? (ventasNetasTotalCop > 0 ? (maxValor >= 1000000 ? `${(maxValor * 0.5 / 1000000).toFixed(1)}M` : `${Math.round(maxValor * 0.5 / 1000)}k`) : '$0') : `${Math.round(maxValor * 0.5)}u`}
           </text>
-          <text x={paddingX - 10} y={height - paddingBottom} textAnchor="end" className="chart-axis-label-y" fontSize="10" fontFamily="monospace" fontWeight="700">
+          <text x={paddingX - 10} y={height - paddingBottom} textAnchor="end" fill="#475569" fontSize="10" fontFamily="monospace" fontWeight="800">
             0
           </text>
 
@@ -313,7 +318,7 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
           {ventasNetasTotalCop > 0 && (
             <>
               <path d={areaWine} fill="url(#wineCurveGrad)" />
-              <path d={pathWine} fill="none" stroke="#8B2635" strokeWidth="2" strokeLinecap="round" opacity="0.75" />
+              <path d={pathWine} fill="none" stroke="#741C2B" strokeWidth="2.5" strokeLinecap="round" opacity="0.80" />
             </>
           )}
 
@@ -330,7 +335,7 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
               y1={height - paddingBottom - 10}
               x2={width - paddingX}
               y2={height - paddingBottom - 10}
-              stroke="rgba(196,154,104,0.3)"
+              stroke="#CBD5E1"
               strokeWidth="2"
               strokeDasharray="6 6"
             />
@@ -343,9 +348,9 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
               x={pt.x}
               y={height - 12}
               textAnchor="middle"
-              className="chart-axis-label-x"
+              fill={hoverIndex === i ? '#0F172A' : '#475569'}
               fontSize="11"
-              fontWeight={hoverIndex === i ? '800' : '600'}
+              fontWeight={hoverIndex === i ? '900' : '700'}
             >
               {pt.label}
             </text>
@@ -374,7 +379,7 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
                 y1={paddingTop}
                 x2={selectedPoint.x}
                 y2={height - paddingBottom}
-                stroke="#C49A68"
+                stroke="#741C2B"
                 strokeDasharray="3 3"
                 strokeWidth="1.5"
                 opacity="0.8"
@@ -383,10 +388,10 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
                 cx={selectedPoint.x}
                 cy={selectedPoint.y}
                 r="6"
-                fill="#FAF8F5"
-                stroke="#C49A68"
+                fill="#FFFFFF"
+                stroke="#741C2B"
                 strokeWidth="3"
-                className="drop-shadow-[0_0_8px_#C49A68]"
+                className="drop-shadow-[0_0_6px_rgba(116,28,43,0.4)]"
               />
             </g>
           )}
@@ -395,7 +400,7 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
         {/* Mensaje sutil si no hay ventas */}
         {ventasNetasTotalCop === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-xs font-semibold text-white/50 bg-black/40 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
+            <span className="text-xs font-bold text-[#475569] bg-slate-100/90 border border-slate-300 px-4 py-1.5 rounded-full shadow-2xs backdrop-blur-xs">
               Sin ventas registradas en el período • Sistema en espera de la primera transacción
             </span>
           </div>
@@ -411,13 +416,13 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
               marginTop: '-12px',
             }}
           >
-            <div className="px-3 py-1.5 rounded-xl bg-black/90 border border-[#C49A68]/60 text-white shadow-2xl backdrop-blur-xl flex items-center gap-2 whitespace-nowrap">
-              <span className="font-mono-tabular font-extrabold text-xs text-[#E5BE90]">
+            <div className="px-3 py-1.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white shadow-xl flex items-center gap-2 whitespace-nowrap">
+              <span className="font-mono-tabular font-black text-xs text-[#E5BE90]">
                 {metricaActiva === 'VENTAS'
                   ? formatCOP(selectedPoint.valorCop)
                   : `${selectedPoint.unidades} prendas`}
               </span>
-              <span className="text-[10px] text-white/60 font-mono">
+              <span className="text-[10px] text-slate-300 font-mono font-medium">
                 • {selectedPoint.label}
               </span>
             </div>

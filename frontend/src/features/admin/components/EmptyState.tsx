@@ -22,18 +22,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className={`relative rounded-3xl backdrop-blur-2xl bg-white/[0.07] border border-white/[0.14] p-10 text-center flex flex-col items-center justify-center shadow-[0_12px_30px_rgba(0,0,0,0.3)] overflow-hidden text-white ${className}`}
+      className={`relative rounded-3xl bg-white border border-slate-200/90 p-10 text-center flex flex-col items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden text-[#0F172A] ${className}`}
     >
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
-      <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 text-[#E5BE90] flex items-center justify-center mb-3.5 shadow-sm relative z-10">
-        <Icon className="w-6 h-6 text-[#E5BE90]" />
+      <div className="w-12 h-12 rounded-2xl bg-[#741C2B]/10 border border-[#741C2B]/20 text-[#741C2B] flex items-center justify-center mb-3.5 shadow-2xs relative z-10">
+        <Icon className="w-6 h-6 text-[#741C2B]" />
       </div>
-      <h4 className="text-[15px] font-black text-white tracking-tight relative z-10">
+      <h4 className="text-[15px] font-black text-[#0F172A] tracking-tight relative z-10">
         {title}
       </h4>
       {description && (
-        <p className="text-[13px] text-white/70 mt-1 max-w-md leading-relaxed relative z-10">
+        <p className="text-[13px] text-[#475569] font-medium mt-1 max-w-md leading-relaxed relative z-10">
           {description}
         </p>
       )}
@@ -41,7 +41,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <button
           type="button"
           onClick={onAction}
-          className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-[#741C2B] to-[#912537] hover:from-[#912537] hover:to-[#A32E43] text-white text-[13px] font-bold transition-all cursor-pointer shadow-md relative z-10 border border-white/20"
+          className="mt-4 px-4 py-2 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white text-[13px] font-bold transition-all cursor-pointer shadow-sm relative z-10 border border-[#741C2B]"
         >
           {actionLabel}
         </button>

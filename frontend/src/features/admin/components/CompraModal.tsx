@@ -180,28 +180,28 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
       aria-modal="true"
       aria-labelledby="modal-compra-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-4xl rounded-3xl backdrop-blur-2xl bg-[#1A060B]/95 border border-white/[0.18] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col text-white relative animate-in fade-in zoom-in-95 duration-200"
+        className="w-full max-w-4xl rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col text-[#0F172A] relative animate-in fade-in zoom-in-95 duration-200"
       >
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-[2px] bg-[#741C2B] pointer-events-none" />
 
         {/* Encabezado */}
-        <div className="p-6 border-b border-white/10 bg-white/[0.04] flex items-center justify-between">
+        <div className="p-6 border-b border-slate-200 bg-[#F8FAFC] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#C49A68]/15 border border-[#C49A68]/30">
-              <Building2 className="w-5 h-5 text-[#E5BE90]" />
+            <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200">
+              <Building2 className="w-5 h-5 text-[#741C2B]" />
             </div>
             <div>
               <h2
                 id="modal-compra-title"
-                className="text-xl sm:text-2xl font-black text-white font-serif-editorial"
+                className="text-xl sm:text-2xl font-black text-[#0F172A] font-serif-editorial"
               >
                 Nueva Orden de Abastecimiento Mayorista
               </h2>
-              <p className="text-xs text-white/60 mt-0.5">
+              <p className="text-xs text-[#475569] font-medium mt-0.5">
                 Selecciona el distribuidor asociado, revisa los materiales y confección, y pide por mayor a precio preferencial.
               </p>
             </div>
@@ -210,7 +210,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#475569] hover:text-[#0F172A] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -220,24 +220,24 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
         <form
           id="form-crear-compra"
           onSubmit={handleSubmit(onSubmit)}
-          className="flex-1 overflow-y-auto flex flex-col justify-between custom-scrollbar"
+          className="flex-1 overflow-y-auto flex flex-col justify-between custom-scrollbar bg-white"
         >
           <div className="p-6 space-y-5">
             {apiError && (
-              <div className="p-3.5 rounded-2xl bg-[#EF4444]/20 border border-[#EF4444]/40 text-xs font-bold text-[#F87171] flex items-center gap-2">
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-xs font-bold text-rose-800 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{apiError}</span>
               </div>
             )}
 
             {/* SELECCIÓN DE DISTRIBUIDOR ASOCIADO */}
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+            <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-extrabold text-[#E5BE90] uppercase tracking-wider">
+                <label className="block text-xs font-black text-[#741C2B] uppercase tracking-wider">
                   Distribuidor Mayorista Asociado
                 </label>
                 {distribuidorActivo && (
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#C49A68]/20 border border-[#C49A68]/40 text-[10px] font-mono font-bold text-[#E5BE90]">
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300 text-[10px] font-mono font-bold text-emerald-800">
                     Descuento Mayorista: ~{distribuidorActivo.descuentoMayoristaPorc}%
                   </span>
                 )}
@@ -247,28 +247,28 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                 value={selectedDistId || 'dist-1'}
                 onChange={(e) => handleDistribuidorChange(e.target.value)}
                 disabled={isPending}
-                className="w-full p-3 rounded-2xl bg-black/50 border border-white/20 text-sm font-bold text-white focus:outline-none focus:border-[#C49A68] cursor-pointer"
+                className="w-full p-3 rounded-2xl bg-white border border-slate-300 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-[#741C2B] focus:ring-1 focus:ring-[#741C2B]/20 cursor-pointer shadow-xs"
               >
                 {DISTRIBUIDORES_OFICIALES.map((d) => (
-                  <option key={d.id} value={d.id} className="bg-[#1A060B] text-white font-sans py-1">
+                  <option key={d.id} value={d.id} className="bg-white text-[#0F172A] font-sans py-1">
                     {d.nombre} ({d.ciudad}) — {d.especialidad}
                   </option>
                 ))}
-                <option value="otro" className="bg-[#1A060B] text-white font-sans py-1">
+                <option value="otro" className="bg-white text-[#0F172A] font-sans py-1">
                   Otro Distribuidor / Proveedor Personalizado...
                 </option>
               </select>
 
               {/* Ficha técnica del distribuidor seleccionado */}
               {distribuidorActivo && (
-                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 text-xs grid grid-cols-1 md:grid-cols-2 gap-2 text-white/80">
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-xs grid grid-cols-1 md:grid-cols-2 gap-2 text-[#475569] shadow-2xs">
                   <div>
-                    <span className="text-white/50 block text-[10px] uppercase font-bold">Especialidad de Materiales:</span>
-                    <span className="text-[#E5BE90] font-semibold">{distribuidorActivo.especialidad}</span>
+                    <span className="text-[#64748B] block text-[10px] uppercase font-bold">Especialidad de Materiales:</span>
+                    <span className="text-[#741C2B] font-bold">{distribuidorActivo.especialidad}</span>
                   </div>
                   <div>
-                    <span className="text-white/50 block text-[10px] uppercase font-bold">Contacto Oficial:</span>
-                    <span className="text-white font-medium">{distribuidorActivo.contacto} · NIT: {distribuidorActivo.nit}</span>
+                    <span className="text-[#64748B] block text-[10px] uppercase font-bold">Contacto Oficial:</span>
+                    <span className="text-[#0F172A] font-medium">{distribuidorActivo.contacto} · NIT: {distribuidorActivo.nit}</span>
                   </div>
                 </div>
               )}
@@ -278,30 +278,30 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
             {selectedDistId === 'otro' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-extrabold text-[#E5BE90] uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-black text-[#741C2B] uppercase tracking-wider mb-1">
                     Nombre del Proveedor *
                   </label>
                   <input
                     {...register('proveedorNombre')}
                     disabled={isPending}
                     placeholder="Ej. Confecciones Textiles S.A.S"
-                    className="w-full p-3 rounded-2xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:outline-none focus:border-[#C49A68]"
+                    className="w-full p-3 rounded-2xl bg-white border border-slate-300 text-sm font-semibold text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-xs"
                   />
                   {errors.proveedorNombre && (
-                    <span className="text-xs font-bold text-[#F87171] mt-1 block">
+                    <span className="text-xs font-bold text-rose-700 mt-1 block">
                       {errors.proveedorNombre.message}
                     </span>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-extrabold text-[#E5BE90] uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-black text-[#741C2B] uppercase tracking-wider mb-1">
                     Contacto / Teléfono
                   </label>
                   <input
                     {...register('proveedorContacto')}
                     disabled={isPending}
                     placeholder="Ej. ventas@proveedor.com · Tel: +57 300..."
-                    className="w-full p-3 rounded-2xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:outline-none focus:border-[#C49A68]"
+                    className="w-full p-3 rounded-2xl bg-white border border-slate-300 text-sm font-semibold text-[#0F172A] focus:outline-none focus:border-[#741C2B] shadow-xs"
                   />
                 </div>
               </div>
@@ -311,11 +311,11 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
             <div className="pt-2">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-[#E5BE90]" />
+                  <h3 className="text-xs font-black text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-[#741C2B]" />
                     <span>Prendas a Solicitar con sus Materiales y Tallas</span>
                   </h3>
-                  <p className="text-[11px] text-white/50">
+                  <p className="text-[11px] text-[#475569] font-medium">
                     Selecciona cada referencia del catálogo. El costo por mayor se autoliquida con descuento respecto al precio de venta.
                   </p>
                 </div>
@@ -323,7 +323,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                   type="button"
                   onClick={() => append({ productoId: 0, varianteId: 0, cantidadPedida: 20, costoUnitarioCop: undefined })}
                   disabled={isPending}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#C49A68]/20 text-[#E5BE90] border border-[#C49A68]/40 hover:bg-[#C49A68]/30 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#F8FAFC] text-[#741C2B] border border-slate-300 hover:bg-slate-100 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Agregar Otra Prenda</span>
@@ -331,7 +331,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
               </div>
 
               {errors.lineas && (
-                <span className="text-xs font-bold text-[#F87171] mb-2 block">
+                <span className="text-xs font-bold text-rose-700 mb-2 block">
                   {errors.lineas.message}
                 </span>
               )}
@@ -349,24 +349,24 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                   return (
                     <div
                       key={field.id}
-                      className="p-4 rounded-2xl bg-white/[0.04] border border-white/15 space-y-3 relative transition-all hover:border-[#C49A68]/50"
+                      className="p-4 rounded-2xl bg-[#F8FAFC] border border-slate-200 space-y-3 relative transition-all hover:border-[#741C2B]/50 shadow-2xs"
                     >
                       {/* Fila 1: Selección de Producto y Talla/Color */}
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
                         {/* Selector de Producto */}
                         <div className="md:col-span-5">
-                          <label className="block text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase tracking-wider mb-1">
                             Prenda / Referencia
                           </label>
                           <select
                             value={currentProdId || 0}
                             onChange={(e) => handleProductoSelect(index, Number(e.target.value))}
                             disabled={isPending}
-                            className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-[#C49A68] cursor-pointer"
+                            className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-[#0F172A] focus:border-[#741C2B] cursor-pointer shadow-xs"
                           >
                             <option value={0}>-- Selecciona una Prenda --</option>
                             {productos.map((prod) => (
-                              <option key={prod.id} value={prod.id} className="bg-[#1A060B] text-white">
+                              <option key={prod.id} value={prod.id} className="bg-white text-[#0F172A]">
                                 {prod.nombre} ({prod.categoriaNombre})
                               </option>
                             ))}
@@ -375,20 +375,20 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
                         {/* Selector de Variante (Talla y Color) */}
                         <div className="md:col-span-4">
-                          <label className="block text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase tracking-wider mb-1">
                             Talla, Color y SKU
                           </label>
                           <select
                             value={currentVarId || 0}
                             onChange={(e) => handleVarianteSelect(index, Number(e.target.value), currentProdId)}
                             disabled={isPending || !currentProd}
-                            className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-mono font-bold text-white focus:border-[#C49A68] cursor-pointer disabled:opacity-40"
+                            className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs font-mono font-bold text-[#0F172A] focus:border-[#741C2B] cursor-pointer disabled:opacity-40 shadow-xs"
                           >
                             <option value={0}>
                               {currentProd ? '-- Selecciona Talla / Color --' : '-- Primero elige prenda --'}
                             </option>
                             {currentProd?.variantes.map((v) => (
-                              <option key={v.id} value={v.id} className="bg-[#1A060B] text-white">
+                              <option key={v.id} value={v.id} className="bg-white text-[#0F172A]">
                                 Talla {v.talla} · {v.color} ({v.sku})
                               </option>
                             ))}
@@ -397,7 +397,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
                         {/* Cantidad a pedir */}
                         <div className="md:col-span-2">
-                          <label className="block text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase tracking-wider mb-1">
                             Cantidad (Uds)
                           </label>
                           <input
@@ -407,7 +407,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                               valueAsNumber: true,
                             })}
                             disabled={isPending}
-                            className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-mono font-bold text-center text-white focus:border-[#C49A68]"
+                            className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs font-mono font-black text-center text-[#0F172A] focus:border-[#741C2B] shadow-xs"
                           />
                         </div>
 
@@ -417,7 +417,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                             type="button"
                             onClick={() => remove(index)}
                             disabled={fields.length === 1 || isPending}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-rose-950/60 text-white/50 hover:text-rose-400 transition-colors disabled:opacity-30 cursor-pointer"
+                            className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-rose-50 text-slate-400 hover:text-rose-700 transition-colors disabled:opacity-30 cursor-pointer shadow-2xs"
                             title="Eliminar línea"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -427,30 +427,30 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
                       {/* Fila 2: Descripción de Materiales y Comparativa Mayorista */}
                       {currentProd && (
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                        <div className="p-3 rounded-xl bg-white border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-2xs">
                           {/* Materiales y Confección */}
                           <div className="flex-1">
-                            <span className="text-[10px] uppercase font-bold text-[#C49A68] flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 text-[#E5BE90]" />
+                            <span className="text-[10px] uppercase font-black text-[#741C2B] flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-[#741C2B]" />
                               Materiales y Especificaciones Técnicas:
                             </span>
-                            <p className="text-white/80 text-[11px] font-sans mt-0.5 leading-relaxed">
+                            <p className="text-[#475569] text-[11px] font-sans font-medium mt-0.5 leading-relaxed">
                               {currentProd.descripcion}
                             </p>
                           </div>
 
                           {/* Comparativa PVP vs Costo Mayorista */}
-                          <div className="flex items-center gap-4 shrink-0 bg-white/[0.04] px-3.5 py-2 rounded-xl border border-white/10">
+                          <div className="flex items-center gap-4 shrink-0 bg-[#F8FAFC] px-3.5 py-2 rounded-xl border border-slate-200">
                             <div>
-                              <span className="text-[10px] text-white/50 block font-bold uppercase">PVP Tienda:</span>
-                              <span className="font-mono font-bold text-white line-through decoration-white/40">
+                              <span className="text-[10px] text-[#64748B] block font-bold uppercase">PVP Tienda:</span>
+                              <span className="font-mono font-bold text-[#0F172A] line-through decoration-slate-400">
                                 ${((currentVar?.precioVentaCop || 0)).toLocaleString('es-CO')}
                               </span>
                             </div>
 
-                            <div className="border-l border-white/10 pl-3">
-                              <span className="text-[10px] text-[#E5BE90] block font-bold uppercase">Costo Mayorista:</span>
-                              <div className="flex items-center gap-1 font-mono font-black text-emerald-400">
+                            <div className="border-l border-slate-200 pl-3">
+                              <span className="text-[10px] text-[#741C2B] block font-bold uppercase">Costo Mayorista:</span>
+                              <div className="flex items-center gap-1 font-mono font-black text-emerald-800">
                                 <span>$</span>
                                 <input
                                   type="number"
@@ -459,14 +459,14 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                                     valueAsNumber: true,
                                   })}
                                   disabled={isPending}
-                                  className="w-24 bg-black/60 border border-emerald-500/40 rounded px-1.5 py-0.5 text-xs font-mono text-right text-emerald-300 focus:outline-none focus:border-emerald-400"
+                                  className="w-24 bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs font-mono text-right text-emerald-800 focus:outline-none focus:border-emerald-600 font-black"
                                 />
                               </div>
                             </div>
 
-                            <div className="border-l border-white/10 pl-3 text-right">
-                              <span className="text-[10px] text-white/50 block font-bold uppercase">Subtotal Línea:</span>
-                              <span className="font-mono font-extrabold text-[#E5BE90]">
+                            <div className="border-l border-slate-200 pl-3 text-right">
+                              <span className="text-[10px] text-[#64748B] block font-bold uppercase">Subtotal Línea:</span>
+                              <span className="font-mono font-black text-[#741C2B]">
                                 ${(currentCant * currentCosto).toLocaleString('es-CO')} COP
                               </span>
                             </div>
@@ -481,7 +481,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
             {/* Observaciones de la orden */}
             <div>
-              <label htmlFor="notas" className="block text-xs font-extrabold text-[#E5BE90] uppercase tracking-wider mb-1.5">
+              <label htmlFor="notas" className="block text-xs font-black text-[#741C2B] uppercase tracking-wider mb-1.5">
                 Notas y Trazabilidad del Envío (opcional)
               </label>
               <textarea
@@ -490,21 +490,21 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                 disabled={isPending}
                 rows={2}
                 placeholder="Observaciones de despacho, transportadora, número de guía..."
-                className="w-full p-3 rounded-2xl bg-black/40 border border-white/15 text-xs font-semibold text-white placeholder-white/40 focus:outline-none focus:border-[#C49A68] resize-none"
+                className="w-full p-3 rounded-2xl bg-white border border-slate-300 text-xs font-semibold text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#741C2B] resize-none shadow-xs"
               />
             </div>
           </div>
 
           {/* Footer con Resumen Financiero y Botón de Emisión */}
-          <div className="p-6 border-t border-white/10 bg-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-6 border-t border-slate-200 bg-[#F8FAFC] flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6 text-xs">
               <div>
-                <span className="text-white/50 block text-[10px] uppercase font-bold">Total Prendas:</span>
-                <span className="font-mono text-base font-black text-white">{totalUnidades.toLocaleString()} unds</span>
+                <span className="text-[#64748B] block text-[10px] uppercase font-bold">Total Prendas:</span>
+                <span className="font-mono text-base font-black text-[#0F172A]">{totalUnidades.toLocaleString()} unds</span>
               </div>
-              <div className="border-l border-white/15 pl-6">
-                <span className="text-[#E5BE90] block text-[10px] uppercase font-bold">Total Inversión Mayorista:</span>
-                <span className="font-mono text-base font-black text-emerald-400">${totalCostoCop.toLocaleString('es-CO')} COP</span>
+              <div className="border-l border-slate-200 pl-6">
+                <span className="text-[#741C2B] block text-[10px] uppercase font-bold">Total Inversión Mayorista:</span>
+                <span className="font-mono text-base font-black text-emerald-800">${totalCostoCop.toLocaleString('es-CO')} COP</span>
               </div>
             </div>
 
@@ -513,14 +513,14 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                 type="button"
                 onClick={onClose}
                 disabled={isPending}
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-semibold bg-white/[0.07] border border-white/[0.14] text-white/80 hover:bg-white/[0.15] hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-white border border-slate-300 text-[#0F172A] hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isPending || totalUnidades === 0}
-                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-[#741C2B] to-[#912537] hover:from-[#912537] hover:to-[#A32E43] text-white border border-[#C49A68]/30 shadow-lg shadow-[#741C2B]/40 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-black bg-[#741C2B] hover:bg-[#5A1420] text-white shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isPending ? (
                   <>
@@ -529,7 +529,7 @@ export const CompraModal = ({ isOpen, onClose, onSuccess }: Props) => {
                   </>
                 ) : (
                   <>
-                    <Plus className="w-4 h-4 text-[#E5BE90]" />
+                    <Plus className="w-4 h-4 text-white" />
                     <span>Crear Orden de Abastecimiento</span>
                   </>
                 )}

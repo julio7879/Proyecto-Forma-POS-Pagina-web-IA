@@ -287,7 +287,7 @@ export const AdminLayout: React.FC = () => {
         <div className="max-w-md w-full p-8 sm:p-10 rounded-3xl bg-white border border-[#E7E0D8] shadow-lg relative z-10">
           {/* Logo y Encabezado */}
           <div className="text-center mb-7 flex flex-col items-center">
-            <FormaLogo variant="full" size="lg" theme="light" className="mb-4" />
+            <FormaLogo variant="full" size="lg" theme={theme} className="mb-4" />
             <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#741C2B] block mb-1">
               Portal 3 • Gestión Central
             </span>

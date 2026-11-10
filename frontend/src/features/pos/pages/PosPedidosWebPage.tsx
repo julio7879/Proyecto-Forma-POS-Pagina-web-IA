@@ -375,7 +375,10 @@ export const PosPedidosWebPage: React.FC = () => {
                           <span className="whitespace-nowrap text-xs text-stone-500 font-medium">
                             {fechaBogotaStr}
                           </span>
-                          {/* Badge de Bandeja Compartida o Bloqueo por Sede */}
+                          {/* Badge de Sede Asignada y Bandeja Compartida */}
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-stone-100 text-stone-900 border border-stone-300 whitespace-nowrap">
+                            Sede: {pedido.sedeAsignada}
+                          </span>
                           {pedido.estado === 'RECIBIDO' || pedido.estado === 'CONFIRMADO' ? (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-950 border border-amber-300 whitespace-nowrap">
                               Bandeja Compartida · Disponible para Tomar
@@ -428,10 +431,10 @@ export const PosPedidosWebPage: React.FC = () => {
                     {/* Derecha: Total y Badge de Estado */}
                     <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                       <div className="text-left sm:text-right">
-                        <span className="block font-mono text-xs sm:text-sm font-black text-[#059669] whitespace-nowrap">
+                        <span className="block font-mono text-xs sm:text-sm font-black text-[#1C1311] whitespace-nowrap">
                           Total: {formatCOP(pedido.totalCOP)} COP
                         </span>
-                        <span className="text-[11px] text-stone-500 font-medium whitespace-nowrap">
+                        <span className="text-[11px] text-stone-600 font-bold whitespace-nowrap">
                           {pedido.productos.length} {pedido.productos.length === 1 ? 'prenda' : 'prendas'}
                         </span>
                       </div>
