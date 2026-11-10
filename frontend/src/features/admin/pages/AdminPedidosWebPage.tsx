@@ -24,6 +24,7 @@ import {
 } from '../components';
 import {
   getWebOrders,
+  syncWebOrdersFromApi,
   registrarPagoWeb,
   eliminarPedidoWeb,
   transicionarPedidoWeb,
@@ -97,6 +98,7 @@ export const AdminPedidosWebPage: React.FC = () => {
 
   useEffect(() => {
     syncPedidos();
+    syncWebOrdersFromApi().then(() => syncPedidos()).catch(() => {});
     window.addEventListener(WEB_ORDERS_EVENT, syncPedidos);
     window.addEventListener('storage', syncPedidos);
     return () => {

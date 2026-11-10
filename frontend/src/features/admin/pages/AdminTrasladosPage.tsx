@@ -523,36 +523,35 @@ export const AdminTrasladosPage: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="Nuevo Despacho o Traslado entre Sedes"
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
         >
-          <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D8]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#741C2B]/10 text-[#741C2B] flex items-center justify-center border border-[#741C2B]/20">
-                  <Truck className="w-4 h-4" />
+          <div className="modal-opaque bg-[#171412] text-white rounded-3xl border border-white/15 shadow-2xl w-full max-w-2xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#741C2B]/30 text-[#C49A68] flex items-center justify-center border border-[#741C2B]/40">
+                  <Truck className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-[#292827]">
+                  <h2 className="text-base sm:text-lg font-black text-white">
                     Nuevo Despacho / Traslado entre Sedes
                   </h2>
-                  <p className="text-xs text-[#77736E]">
-                    Registre una orden de traslado logístico desde Bodega Central o entre puntos de
-                    venta.
+                  <p className="text-xs text-slate-300">
+                    Registre una orden de traslado logístico desde Bodega Central o entre puntos de venta.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCrearOpen(false)}
-                className="p-1.5 rounded-lg text-[#77736E] hover:text-[#292827] hover:bg-[#F5F3EF] cursor-pointer"
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {errorCrear && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-[#C44848] flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs font-bold text-rose-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                 <span>{errorCrear}</span>
               </div>
             )}
@@ -560,32 +559,32 @@ export const AdminTrasladosPage: React.FC = () => {
             <form onSubmit={handleCrearTrasladoSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-[#292827] mb-1.5">
+                  <label className="block font-black text-slate-200 uppercase tracking-wider text-[11px] mb-1.5">
                     Sede de Origen (Salida) *
                   </label>
                   <select
                     value={origenId}
                     onChange={(e) => setOrigenId(Number(e.target.value))}
-                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
+                    className="w-full p-3 bg-[#1E1A18] border border-white/15 rounded-xl font-bold text-white focus:outline-none focus:border-[#C49A68] cursor-pointer"
                   >
                     {SEDES_LOGISTICAS.map((s) => (
-                      <option key={s.id} value={s.id}>
+                      <option key={s.id} value={s.id} className="bg-[#171412] text-white">
                         {s.nombre}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-[#292827] mb-1.5">
+                  <label className="block font-black text-slate-200 uppercase tracking-wider text-[11px] mb-1.5">
                     Sede de Destino (Recepción) *
                   </label>
                   <select
                     value={destinoId}
                     onChange={(e) => setDestinoId(Number(e.target.value))}
-                    className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
+                    className="w-full p-3 bg-[#1E1A18] border border-white/15 rounded-xl font-bold text-white focus:outline-none focus:border-[#C49A68] cursor-pointer"
                   >
                     {SEDES_LOGISTICAS.map((s) => (
-                      <option key={s.id} value={s.id}>
+                      <option key={s.id} value={s.id} className="bg-[#171412] text-white">
                         {s.nombre}
                       </option>
                     ))}
@@ -594,15 +593,15 @@ export const AdminTrasladosPage: React.FC = () => {
               </div>
 
               {/* Líneas de productos */}
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#292827]">
+                  <span className="font-black text-slate-200 uppercase tracking-wider text-[11px]">
                     Prendas / Referencias a Trasladar *
                   </span>
                   <button
                     type="button"
                     onClick={handleAgregarLineaForm}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F5F3EF] hover:bg-[#E7E0D8] text-[#741C2B] font-bold transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-[#C49A68] font-black text-xs transition-colors cursor-pointer border border-white/10"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Agregar Línea</span>
@@ -613,7 +612,7 @@ export const AdminTrasladosPage: React.FC = () => {
                   {lineasNuevas.map((ln, idx) => (
                     <div
                       key={idx}
-                      className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8]"
+                      className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-3 rounded-2xl bg-[#1E1A18] border border-white/15"
                     >
                       <select
                         value={ln.sku}
@@ -623,10 +622,10 @@ export const AdminTrasladosPage: React.FC = () => {
                             prev.map((item, i) => (i === idx ? { ...item, sku: val } : item))
                           );
                         }}
-                        className="flex-1 p-2 bg-white border border-[#E7E0D8] rounded-lg font-medium text-[#292827] focus:outline-none focus:border-[#741C2B]"
+                        className="flex-1 p-2.5 bg-[#171412] border border-white/15 rounded-xl font-medium text-white focus:outline-none focus:border-[#C49A68]"
                       >
                         {CATALOGO_VARIANTES.map((v) => (
-                          <option key={v.sku} value={v.sku}>
+                          <option key={v.sku} value={v.sku} className="bg-[#171412] text-white">
                             {v.detalle}
                           </option>
                         ))}
@@ -646,17 +645,17 @@ export const AdminTrasladosPage: React.FC = () => {
                               )
                             );
                           }}
-                          className="w-24 p-2 bg-white border border-[#E7E0D8] rounded-lg text-right font-mono font-bold text-[#292827] focus:outline-none focus:border-[#741C2B]"
+                          className="w-24 p-2.5 bg-[#171412] border border-white/15 rounded-xl text-right font-mono font-bold text-white focus:outline-none focus:border-[#C49A68]"
                         />
-                        <span className="text-[11px] text-[#77736E] font-semibold">uds</span>
+                        <span className="text-xs text-slate-300 font-semibold">uds</span>
                         {lineasNuevas.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleEliminarLineaForm(idx)}
-                            className="p-1.5 text-[#C44848] hover:bg-rose-50 rounded-lg cursor-pointer"
+                            className="p-2 text-rose-400 hover:bg-rose-500/20 rounded-xl cursor-pointer transition-colors"
                             title="Eliminar línea"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -666,7 +665,7 @@ export const AdminTrasladosPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-[#292827] mb-1.5">
+                <label className="block font-black text-slate-200 uppercase tracking-wider text-[11px] mb-1.5">
                   Observaciones Logísticas (opcional)
                 </label>
                 <input
@@ -674,11 +673,11 @@ export const AdminTrasladosPage: React.FC = () => {
                   value={observacionesNuevo}
                   onChange={(e) => setObservacionesNuevo(e.target.value)}
                   placeholder="Ej. Reposición de curva de tallas para fin de semana..."
-                  className="w-full p-2.5 bg-[#F5F3EF] border border-[#E7E0D8] rounded-xl font-medium text-[#292827] focus:outline-none focus:border-[#741C2B]"
+                  className="w-full p-3 bg-[#1E1A18] border border-white/15 rounded-xl font-medium text-white placeholder-slate-400 focus:outline-none focus:border-[#C49A68]"
                 />
               </div>
 
-              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] cursor-pointer">
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#1E1A18] border border-white/15 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={despacharInmediatamente}
@@ -686,27 +685,27 @@ export const AdminTrasladosPage: React.FC = () => {
                   className="w-4 h-4 accent-[#741C2B] rounded"
                 />
                 <div>
-                  <span className="font-bold text-[#292827] block">
+                  <span className="font-bold text-white block">
                     Marcar como despachado inmediatamente (En Tránsito)
                   </span>
-                  <span className="text-[11px] text-[#77736E]">
+                  <span className="text-[11px] text-slate-300">
                     Si no se marca, quedará en estado Aprobado para despachar luego.
                   </span>
                 </div>
               </label>
 
-              <div className="pt-3 border-t border-[#E7E0D8] flex justify-end gap-2">
+              <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsCrearOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#F5F3EF] hover:bg-[#E7E0D8] text-[#292827] font-semibold cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 font-bold transition-colors cursor-pointer border border-white/10"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isCreando}
-                  className="px-4 py-2 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white font-black shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2 border border-[#741C2B]/40"
                 >
                   {isCreando ? (
                     <>

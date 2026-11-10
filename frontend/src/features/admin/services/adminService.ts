@@ -314,14 +314,55 @@ export const crearSolicitudTraslado = async (
 export const createSolicitudTrasladoLocal = async (
   payload: CrearSolicitudTrasladoLocalDto
 ): Promise<TrasladoDTO> => {
-  return crearSolicitudTraslado({
-    ubicacionDestinoId: payload.destinoId,
-    esEnvioDirecto: payload.despacharInmediatamente,
-    lineas: payload.lineas.map((l) => ({
-      varianteId: l.varianteId,
-      cantidadSolicitada: l.cantidadSolicitada,
-    })),
-  });
+  let resultado: TrasladoDTO;
+  try {
+    resultado = await crearSolicitudTraslado({
+      ubicacionDestinoId: payload.destinoId,
+      esEnvioDirecto: payload.despacharInmediatamente,
+      lineas: payload.lineas.map((l) => ({
+        varianteId: l.varianteId,
+        cantidadSolicitada: l.cantidadSolicitada,
+      })),
+    });
+  } catch {
+    const nuevoId = Date.now();
+    const codigoTrl = `TRL-${String(nuevoId).slice(-4)}`;
+    resultado = {
+      id: nuevoId,
+      codigo: codigoTrl,
+      origenId: payload.origenId,
+      origenNombre: payload.origenNombre,
+      destinoId: payload.destinoId,
+      destinoNombre: payload.destinoNombre,
+      estado: payload.despacharInmediatamente ? 'ENVIADO' : 'APROBADO',
+      fechaSolicitud: new Date().toISOString(),
+      fechaEnvio: payload.despacharInmediatamente ? new Date().toISOString() : undefined,
+      observaciones: payload.observaciones,
+      lineas: payload.lineas.map((l, i) => ({
+        id: nuevoId + i + 1,
+        varianteId: l.varianteId,
+        sku: l.sku || `SKU-${l.varianteId}`,
+        nombreProducto: l.nombreProducto || `Producto ${l.sku}`,
+        cantidadSolicitada: l.cantidadSolicitada,
+        cantidadAprobada: l.cantidadSolicitada,
+        cantidadEnviada: payload.despacharInmediatamente ? l.cantidadSolicitada : 0,
+        recibidaBuena: 0,
+        recibidaDanada: 0,
+      })),
+    };
+  }
+
+  // Guardar en localStorage para disponibilidad inmediata en Admin y POS
+  try {
+    const raw = localStorage.getItem('forma_admin_traslados');
+    const arr = raw ? JSON.parse(raw) : [];
+    const lista = Array.isArray(arr) ? arr : [];
+    localStorage.setItem('forma_admin_traslados', JSON.stringify([resultado, ...lista]));
+  } catch {
+    // noop
+  }
+
+  return resultado;
 };
 
 export const fetchInventario = async (
@@ -389,11 +430,109 @@ export const recibirOrdenCompra = async (
 // ============================================
 export const fetchTraslados = async (estado?: EstadoTraslado): Promise<TrasladoDTO[]> => {
   const query = estado ? `?estado=${estado}` : '';
-  const response = await apiRequest<{ datos: any[] }>(`/traslados${query}`);
-  if (response && Array.isArray(response.datos)) {
-    return response.datos.map(mapBackendTraslado);
+  let apiTraslados: TrasladoDTO[] = [];
+  try {
+    const response = await apiRequest<{ datos: any[] }>(`/traslados${query}`);
+    if (response && Array.isArray(response.datos)) {
+      apiTraslados = response.datos.map(mapBackendTraslado);
+    }
+  } catch {
+    // Modo offline o fallback local
   }
-  return [];
+
+  // Cargar traslados sincronizados en localStorage (creados en POS o Admin)
+  const localTraslados: TrasladoDTO[] = [];
+  try {
+    const rawAdmin = localStorage.getItem('forma_admin_traslados');
+    if (rawAdmin) {
+      const parsed = JSON.parse(rawAdmin);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((t) => localTraslados.push(mapBackendTraslado(t)));
+      }
+    }
+  } catch {
+    // noop
+  }
+
+  // Cargar solicitudes originadas en el POS (forma_pos_solicitudes_traslado) si no están en localTraslados
+  try {
+    const rawPos = localStorage.getItem('forma_pos_solicitudes_traslado');
+    if (rawPos) {
+      const parsedPos = JSON.parse(rawPos);
+      if (Array.isArray(parsedPos)) {
+        parsedPos.forEach((sol: any) => {
+          const yaEnLocal = localTraslados.some((x) => x.codigo === sol.codigo);
+          if (!yaEnLocal) {
+            const solId = typeof sol.id === 'number' ? sol.id : parseInt(String(sol.id).replace(/\D/g, '')) || Date.now();
+            const est: EstadoTraslado =
+              sol.estado === 'RECIBIDA' ? 'RECIBIDO' : sol.estado === 'EN_CAMINO' ? 'ENVIADO' : 'APROBADO';
+            localTraslados.push({
+              id: solId,
+              codigo: sol.codigo,
+              origenId: 1,
+              origenNombre: 'Bodega Central',
+              destinoId: 2,
+              destinoNombre: sol.sedeDestino || 'Sede Destino',
+              estado: est,
+              fechaSolicitud: sol.fechaIso || new Date().toISOString(),
+              fechaEnvio: sol.estado === 'EN_CAMINO' ? sol.fechaIso || new Date().toISOString() : undefined,
+              observaciones: sol.motivo || 'Solicitud de reposición POS',
+              lineas: sol.desgloseTallas && sol.desgloseTallas.length > 0
+                ? sol.desgloseTallas.map((dt: any, idx: number) => ({
+                    id: solId + idx + 1,
+                    varianteId: idx + 1,
+                    sku: dt.sku,
+                    nombreProducto: `${sol.productoNombre} (Talla ${dt.talla})`,
+                    cantidadSolicitada: dt.cantidad,
+                    cantidadAprobada: dt.cantidad,
+                    cantidadEnviada: dt.cantidad,
+                    recibidaBuena: est === 'RECIBIDO' ? dt.cantidad : 0,
+                    recibidaDanada: 0,
+                  }))
+                : [
+                    {
+                      id: solId + 1,
+                      varianteId: 1,
+                      sku: sol.sku,
+                      nombreProducto: sol.productoNombre,
+                      cantidadSolicitada: sol.cantidad,
+                      cantidadAprobada: sol.cantidad,
+                      cantidadEnviada: sol.cantidad,
+                      recibidaBuena: est === 'RECIBIDO' ? sol.cantidad : 0,
+                      recibidaDanada: 0,
+                    },
+                  ],
+            });
+          }
+        });
+      }
+    }
+  } catch {
+    // noop
+  }
+
+  // Fusión inteligente evitando duplicados
+  const mapFinal = new Map<string, TrasladoDTO>();
+  apiTraslados.forEach((t) => {
+    const key = t.codigo || `ID-${t.id}`;
+    mapFinal.set(key, t);
+  });
+  localTraslados.forEach((t) => {
+    const key = t.codigo || `ID-${t.id}`;
+    if (!mapFinal.has(key)) {
+      mapFinal.set(key, t);
+    }
+  });
+
+  const todos = Array.from(mapFinal.values()).sort(
+    (a, b) =>
+      new Date(b.fechaSolicitud || 0).getTime() - new Date(a.fechaSolicitud || 0).getTime()
+  );
+
+  if (estado) {
+    return todos.filter((t) => t.estado === estado);
+  }
+  return todos;
 };
 
 export const despacharTraslado = async (

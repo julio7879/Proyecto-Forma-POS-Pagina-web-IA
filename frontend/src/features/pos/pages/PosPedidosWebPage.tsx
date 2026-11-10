@@ -16,6 +16,7 @@ import {
 import { DetailDrawer, type ActivityTimelineItem } from '../components/DetailDrawer';
 import {
   getWebOrdersBySede,
+  syncWebOrdersFromApi,
   tomarPedidoWebEnSede,
   transicionarPedidoWeb,
   updateWebOrder,
@@ -59,6 +60,7 @@ export const PosPedidosWebPage: React.FC = () => {
       setPedidos(getWebOrdersBySede(sedeActiva));
     };
     sincronizar();
+    syncWebOrdersFromApi().then(() => sincronizar()).catch(() => {});
     window.addEventListener(WEB_ORDERS_EVENT, sincronizar);
     window.addEventListener('storage', sincronizar);
     return () => {

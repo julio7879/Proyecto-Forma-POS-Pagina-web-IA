@@ -1204,16 +1204,16 @@ export const AdminReportesPage: React.FC = () => {
       {pestanaPrincipal === 'centro_reportes' && (
         <div className="space-y-6 animate-fade-in">
           {/* Barra de Filtros y Búsqueda del Hub */}
-          <div className="rounded-2xl bg-white border border-[#E7E0D8] p-4 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="rounded-2xl bg-white dark:bg-[#1E1917] border border-[#E7E0D8] dark:border-white/10 p-4 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             {/* Buscador predictivo */}
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#77736E]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#77736E] dark:text-slate-400" />
               <input
                 type="text"
                 value={hubBusqueda}
                 onChange={(e) => setHubBusqueda(e.target.value)}
                 placeholder="Buscar reporte por nombre, código o área..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] placeholder:text-[#77736E]"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] dark:bg-[#25201D] border border-[#E7E0D8] dark:border-white/15 text-xs font-bold text-[#292827] dark:text-white focus:outline-none focus:border-[#741C2B] placeholder:text-[#77736E] dark:placeholder:text-slate-400"
               />
             </div>
 
@@ -1224,7 +1224,7 @@ export const AdminReportesPage: React.FC = () => {
                 <select
                   value={hubArea}
                   onChange={(e) => setHubArea(e.target.value as any)}
-                  className="px-3 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
+                  className="px-3 py-2.5 rounded-xl bg-[#F5F3EF] dark:bg-[#25201D] border border-[#E7E0D8] dark:border-white/15 text-xs font-bold text-[#292827] dark:text-white focus:outline-none focus:border-[#741C2B] cursor-pointer"
                 >
                   <option value="TODAS">Todas las Áreas de Trabajo</option>
                   <option value="VENTAS">Ventas y Facturación</option>
@@ -1241,7 +1241,7 @@ export const AdminReportesPage: React.FC = () => {
                 <select
                   value={hubOrden}
                   onChange={(e) => setHubOrden(e.target.value as any)}
-                  className="px-3 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] cursor-pointer"
+                  className="px-3 py-2.5 rounded-xl bg-[#F5F3EF] dark:bg-[#25201D] border border-[#E7E0D8] dark:border-white/15 text-xs font-bold text-[#292827] dark:text-white focus:outline-none focus:border-[#741C2B] cursor-pointer"
                 >
                   <option value="A_Z">Orden: A → Z</option>
                   <option value="Z_A">Orden: Z → A</option>
@@ -1256,7 +1256,7 @@ export const AdminReportesPage: React.FC = () => {
             {reportesHubFiltrados.map((rep) => (
               <div
                 key={rep.id}
-                className="rounded-2xl bg-white border border-[#E7E0D8] hover:border-[#741C2B]/40 hover:shadow-md transition-all p-5 flex flex-col justify-between group"
+                className="rounded-2xl bg-white dark:bg-[#1E1917] border border-[#E7E0D8] dark:border-white/10 hover:border-[#741C2B]/40 dark:hover:border-[#C49A68]/60 hover:shadow-md transition-all p-5 flex flex-col justify-between group"
               >
                 <div>
                   {/* Fila Superior con Icono y Badge */}
@@ -1264,32 +1264,32 @@ export const AdminReportesPage: React.FC = () => {
                     <div className="w-12 h-12 rounded-2xl bg-[#27845C]/10 border border-[#27845C]/20 flex items-center justify-center text-[#27845C] group-hover:scale-105 transition-transform shadow-2xs">
                       <FileSpreadsheet className="w-6 h-6" />
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-[#F5F3EF] border border-[#E7E0D8] text-[10px] font-black uppercase tracking-wider text-[#741C2B]">
+                    <span className="px-2.5 py-1 rounded-lg bg-[#F5F3EF] dark:bg-[#25201D] border border-[#E7E0D8] dark:border-white/10 text-[10px] font-black uppercase tracking-wider text-[#741C2B] dark:text-[#E5BE90]">
                       {rep.codigo}
                     </span>
                   </div>
 
                   {/* Título y Descripción */}
-                  <h3 className="text-sm font-extrabold text-[#292827] font-display line-clamp-1 mb-1 group-hover:text-[#741C2B] transition-colors">
+                  <h3 className="text-sm font-extrabold text-[#292827] dark:text-white font-display line-clamp-1 mb-1 group-hover:text-[#741C2B] dark:group-hover:text-[#E5BE90] transition-colors">
                     {rep.titulo}
                   </h3>
-                  <p className="text-[11px] text-[#77736E] leading-relaxed line-clamp-2 mb-4">
+                  <p className="text-[11px] text-[#77736E] dark:text-slate-300 leading-relaxed line-clamp-2 mb-4 font-medium">
                     {rep.descripcion}
                   </p>
 
                   {/* Metadatos */}
-                  <div className="space-y-1.5 p-3 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8]/60 text-[11px] mb-4">
+                  <div className="space-y-1.5 p-3 rounded-xl bg-[#F5F3EF] dark:bg-[#25201D] border border-[#E7E0D8]/60 dark:border-white/10 text-[11px] mb-4">
                     <div className="flex justify-between">
-                      <span className="text-[#77736E]">Área:</span>
-                      <strong className="text-[#292827]">{rep.areaTrabajo}</strong>
+                      <span className="text-[#77736E] dark:text-slate-400 font-semibold">Área:</span>
+                      <strong className="text-[#292827] dark:text-white">{rep.areaTrabajo}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#77736E]">Autor:</span>
-                      <span className="text-[#292827] font-medium">{rep.autor}</span>
+                      <span className="text-[#77736E] dark:text-slate-400 font-semibold">Autor:</span>
+                      <span className="text-[#292827] dark:text-white font-medium">{rep.autor}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#77736E]">Frecuencia:</span>
-                      <span className="text-[#741C2B] font-bold">{rep.frecuencia}</span>
+                      <span className="text-[#77736E] dark:text-slate-400 font-semibold">Frecuencia:</span>
+                      <span className="text-[#741C2B] dark:text-[#E5BE90] font-bold">{rep.frecuencia}</span>
                     </div>
                   </div>
                 </div>

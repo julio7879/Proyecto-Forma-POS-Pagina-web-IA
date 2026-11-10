@@ -168,6 +168,10 @@
 .admin-light-canvas [class*="text-[#292827]"] {
   color: #0F172A !important;
 }
+.admin-light-canvas [class*="text-[#1C1311]"],
+.admin-light-canvas [class*="text-[#1c1311]"] {
+  color: #0F172A !important;
+}
 .admin-light-canvas [class*="placeholder-[#77736E]"]::placeholder {
   color: #64748B !important;
 }
@@ -340,6 +344,27 @@
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
+/* Modales, Diálogos y Drawers en Modo Noche: Siempre sólidos y 100% opacos para legibilidad */
+.admin-dark-canvas .fixed.inset-0 > div,
+.admin-dark-canvas [role="dialog"] > div,
+.admin-dark-canvas [role="dialog"],
+.admin-dark-canvas .modal-opaque,
+.admin-dark-canvas [class*="fixed"][class*="inset-0"] [class*="rounded-2xl"],
+.admin-dark-canvas [class*="fixed"][class*="inset-0"] [class*="rounded-3xl"] {
+  background-color: #171412 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85) !important;
+  color: #F8FAFC !important;
+}
+
+.admin-dark-canvas .fixed.inset-0 > div .bg-[#FAF8F5],
+.admin-dark-canvas .fixed.inset-0 > div .bg-[#F5F3EF],
+.admin-dark-canvas [role="dialog"] .bg-[#FAF8F5],
+.admin-dark-canvas [role="dialog"] .bg-[#F5F3EF] {
+  background-color: #1E1A18 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
 .admin-dark-canvas [class*="bg-[#F5F3EF]"] {
   background-color: rgba(255, 255, 255, 0.07) !important;
 }
@@ -348,6 +373,26 @@
 }
 .admin-dark-canvas [class*="text-[#292827]"] {
   color: #F8FAFC !important;
+}
+.admin-dark-canvas [class*="text-[#1C1311]"],
+.admin-dark-canvas [class*="text-[#1c1311]"] {
+  color: #FFFFFF !important;
+}
+.admin-dark-canvas [class*="bg-[#FAF8F5]"] {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.admin-dark-canvas [class*="bg-stone-100"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.admin-dark-canvas [class*="text-stone-700"],
+.admin-dark-canvas [class*="text-stone-800"] {
+  color: #F8FAFC !important;
+}
+.admin-dark-canvas [class*="text-stone-600"] {
+  color: #CBD5E1 !important;
+}
+.admin-dark-canvas [class*="border-stone-300"] {
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 .admin-dark-canvas [class*="text-[#77736E]"] {
   color: #94A3B8 !important;
@@ -375,6 +420,26 @@
   color: #CBD5E1 !important;
   background-color: rgba(255, 255, 255, 0.04) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+
+.admin-dark-canvas thead[class*="bg-[#741C2B]"] th,
+.admin-dark-canvas tr[class*="bg-[#741C2B]"] th,
+.admin-dark-canvas th[class*="bg-[#741C2B]"] {
+  color: #FFFFFF !important;
+  background-color: #741C2B !important;
+  border-bottom: 1px solid rgba(196, 154, 104, 0.30) !important;
+}
+
+.admin-dark-canvas [role="dialog"] select,
+.admin-dark-canvas [role="dialog"] input {
+  background-color: #241E1C !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+.admin-dark-canvas [role="dialog"] select option {
+  background-color: #1E1917 !important;
+  color: #FFFFFF !important;
 }
 
 .admin-dark-canvas table td {

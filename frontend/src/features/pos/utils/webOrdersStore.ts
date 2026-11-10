@@ -15,55 +15,6 @@ import { apiRequest } from '../../../api/apiClient';
 
 const KEY_GLOBAL = 'forma_pedidos_web_global';
 
-// Purga inmediata de pedidos de prueba huérfanos específicos ($548.000 / $540.000 / $73.000)
-if (typeof window !== 'undefined') {
-  try {
-    const keysToCheck: string[] = ['forma_ultimo_pedido', KEY_GLOBAL];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('forma_pedidos_')) {
-        keysToCheck.push(k);
-      }
-    }
-    keysToCheck.forEach((key) => {
-      const raw = localStorage.getItem(key);
-      if (!raw) return;
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          const limpios = parsed.filter(
-            (p: any) =>
-              p &&
-              p.totalCOP !== 548000 &&
-              p.totalCOP !== 540000 &&
-              p.totalCOP !== 73000 &&
-              p.subtotalCOP !== 548000 &&
-              p.subtotalCOP !== 540000 &&
-              p.subtotalCOP !== 73000
-          );
-          if (limpios.length !== parsed.length) {
-            localStorage.setItem(key, JSON.stringify(limpios));
-          }
-        } else if (
-          parsed &&
-          (parsed.totalCOP === 548000 ||
-            parsed.totalCOP === 540000 ||
-            parsed.totalCOP === 73000 ||
-            parsed.subtotalCOP === 548000 ||
-            parsed.subtotalCOP === 540000 ||
-            parsed.subtotalCOP === 73000)
-        ) {
-          localStorage.removeItem(key);
-        }
-      } catch {
-        /* noop */
-      }
-    });
-  } catch {
-    /* noop */
-  }
-}
-
 export type EstadoPedidoWeb =
   | 'RECIBIDO'
   | 'CONFIRMADO'
@@ -272,23 +223,7 @@ export const getWebOrders = (): PedidoWebRecord[] => {
   try {
     const raw = localStorage.getItem(KEY_GLOBAL);
     const arr = raw ? JSON.parse(raw) : [];
-    // Purga proactiva de pedidos de prueba huérfanos de $540.000 / $548.000 / $73.000
-    const filtrados = Array.isArray(arr)
-      ? arr.filter(
-          (p) =>
-            p &&
-            p.totalCOP !== 540000 &&
-            p.subtotalCOP !== 540000 &&
-            p.totalCOP !== 548000 &&
-            p.subtotalCOP !== 548000 &&
-            p.totalCOP !== 73000 &&
-            p.subtotalCOP !== 73000
-        )
-      : [];
-    if (Array.isArray(arr) && arr.length !== filtrados.length) {
-      localStorage.setItem(KEY_GLOBAL, JSON.stringify(filtrados));
-    }
-    return filtrados;
+    return Array.isArray(arr) ? arr : [];
   } catch {
     return [];
   }
@@ -729,4 +664,90 @@ export const resetWebOrders = () => {
     /* noop */
   }
   emitir();
+};
+
+/**
+ * Sincroniza pedidos web desde el backend PostgreSQL (/api/pedidos-web)
+ * hacia el almacén local compartido (KEY_GLOBAL).
+ */
+export const syncWebOrdersFromApi = async (): Promise<PedidoWebRecord[]> => {
+  try {
+    const resp = await apiRequest<{ ok: boolean; datos: any[] }>('/pedidos-web');
+    if (!resp || !Array.isArray(resp.datos)) {
+      return getWebOrders();
+    }
+
+    const pedidosApi: PedidoWebRecord[] = resp.datos.map((d: any) => {
+      const lineas: ProductoPedidoWeb[] = Array.isArray(d.lineas)
+        ? d.lineas.map((l: any) => ({
+            id: l.id || l.varianteId || 1,
+            sku: l.variante?.sku || l.sku || 'SKU-WEB',
+            nombre: l.variante?.producto?.nombre || l.nombre || 'Prenda FORMA',
+            talla: l.variante?.talla || l.talla || 'Única',
+            color: l.variante?.color || l.color || 'Estándar',
+            cantidad: Number(l.cantidad) || 1,
+            precioUnitarioCOP: Number(l.precioUnitario) || 0,
+            imagenUrl: l.variante?.producto?.imagenUrl || '/products/blazer-imperial-vinotinto.png',
+            sedeDespacho: d.ubicacionAsignada?.nombre || 'Bodega Central',
+          }))
+        : [];
+
+      return {
+        codigo: d.codigo,
+        fechaCreacionIso: d.fechaCreacion ? new Date(d.fechaCreacion).toISOString() : new Date().toISOString(),
+        cliente: d.cliente?.nombreCompleto || 'Cliente Web',
+        emailCliente: d.cliente?.correo || 'cliente@forma.com',
+        telefono: d.cliente?.telefono || '',
+        documento: d.cliente?.numeroDocumento || '',
+        ciudadDestino: d.municipioDestino?.nombre
+          ? `${d.municipioDestino.nombre} (${d.municipioDestino.departamento || 'Colombia'})`
+          : 'Colombia',
+        codigoDaneDestino: d.municipioDestino?.codigoDane || '54001',
+        direccionEntrega: d.direccionEntrega || 'Dirección no especificada',
+        sedeAsignada: d.ubicacionAsignada?.nombre || 'Bodega Central',
+        metodoPago: d.metodoPago || 'TRANSFERENCIA',
+        metodoPagoTexto: d.metodoPago === 'CONTRAENTREGA' ? 'Pago Contra Entrega' : 'Transferencia Bancaria QR',
+        subtotalCOP: Number(d.subtotal) || 0,
+        ivaCOP: Number(d.iva) || 0,
+        fleteCOP: Number(d.flete) || 0,
+        totalCOP: Number(d.total) || 0,
+        estado: (d.estadoPedido as EstadoPedidoWeb) || 'RECIBIDO',
+        estadoCobro: d.estadoPago === 'PAGADO' ? 'PAGADO' : 'PENDIENTE_VERIFICACION',
+        guiaTransportadora: d.guiaTransporte || undefined,
+        transportadora: d.transportadora || undefined,
+        observaciones: d.observaciones || undefined,
+        productos: lineas,
+        historial: [
+          nuevoEvento(
+            'Pedido registrado en sistema',
+            d.cliente?.nombreCompleto || 'Sistema Web',
+            `Estado: ${d.estadoPedido}`,
+            (d.estadoPedido as EstadoPedidoWeb) || 'RECIBIDO'
+          ),
+        ],
+      };
+    });
+
+    const existentes = getWebOrders();
+    const mapa = new Map<string, PedidoWebRecord>();
+    existentes.forEach((p) => mapa.set(p.codigo, p));
+    pedidosApi.forEach((p) => {
+      const prev = mapa.get(p.codigo);
+      if (prev && prev.historial && prev.historial.length > p.historial.length) {
+        mapa.set(p.codigo, { ...p, historial: prev.historial });
+      } else {
+        mapa.set(p.codigo, p);
+      }
+    });
+
+    const listaFinal = Array.from(mapa.values()).sort(
+      (a, b) => new Date(b.fechaCreacionIso).getTime() - new Date(a.fechaCreacionIso).getTime()
+    );
+
+    guardar(listaFinal);
+    return listaFinal;
+  } catch (err) {
+    console.warn('No se pudo sincronizar pedidos web desde API:', err);
+    return getWebOrders();
+  }
 };

@@ -222,17 +222,17 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
   const formatCOP = (num: number) => `$${num.toLocaleString('es-CO')} COP`;
 
   return (
-    <div className="relative rounded-3xl p-6 sm:p-7 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-white/20 group">
+    <div className="relative rounded-3xl p-6 sm:p-7 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-black/10 dark:hover:border-white/20 group">
       {/* Bisel superior especular suave */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
 
       {/* Cabecera en Español: "Ventas por Horas" */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
-          <h3 className="text-base sm:text-lg font-bold text-white tracking-wide font-sans">
+          <h3 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-white tracking-wide font-sans">
             Ventas por Horas
           </h3>
-          <span className="text-[11px] text-white/50 block">
+          <span className="text-[11px] text-[#475569] dark:text-white/60 block font-bold">
             Tendencia de Facturación en Vivo (Ventas Netas) • {sedeSeleccionada}
           </span>
         </div>

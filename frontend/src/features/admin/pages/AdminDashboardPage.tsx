@@ -384,7 +384,7 @@ export const AdminDashboardPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 pb-12 text-white">
+    <div className="space-y-6 pb-12">
       {/* Botones de píldoras accesibles para pruebas automatizadas (sin generar ruido visual) */}
       <div className="sr-only" aria-hidden="false">
         {SEDES_ADMIN_OPTIONS.map((sede) => (
@@ -407,17 +407,17 @@ export const AdminDashboardPage: React.FC = () => {
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
       >
         {/* KPI 1: Ventas Netas */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-white/70">Ventas Netas</span>
-            <span className="px-2 py-0.5 rounded-full bg-[#10B981]/15 border border-[#10B981]/30 text-[#34D399] font-mono text-[10px] font-black">
+            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Ventas Netas</span>
+            <span className="px-2 py-0.5 rounded-full bg-[#10B981]/15 border border-[#10B981]/30 text-[#047857] dark:text-[#34D399] font-mono text-[10px] font-black">
               {kpi.variacionTexto}
             </span>
           </div>
           <div
             data-testid="kpi-ventas-netas"
-            className="text-2xl sm:text-3xl font-display font-extrabold text-white tracking-tight tabular-nums mt-1"
+            className="text-2xl sm:text-3xl font-display font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
           >
             {kpi.ventasNetasTexto}
           </div>
@@ -441,36 +441,36 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* KPI 3: Pedidos Web */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-white/70">Pedidos Web Activos</span>
+            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Pedidos Web Activos</span>
             <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
           </div>
           <div
             data-testid="kpi-pedidos-activos"
-            className="text-2xl sm:text-3xl font-display font-extrabold text-white tracking-tight tabular-nums mt-1"
+            className="text-2xl sm:text-3xl font-display font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
           >
             {kpi.pedidosActivosTexto}
           </div>
         </div>
 
         {/* KPI 4: Estado de Cajas */}
-        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+        <div className="relative rounded-3xl admin-glass-panel p-5 shadow-xl hover:border-black/10 dark:hover:border-white/20 transition-all group overflow-hidden flex flex-col justify-between min-h-[95px]">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 dark:via-white/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-white/70">Estado de Caja</span>
+            <span className="text-xs font-bold text-[#475569] dark:text-white/70">Estado de Caja</span>
             <span
               className={`w-2.5 h-2.5 rounded-full ${
                 kpi.cajaAbierta
                   ? 'bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                  : 'bg-white/30'
+                  : 'bg-slate-400 dark:bg-white/30'
               }`}
             />
           </div>
           <div
             data-testid="kpi-estado-caja"
-            className="text-xl sm:text-2xl font-display font-extrabold text-white tracking-tight mt-1 truncate"
+            className="text-xl sm:text-2xl font-display font-black text-[#0F172A] dark:text-white tracking-tight mt-1 truncate"
           >
             {kpi.cajaEstado}
           </div>

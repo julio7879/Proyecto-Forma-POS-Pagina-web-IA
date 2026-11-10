@@ -108,16 +108,16 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
   });
 
   return (
-    <div className="relative rounded-3xl p-6 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-white/20 flex flex-col justify-between h-full">
+    <div className="relative rounded-3xl p-6 overflow-hidden admin-glass-panel shadow-xl transition-all duration-300 hover:border-black/10 dark:hover:border-white/20 flex flex-col justify-between h-full">
       {/* Bisel superior especular suave */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 dark:via-white/20 to-transparent pointer-events-none" />
 
       {/* Cabecera */}
       <div>
-        <h3 className="text-base sm:text-lg font-bold text-white tracking-wide font-sans">
+        <h3 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-white tracking-wide font-sans">
           Participación Comercial por Sede
         </h3>
-        <span className="text-[11px] text-white/50 block">
+        <span className="text-[11px] text-[#475569] dark:text-white/60 block font-bold">
           Distribución de Facturación entre Puntos Físicos
         </span>
       </div>
@@ -186,7 +186,7 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
       </div>
 
       {/* Leyenda limpia y ordenada por sedes en 2x2 estilo Homelab Glass */}
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/[0.08]">
+      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-white/[0.08]">
         {sedes.map((s) => {
           const isSelected = sedeActiva === s.sedeKey;
           return (

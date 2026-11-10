@@ -89,16 +89,14 @@ export const AdminLayout: React.FC = () => {
       : 'Todas las Sedes (Consolidado)';
   });
 
-  // Tema Día (Claro) / Noche (Oscuro)
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('forma_admin_theme') as 'dark' | 'light') || 'dark';
-  });
+  // Modo Día Oficial (Liquid Glass Ejecutivo)
+  const theme: 'light' = 'light';
 
-  const handleToggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    localStorage.setItem('forma_admin_theme', next);
-  };
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('forma_admin_theme', 'light');
+    }
+  }, []);
 
   useEffect(() => {
     // Sincronización proactiva de token administrativo para asegurar JWT firmado válido
@@ -388,7 +386,7 @@ export const AdminLayout: React.FC = () => {
   // PANEL DE CONTROL AUTENTICADO
   return (
     <QueryClientProvider client={adminQueryClient}>
-      <div className={`${theme === 'light' ? 'admin-light-canvas text-[#1A1F2C]' : 'admin-dark-canvas text-white'} h-screen flex relative overflow-hidden font-sans`}>
+      <div className="admin-light-canvas text-[#0F172A] bg-[#F8FAFC] h-screen flex relative overflow-hidden font-sans">
         {/* Sidebar Lateral Modular Colapsable y Responsive (240px / 72px) en Frosted Glass */}
         <AdminSidebar
           collapsed={collapsed}
@@ -397,7 +395,7 @@ export const AdminLayout: React.FC = () => {
           onCloseMobile={() => setMobileOpen(false)}
           usuario={usuario}
           onLogout={handleLogout}
-          theme={theme}
+          theme="light"
         />
 
         {/* Área de Contenido Principal */}
@@ -409,8 +407,6 @@ export const AdminLayout: React.FC = () => {
             onSedeChange={handleSelectSede}
             breadcrumb={currentModuleTitle}
             onRefresh={() => adminQueryClient.invalidateQueries()}
-            theme={theme}
-            onToggleTheme={handleToggleTheme}
           />
 
           {/* Badge sutil de contexto accesible para tests */}

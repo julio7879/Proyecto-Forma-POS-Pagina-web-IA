@@ -173,16 +173,17 @@ export const AdminPromocionesPage: React.FC = () => {
         title="Promociones y Ofertas de Temporada"
         subtitle="Administre campañas comerciales, porcentajes de descuento y rebajas exclusivas sincronizadas en vivo con el Storefront y el POS."
         badge="Motor de Descuentos"
-      >
-        <button
-          type="button"
-          onClick={handleAbrirModalCreacion}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#661521] hover:bg-[#50101a] text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nueva Promoción</span>
-        </button>
-      </PageHeader>
+        actions={
+          <button
+            type="button"
+            onClick={handleAbrirModalCreacion}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white font-black text-xs sm:text-sm tracking-wide shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer border border-[#741C2B]/40"
+          >
+            <Plus className="w-4 h-4 text-white" />
+            <span>Nueva Promoción</span>
+          </button>
+        }
+      />
 
       {/* Tarjetas KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -216,7 +217,7 @@ export const AdminPromocionesPage: React.FC = () => {
       </div>
 
       {/* Barra de Filtros */}
-      <div className="bg-white rounded-2xl border border-[#E7E0D8] p-4 shadow-sm space-y-3">
+      <div className="backdrop-blur-2xl bg-white/90 dark:bg-white/[0.07] rounded-3xl border border-slate-200 dark:border-white/[0.14] p-5 shadow-lg space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex-1 max-w-md">
             <input
@@ -224,12 +225,12 @@ export const AdminPromocionesPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por nombre o descripción..."
-              className="w-full px-3.5 py-2 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-sm text-[#292827] focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30"
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121620] border border-slate-300 dark:border-white/[0.15] text-xs sm:text-sm font-medium text-[#0F172A] dark:text-white placeholder-[#64748B] dark:placeholder-slate-400 focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68] transition-colors"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-[#77736E] uppercase tracking-wider mr-1">
+            <span className="text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mr-1">
               Estado:
             </span>
             {(['TODAS', 'ACTIVAS', 'PAUSADAS'] as const).map((est) => (
@@ -237,10 +238,10 @@ export const AdminPromocionesPage: React.FC = () => {
                 key={est}
                 type="button"
                 onClick={() => setEstadoFiltro(est)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   estadoFiltro === est
-                    ? 'bg-[#741C2B] text-white'
-                    : 'bg-[#F5F3EF] text-[#77736E] hover:text-[#292827]'
+                    ? 'bg-[#741C2B] text-white shadow-md border border-[#741C2B]/40'
+                    : 'bg-slate-100 dark:bg-white/10 text-[#475569] dark:text-white/70 hover:text-[#0F172A] dark:hover:text-white border border-slate-200 dark:border-white/10'
                 }`}
               >
                 {est === 'TODAS' ? 'Todas' : est === 'ACTIVAS' ? 'Activas' : 'Pausadas'}
@@ -250,8 +251,8 @@ export const AdminPromocionesPage: React.FC = () => {
         </div>
 
         {/* Píldoras de Categoría */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar border-t border-[#F5F3EF]">
-          <span className="text-xs font-bold text-[#77736E] uppercase tracking-wider mr-2 shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-2 no-scrollbar border-t border-slate-200 dark:border-white/[0.08]">
+          <span className="text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mr-2 shrink-0">
             Categoría:
           </span>
           {CATEGORIAS_VALIDAS.map((cat) => (
@@ -259,10 +260,10 @@ export const AdminPromocionesPage: React.FC = () => {
               key={cat}
               type="button"
               onClick={() => setCategoriaFiltro(cat)}
-              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 categoriaFiltro === cat
-                  ? 'bg-[#50322A] text-white shadow-sm'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-[#741C2B] text-white shadow-md border border-[#741C2B]/40'
+                  : 'bg-slate-100 dark:bg-white/10 text-[#475569] dark:text-white/70 hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/15 border border-slate-200 dark:border-white/10'
               }`}
             >
               {cat}
@@ -284,87 +285,92 @@ export const AdminPromocionesPage: React.FC = () => {
           onAction={handleAbrirModalCreacion}
         />
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-sm overflow-hidden">
+        <div className="backdrop-blur-2xl bg-white/90 dark:bg-white/[0.07] rounded-3xl border border-slate-200 dark:border-white/[0.14] shadow-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-[#292827]">
-              <thead className="bg-[#FAF8F5] border-b border-[#E7E0D8] text-xs font-black uppercase tracking-wider text-[#77736E]">
+            <table className="w-full text-left text-sm text-[#0F172A] dark:text-white">
+              <thead className="bg-slate-100/80 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-wider text-[#475569] dark:text-white/60">
                 <tr>
-                  <th className="px-5 py-3.5">Campaña & Descripción</th>
-                  <th className="px-5 py-3.5">Beneficio / Tipo</th>
-                  <th className="px-5 py-3.5">Línea o SKUs</th>
-                  <th className="px-5 py-3.5 text-center">Estado</th>
-                  <th className="px-5 py-3.5 text-right">Acciones</th>
+                  <th className="px-5 py-4">Campaña & Descripción</th>
+                  <th className="px-5 py-4">Beneficio / Tipo</th>
+                  <th className="px-5 py-4">Línea o SKUs</th>
+                  <th className="px-5 py-4 text-center">Estado</th>
+                  <th className="px-5 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E7E0D8]">
+              <tbody className="divide-y divide-slate-200 dark:divide-white/[0.07]">
                 {promocionesFiltradas.map((promo) => (
                   <tr
                     key={promo.id}
-                    className="hover:bg-[#FAF8F5]/80 transition-colors"
+                    className="hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
                   >
+                    {/* 1. CAMPAÑA & DESCRIPCIÓN: ¡Legibilidad Total en Día y Noche! */}
                     <td className="px-5 py-4 max-w-sm">
-                      <div className="font-bold text-sm text-[#1C1311] flex items-center gap-2">
+                      <div className="font-black text-sm text-[#0F172A] dark:text-white flex items-center gap-2">
                         <span>{promo.nombre}</span>
                         {promo.id.startsWith('PROM-') && (
-                          <span className="text-[10px] font-mono text-[#77736E] bg-stone-100 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-mono font-black text-[#741C2B] dark:text-[#E5BE90] bg-[#741C2B]/10 dark:bg-[#741C2B]/40 px-2 py-0.5 rounded-md border border-[#741C2B]/30 dark:border-[#741C2B]/60">
                             #{promo.id}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-[#77736E] line-clamp-2 mt-0.5">
+                      <p className="text-xs font-medium text-[#475569] dark:text-slate-300 line-clamp-2 mt-1 leading-relaxed">
                         {promo.descripcion || 'Sin descripción detallada.'}
                       </p>
                     </td>
 
+                    {/* 2. BENEFICIO / TIPO */}
                     <td className="px-5 py-4 whitespace-nowrap">
                       {promo.tipo === 'PORCENTAJE' ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-black text-xs border border-emerald-200">
-                          <Percent className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-black text-xs border border-emerald-300 dark:border-emerald-700/60 shadow-2xs">
+                          <Percent className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                           <span>{promo.valor}% DE DESCUENTO</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 font-black text-xs border border-amber-200">
-                          <DollarSign className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-black text-xs border border-amber-300 dark:border-amber-700/60 shadow-2xs">
+                          <DollarSign className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                           <span>{formatCOP(promo.valor)} DE DESCUENTO</span>
                         </span>
                       )}
                     </td>
 
+                    {/* 3. LÍNEA O SKUS */}
                     <td className="px-5 py-4 whitespace-nowrap">
-                      <span className="inline-block px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 text-xs font-semibold">
+                      <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/10 text-[#0F172A] dark:text-white border border-slate-200 dark:border-white/15 text-xs font-bold">
                         {promo.categoria === 'Todas'
                           ? 'Todas las Colecciones'
                           : promo.categoria}
                       </span>
                       {promo.skusElegibles && promo.skusElegibles.length > 0 && (
-                        <span className="block text-[11px] font-mono text-[#77736E] mt-1">
+                        <span className="block text-[11px] font-mono font-bold text-[#475569] dark:text-slate-400 mt-1">
                           {promo.skusElegibles.length} SKU(s) específicos
                         </span>
                       )}
                     </td>
 
+                    {/* 4. ESTADO */}
                     <td className="px-5 py-4 whitespace-nowrap text-center">
                       <button
                         type="button"
                         onClick={() => handleToggle(promo.id)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer shadow-2xs ${
                           promo.activa
-                            ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-300'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-700/60'
+                            : 'bg-slate-100 dark:bg-white/10 text-[#475569] dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/20 border border-slate-300 dark:border-white/20'
                         }`}
                         title={promo.activa ? 'Haga clic para pausar' : 'Haga clic para activar'}
                       >
-                        <Power className={`w-3 h-3 ${promo.activa ? 'text-emerald-700' : 'text-stone-400'}`} />
+                        <Power className={`w-3.5 h-3.5 ${promo.activa ? 'text-emerald-700 dark:text-emerald-400' : 'text-[#64748B] dark:text-slate-400'}`} />
                         <span>{promo.activa ? 'Activa' : 'Pausada'}</span>
                       </button>
                     </td>
 
+                    {/* 5. ACCIONES */}
                     <td className="px-5 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setPromocionAEliminar(promo)}
-                          className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-800 transition-colors cursor-pointer"
+                          className="p-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-800 dark:hover:text-rose-300 transition-colors cursor-pointer"
                           title="Eliminar promoción"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -381,19 +387,21 @@ export const AdminPromocionesPage: React.FC = () => {
 
       {/* Modal para Crear Nueva Promoción */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-[#E7E0D8] shadow-2xl overflow-hidden animate-scale-up">
-            <div className="px-6 py-5 bg-[#FAF8F5] border-b border-[#E7E0D8] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Tag className="w-5 h-5 text-[#741C2B]" />
-                <h3 className="font-bold text-lg text-[#292827]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-[#0F1420] rounded-3xl border border-slate-200 dark:border-white/[0.15] shadow-2xl overflow-hidden animate-scale-up text-[#0F172A] dark:text-white">
+            <div className="px-6 py-5 bg-slate-50 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#741C2B]/10 dark:bg-[#741C2B]/30 border border-[#741C2B]/30 text-[#741C2B] dark:text-[#E5BE90] flex items-center justify-center">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <h3 className="font-black text-lg text-[#0F172A] dark:text-white">
                   Nueva Promoción de Temporada
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-full hover:bg-stone-200 text-stone-500 transition-colors"
+                className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 text-[#475569] dark:text-slate-400 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -401,14 +409,14 @@ export const AdminPromocionesPage: React.FC = () => {
 
             <form onSubmit={handleGuardarPromocion} className="p-6 space-y-4">
               {formError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                   <span>{formError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-[#77736E] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Nombre de la Campaña / Oferta *
                 </label>
                 <input
@@ -417,13 +425,13 @@ export const AdminPromocionesPage: React.FC = () => {
                   value={formNombre}
                   onChange={(e) => setFormNombre(e.target.value)}
                   placeholder="Ej: Rebajas de Mitad de Temporada"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] text-sm focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#121620] text-sm text-[#0F172A] dark:text-white placeholder-[#64748B] dark:placeholder-slate-500 focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#77736E] uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Tipo de Beneficio
                   </label>
                   <select
@@ -431,7 +439,7 @@ export const AdminPromocionesPage: React.FC = () => {
                     onChange={(e) =>
                       setFormTipo(e.target.value as 'PORCENTAJE' | 'VALOR_FIJO')
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 text-sm bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
                   >
                     <option value="PORCENTAJE">Porcentaje (% OFF)</option>
                     <option value="VALOR_FIJO">Valor Fijo ($ COP)</option>
@@ -439,7 +447,7 @@ export const AdminPromocionesPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#77736E] uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     {formTipo === 'PORCENTAJE' ? 'Porcentaje (%) *' : 'Valor ($ COP) *'}
                   </label>
                   <input
@@ -450,19 +458,19 @@ export const AdminPromocionesPage: React.FC = () => {
                     value={formValor}
                     onChange={(e) => setFormValor(e.target.value)}
                     placeholder={formTipo === 'PORCENTAJE' ? 'Ej: 20' : 'Ej: 30000'}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] text-sm focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30 font-mono"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#121620] text-sm text-[#0F172A] dark:text-white focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68] font-mono font-bold"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#77736E] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Categoría Aplicable
                 </label>
                 <select
                   value={formCategoria}
                   onChange={(e) => setFormCategoria(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 text-sm bg-white dark:bg-[#121620] text-[#0F172A] dark:text-white focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
                 >
                   {CATEGORIAS_VALIDAS.map((cat) => (
                     <option key={cat} value={cat}>
@@ -473,7 +481,7 @@ export const AdminPromocionesPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#77736E] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   SKUs Específicos (Opcional, separados por coma)
                 </label>
                 <input
@@ -481,12 +489,12 @@ export const AdminPromocionesPage: React.FC = () => {
                   value={formSkus}
                   onChange={(e) => setFormSkus(e.target.value)}
                   placeholder="Ej: ROP-BLZ-010-M, ROP-DNM-001-L"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E0D8] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#121620] text-sm text-[#0F172A] dark:text-white placeholder-[#64748B] dark:placeholder-slate-500 font-mono focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#77736E] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-black text-[#475569] dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Descripción Comercial (Opcional)
                 </label>
                 <textarea
@@ -494,21 +502,21 @@ export const AdminPromocionesPage: React.FC = () => {
                   value={formDescripcion}
                   onChange={(e) => setFormDescripcion(e.target.value)}
                   placeholder="Mensaje promocional visible para clientes en la tienda..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E7E0D8] text-sm focus:outline-none focus:ring-2 focus:ring-[#741C2B]/30"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#121620] text-sm text-[#0F172A] dark:text-white placeholder-[#64748B] dark:placeholder-slate-500 focus:outline-none focus:border-[#741C2B] dark:focus:border-[#C49A68]"
                 />
               </div>
 
-              <div className="pt-3 border-t border-[#E7E0D8] flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#E7E0D8] text-stone-600 hover:bg-stone-50 font-bold text-xs uppercase tracking-wider transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-[#475569] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#661521] hover:bg-[#50101a] text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-[#741C2B] hover:bg-[#5E1623] text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer border border-[#741C2B]/40"
                 >
                   Guardar y Activar Promoción
                 </button>
