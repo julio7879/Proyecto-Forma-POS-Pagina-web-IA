@@ -8,7 +8,7 @@ modelos_prisma: [CompraProveedor, LineaCompra, Traslado, LineaTraslado, Resoluci
 
 Relacionado con: [[MOD-05-Compras]] | [[MOD-06-Traslados]] | [[RN-INV-Kardex-y-Saldos]]
 
-## 1. Compras a Proveedor en Bodega Central (`RN-COM-01` a `RN-COM-07`)
+## 1. Compras a Proveedor en Bodega Central (`RN-COM-01` a `RN-COM-05`)
 - **RN-COM-01 [D]:** Toda compra a proveedor ingresa exclusivamente a **Bodega Central**.
 - **RN-COM-02 [D]:** Estados: `PEDIDA -> RECIBIDA` o `CANCELADA`. Mientras esté en `PEDIDA` no altera stock.
 - **RN-COM-03 [D] (Recepción Única e Idempotente):** La recepción se efectúa una sola vez por las unidades realmente recibidas (`cantidadRecibida`), sumando a `fisico` en Central (`COMPRA_RECIBIDA`). Reintentos no duplican stock.

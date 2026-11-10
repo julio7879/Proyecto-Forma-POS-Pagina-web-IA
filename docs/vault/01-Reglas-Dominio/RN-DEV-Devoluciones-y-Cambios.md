@@ -4,7 +4,7 @@ tags: [devoluciones, cambios, reembolsos, iliquidez, caja, venta-raiz, plazos]
 criterios_ca: [CA-26, CA-27, CA-28, CA-29, CA-30, CA-31, CA-32, CA-33, CA-34, CA-54, CA-63, QA-016, QA-017, QA-018, QA-019]
 modelos_prisma: [DevolucionPOS, LineaDevolucionPOS, VentaPOS, SesionCaja]
 ---
-# Reglas de Devoluciones, Cambios y Anulaciones (RN-DEV-01 a RN-DEV-16)
+# Reglas de Devoluciones, Cambios y Anulaciones (RN-DEV-01, 02, 03, 06, 09, 10, 11, 12 y 14)
 
 Relacionado con: [[MOD-10-Devoluciones-Cambios]] | [[RN-CAJ-VTA-Caja-y-Ventas-POS]] | [[RN-DES-Promociones-y-Prorrateo]]
 

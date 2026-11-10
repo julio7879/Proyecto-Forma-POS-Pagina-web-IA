@@ -62,13 +62,40 @@ for (const file of mdFiles(RULES)) {
 }
 
 const citations = new Map();
+
+function addCitation(id, where) {
+  if (!citations.has(id)) citations.set(id, []);
+  const list = citations.get(id);
+  if (!list.includes(where)) list.push(where);
+}
+
+function expandRange(prefix, start, end, where) {
+  const from = Number(start);
+  const to = Number(end);
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+  if (to < from || to - from > 99) return;
+  for (let i = from; i <= to; i += 1) {
+    addCitation(`RN-${prefix}-${String(i).padStart(2, '0')}`, where);
+  }
+}
+
 for (const file of mdFiles(MODULES)) {
   const lines = readFileSync(file, 'utf8').split(/\r?\n/);
   lines.forEach((line, index) => {
-    for (const match of line.matchAll(ID_RE)) {
-      const id = match[0];
-      if (!citations.has(id)) citations.set(id, []);
-      citations.get(id).push(`${path.relative(ROOT, file)}:${index + 1}`);
+    const where = `${path.relative(ROOT, file)}:${index + 1}`;
+
+    for (const match of line.matchAll(ID_RE)) addCitation(match[0], where);
+
+    // RN-XXX-01 a RN-XXX-10
+    for (const match of line.matchAll(
+      /RN-([A-Z]+)-(\d+)\s*(?:a|hasta)\s*(?:RN-)?\1-(\d+)/g
+    )) {
+      expandRange(match[1], match[2], match[3], where);
+    }
+
+    // `RN-XXX-01` a `10`
+    for (const match of line.matchAll(/`RN-([A-Z]+)-(\d+)`\s*(?:a|hasta)\s*`?(\d+)`?/g)) {
+      expandRange(match[1], match[2], match[3], where);
     }
   });
 }

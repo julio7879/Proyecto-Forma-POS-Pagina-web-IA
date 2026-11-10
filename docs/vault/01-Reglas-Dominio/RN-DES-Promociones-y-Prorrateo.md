@@ -4,7 +4,7 @@ tags: [descuentos, promociones, prorrateo, math-floor, residuo, cupones]
 criterios_ca: [CA-19, CA-20, CA-21, CA-22, CA-23, CA-24, CA-25]
 modelos_prisma: [Promocion, LineaVentaPOS, LineaPedidoWeb]
 ---
-# Reglas de Descuentos, Promociones y Prorrateo (RN-DES-01 a RN-DES-14)
+# Reglas de Descuentos, Promociones y Prorrateo (RN-DES-01, 02, 04, 05, 07 y 09)
 
 Relacionado con: [[MOD-09-Descuentos]] | [[RN-GEN-Principios-Inmutables]] | [[RN-DEV-Devoluciones-y-Cambios]]
 

@@ -20,7 +20,7 @@
 | Permiso `GESTIONAR_CATALOGO` | 12.º permiso inexistente | **Rol `ADMIN`** |
 | Tipo de movimiento | `TRASLADO_SALIDA` (fuera del enum) | **`TRASLADO_ENVIADO`** |
 
-**Checker:** `node scripts/check-ids.mjs --check` → `RN definidos: 103 · citados en RF: 66 · faltantes: 0 · duplicados: 0`.
+**Checker:** `node scripts/check-ids.mjs --check` → `RN definidos: 103 · citados en RF: 79 (rangos expandidos) · faltantes: 0 · duplicados: 0`.
 
 ---
 
@@ -58,7 +58,7 @@
 
 | Verificación | Comando | Resultado |
 | :--- | :--- | :--- |
-| IDs RN | `node scripts/check-ids.mjs --check` | ✅ 0 faltantes, 0 duplicados |
+| IDs RN | `node scripts/check-ids.mjs --check` | ✅ 0 faltantes, 0 duplicados; expande rangos como `RN-VTA-01 a 10` |
 | Tablero F1 | `node scripts/gen-progress.mjs --check` | ✅ al día |
 | Enlaces del vault | chequeo `[[...]]` | ✅ sin roturas nuevas; quedan los 2 canvas y el ejemplo literal preexistentes |
 | Typecheck/tests/build | F0 | ✅ sin cambios de código en F2; los resultados de F0 siguen vigentes |

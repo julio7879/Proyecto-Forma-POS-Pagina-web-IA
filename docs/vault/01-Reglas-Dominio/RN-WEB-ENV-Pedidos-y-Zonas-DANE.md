@@ -42,7 +42,7 @@ Para todo el carrito web (sin envíos divididos):
   3) **Si ninguna otra sede tiene stock completo:** Se asigna en custodia a **Bodega Central** con `tieneIncidenciaStock = true` y `tieneReservaActiva = false`, emitiendo alerta al Administrador. El pedido jamás queda con ubicación `NULL` ni rebota en bucle infinito.
 
 ## 5. Retorno Logístico vs. Devolución Comercial Web
-- **Retorno Logístico (Contraentrega No Entregado, `RN-WEB-23`, `CA-64`, `QA-020`):**
+- **RN-WEB-23 [D] (Retorno Logístico, Contraentrega No Entregado, `CA-64`, `QA-020`):**
   Aplica a pedidos `CONTRAENTREGA` que nunca estuvieron en `PAGADO` (no son venta reconocida). Si pasa a `NO_ENTREGADO`, la mercancía reingresa a stock y el cobro se anula, **sin restar de Ventas Netas ni computar como devolución financiera**.
-- **Devolución Comercial Web (`RN-DEV-14`, `CA-65`, `QA-021`):**
+- **RN-DEV-14 [D] (Devolución Comercial Web, `CA-65`, `QA-021`):**
   Aplica a pedidos que ya fueron `PAGADOS` y `ENVIADOS` (ventas reconocidas). Plazo: **5 días hábiles** desde la entrega. La prenda puede reingresar físicamente en cualquier sede (incluso Central), pero la deducción financiera de la devolución se imputa **siempre a la ubicación que despachó y reconoció la venta originalmente** (`ubicacionImputacionVentaId`).
