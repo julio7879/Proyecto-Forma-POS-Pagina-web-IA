@@ -3,7 +3,7 @@ id: QA-PLAN-2026-11
 titulo: "Plan de Saneamiento Documental y QA Integral"
 proyecto: FORMA SPOS
 fecha: 2026-11-10
-estado: Propuesta para aprobación
+estado: F0 ejecutado; F1 pendiente
 alcance: [docs/vault, harness, frontend, backend, infraestructura]
 ---
 
@@ -14,6 +14,8 @@ alcance: [docs/vault, harness, frontend, backend, infraestructura]
 > **No voy a darte un porcentaje global.** El propio tablero declara tres cifras incompatibles (56,5 %, 73,9 % y 100 %). Dar otra sería sumarme al problema. Lo que sí puedo darte es qué está verificado, qué no, y cómo cerrar la brecha.
 
 > **Corrección de contexto confirmada por el usuario (10-nov-2026, 16:23).** El proyecto **ya no se trabaja en equipo**. Una sola persona desarrolla en `test/sandbox-testeo` y publica en `main`. Esto **corrige el hallazgo P0-02**: no hay un «GitFlow invertido» por incumplimiento, sino una documentación que sigue describiendo 6 personas, PRs y una rama `develop` que ya no se usan. Dato adicional verificado: `test/sandbox-testeo` es local, su último commit es del **5-nov** y está **19 commits por detrás de `main`**; es ancestro de `main`, así que hoy no aporta cambios nuevos. Antes de retomarla hay que actualizarla.
+
+> **F0 ejecutado (10-nov-2026, 16:49).** Commit `211609c` en `test/sandbox-testeo`: **P0-04, P0-05 y P0-09 cerrados** (QR autenticado, secretos fuera del árbol, backdoors admin eliminados) y CORS con allowlist. P0-03 (POS en `localStorage`) y P0-06 (fórmula de arqueo) siguen abiertos. Evidencia y pendientes humanos en [`F0-EJECUCION.md`](F0-EJECUCION.md).
 
 **Cómo leer este documento**
 
@@ -569,7 +571,7 @@ flowchart TD
 
 | Fase | Objetivo | Entregable | Criterio de salida | Esfuerzo |
 | :---: | :--- | :--- | :--- | :---: |
-| **F0** | Seguridad y congelamiento | Token rotado, backdoor admin eliminado, QR cerrado, CORS allowlist, repo limpio | 0 secretos/credenciales en repo y bundle; QR exige JWT | 6-8 h |
+| **F0** | Seguridad y congelamiento | ✅ Código ejecutado 10-nov (`211609c`): token fuera del árbol, backdoors admin eliminados, QR con JWT, CORS allowlist | 0 credenciales en el árbol; QR exige JWT | Hecho en código |
 | **F1** | Verdad operativa | `backlog.yaml` + `PROGRESO` generado + `test` alineada + `develop` archivada | El tablero coincide con git; flujo solo documentado; 0 tareas sin evidencia | 1-2 días |
 | **F2** | Verdad normativa | 41 IDs definidos o repuntados; fórmula de arqueo única; 33 → 35 | `check-ids` en verde; 0 contradicciones P0 | 3-5 días |
 | **F3** | Verdad del harness | 5 etapas en todos lados; un root de skills; `ask_user_question` | Paridad de skills; `CLAUDE.md` puntero | 2-3 días |
@@ -657,9 +659,9 @@ gantt
 | Configuraciones de deploy activas | 4 archivos (3 proveedores) | **1** |
 | Ramas locales | 20 (15 fusionadas, 5 sin fusionar) | **2** (`main` + `test`) |
 | Proceso documentado | 6 personas / GitFlow | **1 persona / `test` → `main`** |
-| Secretos en el repo | ≥ 2 | **0** |
+| Secretos en el repo | 0 en el árbol; token en historial | **0** (token rotado) |
 | Conteos de tests distintos | 5-7 | **1** (salida de `vitest`) |
-| P0 abiertos | 9 | **0** |
+| P0 abiertos | 6 (3 cerrados en F0) | **0** |
 | Cobertura de trazabilidad RF → CA → QA | parcial | **100 %** de los 44 RF |
 | Tiempo de *onboarding* de un dev nuevo | horas | **< 1 hora** con el MOC + SSOT |
 
