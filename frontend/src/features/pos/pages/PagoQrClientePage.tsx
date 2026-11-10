@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { CheckCircle2, Loader2, Sparkles, Send, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, Send } from 'lucide-react';
 import { FormaLogo } from '../../../components/common/FormaLogo';
 import { apiRequest } from '../../../api/apiClient';
 
@@ -10,7 +10,6 @@ export const PagoQrClientePage: React.FC = () => {
   const [pagado, setPagado] = useState(false);
   const [totalCop, setTotalCop] = useState<number>(0);
   const [sede, setSede] = useState('Punto Centro (Cúcuta)');
-  const [segundosRestantes, setSegundosRestantes] = useState(2);
 
   // Formateador oficial COP entero (RN-GEN-04)
   const formatCOP = (val: number) =>
@@ -42,39 +41,26 @@ export const PagoQrClientePage: React.FC = () => {
       });
   }, [consecutivo]);
 
-  // Auto-cobro de prueba al leer el código QR (Requerimiento: "solo que lo lea y ya cobre")
+  // F0: el cliente ya no aprueba el pago. Solo consulta el estado;
+  // el cajero confirma la recepción desde el POS autenticado.
   useEffect(() => {
     if (!consecutivo || cargando || pagado) return;
 
-    const timer = setInterval(() => {
-      setSegundosRestantes((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Ejecutar auto-aprobación del cobro
-          ejecutarAprobacion();
-          return 0;
+    const timer = setInterval(async () => {
+      try {
+        const data = await apiRequest<{ ok: boolean; estado?: string }>(
+          `/qr-pago/detalle/${consecutivo}`
+        );
+        if (data.estado === 'PAGADO') {
+          setPagado(true);
         }
-        return prev - 1;
-      });
-    }, 1000);
+      } catch {
+        // Sin conexión: se reintenta en el siguiente ciclo.
+      }
+    }, 3000);
 
     return () => clearInterval(timer);
   }, [consecutivo, cargando, pagado]);
-
-  const ejecutarAprobacion = async () => {
-    if (!consecutivo) return;
-    try {
-      await apiRequest(`/qr-pago/aprobar/${consecutivo}`, {
-        method: 'POST',
-        body: JSON.stringify({ totalCop, sede }),
-      });
-      setPagado(true);
-    } catch (err: any) {
-      console.error('Error aprobando cobro QR:', err);
-      // Fallback visual para pruebas fluidas
-      setPagado(true);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#1C1311] text-[#E7DED2] flex flex-col justify-between items-center p-4 sm:p-6 select-none font-sans relative overflow-hidden">
@@ -132,7 +118,7 @@ export const PagoQrClientePage: React.FC = () => {
               <div>
                 <h3 className="text-lg font-black text-white">¡PAGO COBRADO CON ÉXITO!</h3>
                 <p className="text-xs text-emerald-300 mt-1 leading-relaxed">
-                  Tu pago ha sido registrado automáticamente en la terminal POS de la tienda.
+                  El cajero confirmó la recepción del pago en la terminal POS.
                 </p>
               </div>
 
@@ -152,21 +138,12 @@ export const PagoQrClientePage: React.FC = () => {
               <div className="p-3 rounded-2xl bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs">
                 <p className="font-bold flex items-center justify-center gap-1.5">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Cobrando cuenta automáticamente...</span>
+                  <span>Esperando confirmación del cajero...</span>
                 </p>
                 <p className="text-[11px] text-amber-100/80 mt-1">
-                  Confirmando pago en {segundosRestantes}s
+                  Muestra esta pantalla en caja. El pago se registra cuando el cajero confirma la recepción.
                 </p>
               </div>
-
-              <button
-                type="button"
-                onClick={ejecutarAprobacion}
-                className="w-full min-h-[50px] py-3 px-4 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-black text-sm shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 active:scale-95"
-              >
-                <ShieldCheck className="w-5 h-5" />
-                <span>PAGAR AHORA ({totalCop > 0 ? formatCOP(totalCop) : '$308.000'})</span>
-              </button>
             </div>
           )}
         </div>
@@ -174,7 +151,7 @@ export const PagoQrClientePage: React.FC = () => {
 
       {/* Pie de Página */}
       <footer className="w-full max-w-sm pb-2 text-center text-[11px] text-[#E7DED2]/50 z-10">
-        FORMA ATELIER S.A.S. • Pasarela de Pago Inmediata
+        FORMA ATELIER S.A.S. • Pago asistido en caja
       </footer>
     </div>
   );

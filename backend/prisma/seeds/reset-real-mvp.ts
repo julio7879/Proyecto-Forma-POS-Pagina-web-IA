@@ -186,8 +186,13 @@ async function main() {
   // 3. Usuarios Oficiales (1 Admin + 4 Vendedores)
   console.log('👤 Configurando las 5 Cuentas Oficiales...');
   const salt = await bcrypt.genSalt(10);
-  const hashAdmin = await bcrypt.hash('Admin2026*', salt);
-  const hashVendedor = await bcrypt.hash('Vendedor2026*', salt);
+  const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD;
+  const vendedorSeedPassword = process.env.VENDEDOR_SEED_PASSWORD;
+  if (!adminSeedPassword || !vendedorSeedPassword) {
+    throw new Error('ADMIN_SEED_PASSWORD y VENDEDOR_SEED_PASSWORD son obligatorias para ejecutar el reset.');
+  }
+  const hashAdmin = await bcrypt.hash(adminSeedPassword, salt);
+  const hashVendedor = await bcrypt.hash(vendedorSeedPassword, salt);
 
   const admin = await prisma.usuario.upsert({
     where: { correo: 'admin@forma.com' },

@@ -22,7 +22,7 @@ services:
       - key: GOOGLE_CLIENT_ID
         value: 342333810050-dqo87t5rq8a6fpnfrhr7fva4fe3d1pl5.apps.googleusercontent.com
       - key: TELEGRAM_BOT_TOKEN
-        value: 9190201751:AAF_dvfLXp2NQWWd_GipNLfzh2HWRY9y49Y
+        sync: false
       - key: TELEGRAM_BOT_USERNAME
         value: Forma_Venta_Bot
       - key: SMTP_HOST
@@ -35,3 +35,6 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: Forma Atelier <soporte@forma.com>
+
+      - key: CORS_ORIGINS
+        sync: false

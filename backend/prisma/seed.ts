@@ -161,8 +161,13 @@ async function main() {
   // 5. Usuarios Oficiales: 1 Administrador + 4 Vendedores (uno por cada sede)
   console.log('👤 Sembrando 1 Administrador General y 4 Vendedores con sedes asignadas...');
   const salt = await bcrypt.genSalt(10);
-  const passwordHashAdmin = await bcrypt.hash('Admin2026*', salt);
-  const passwordHashVendedor = await bcrypt.hash('Vendedor2026*', salt);
+  const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD;
+  const vendedorSeedPassword = process.env.VENDEDOR_SEED_PASSWORD;
+  if (!adminSeedPassword || !vendedorSeedPassword) {
+    throw new Error('ADMIN_SEED_PASSWORD y VENDEDOR_SEED_PASSWORD son obligatorias para ejecutar el seed.');
+  }
+  const passwordHashAdmin = await bcrypt.hash(adminSeedPassword, salt);
+  const passwordHashVendedor = await bcrypt.hash(vendedorSeedPassword, salt);
 
   // Administrador General
   await prisma.usuario.upsert({

@@ -34,7 +34,7 @@ async function runE2EValidation() {
   console.log('1️⃣ [ADMIN] Iniciando sesión con admin@forma.com...');
   const loginAdminRes = await apiCall('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ correo: 'admin@forma.com', password: 'Admin2026*' }),
+    body: JSON.stringify({ correo: 'admin@forma.com', password: process.env.ADMIN_SEED_PASSWORD || '' }),
   });
   if (!loginAdminRes.ok) {
     throw new Error(`Fallo login admin: ${JSON.stringify(loginAdminRes.data)}`);
@@ -111,7 +111,7 @@ async function runE2EValidation() {
   console.log('\n5️⃣ [VENDEDOR] Iniciando sesión con vendedor.centro@forma.com...');
   const loginVendedorRes = await apiCall('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ correo: 'vendedor.centro@forma.com', password: 'Vendedor2026*' }),
+    body: JSON.stringify({ correo: 'vendedor.centro@forma.com', password: process.env.VENDEDOR_SEED_PASSWORD || '' }),
   });
   if (!loginVendedorRes.ok) {
     throw new Error(`Fallo login vendedor: ${JSON.stringify(loginVendedorRes.data)}`);
@@ -222,7 +222,7 @@ async function runE2EValidation() {
   let clienteToken = '';
   const loginClienteRes = await apiCall('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ correo: 'cliente.web@forma.com', password: 'Cliente2026*' }),
+    body: JSON.stringify({ correo: 'cliente.web@forma.com', password: process.env.CLIENTE_SEED_PASSWORD || '' }),
   });
   if (loginClienteRes.ok) {
     clienteToken = loginClienteRes.data.datos.token;
@@ -231,7 +231,7 @@ async function runE2EValidation() {
       method: 'POST',
       body: JSON.stringify({
         correo: 'cliente.web@forma.com',
-        password: 'Cliente2026*',
+        password: process.env.CLIENTE_SEED_PASSWORD || '',
         nombreCompleto: 'Valentina Restrepo',
         telefono: '3124567890',
         consentimientoDatos: true,

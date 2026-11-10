@@ -1,5 +1,5 @@
 // frontend/src/features/admin/__tests__/AdminLayoutAndDashboard.test.tsx
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AdminLayout } from '../../../layouts/AdminLayout';
@@ -12,6 +12,10 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('AdminLayout - Autenticación Estricta y Navegación Limpia', () => {
@@ -40,6 +44,25 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
     });
 
     it('permite iniciar sesión con credenciales válidas de ADMIN', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            datos: {
+              token: 'jwt-test-admin',
+              usuario: {
+                id: 1,
+                rol: 'ADMIN',
+                nombreCompleto: 'Dirección General FORMA',
+                correo: 'admin@forma.com',
+              },
+            },
+          }),
+        })
+      );
+
       render(
         <MemoryRouter initialEntries={['/admin/dashboard']}>
           <Routes>
@@ -55,7 +78,7 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
       const submitBtn = screen.getByRole('button', { name: /Ingresar al Panel de Control/i });
 
       fireEvent.change(emailInput, { target: { value: 'admin@forma.com' } });
-      fireEvent.change(passwordInput, { target: { value: 'Admin2026*' } });
+      fireEvent.change(passwordInput, { target: { value: 'ClaveInvalidaAdmin*' } });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {

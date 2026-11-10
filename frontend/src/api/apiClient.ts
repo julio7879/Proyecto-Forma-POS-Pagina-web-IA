@@ -1,4 +1,4 @@
-import { getPortalAuth, detectPortalContext, isTestEnv } from '../shared/auth/portalAuthStorage';
+import { getPortalAuth, isTestEnv } from '../shared/auth/portalAuthStorage';
 
 /**
  * Cliente HTTP centralizado con inyección de Idempotency-Key (RN-GEN-08)
@@ -48,50 +48,7 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    // Si el token administrativo expiró o es un token mock temporal (401), auto-renovarlo de forma transparente
-    const isAdminRoute =
-      detectPortalContext() === 'admin' ||
-      endpoint.includes('compras') ||
-      endpoint.includes('inventario') ||
-      endpoint.includes('reportes') ||
-      portalAuth.usuario?.rol === 'ADMIN' ||
-      token === 'jwt-admin-session-forma';
-
-    if (
-      response.status === 401 &&
-      isAdminRoute &&
-      typeof window !== 'undefined' &&
-      !(options as any)?._isRetry
-    ) {
-      try {
-        const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ correo: 'admin@forma.com', password: 'Admin2026*' }),
-        });
-        if (loginRes.ok) {
-          const loginData = await loginRes.json();
-          const newToken = loginData?.datos?.token;
-          if (newToken) {
-            localStorage.setItem('forma_admin_token', newToken);
-            localStorage.setItem('forma_admin_usuario', JSON.stringify(loginData.datos.usuario));
-            const retryHeaders = new Headers(options.headers);
-            retryHeaders.set('Content-Type', 'application/json');
-            retryHeaders.set('Authorization', `Bearer ${newToken}`);
-            const retryRes = await fetch(url, {
-              ...options,
-              headers: retryHeaders,
-              _isRetry: true,
-            } as any);
-            if (retryRes.ok) {
-              return (await retryRes.json()) as T;
-            }
-          }
-        }
-      } catch {
-        // Silencioso, continuar al error normal
-      }
-    }
+    // [F0] Sin auto-login: un 401 se propaga y la UI debe volver al login.
 
     // Preservamos status, código de error y detalles de validación para la UI
     const error: any = new Error(data.error?.message || data.message || 'Error en la petición');

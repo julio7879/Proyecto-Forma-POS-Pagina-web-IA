@@ -57,7 +57,7 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
       const submitBtn = screen.getByRole('button', { name: /Ingresar a Turno POS/i });
 
       fireEvent.change(emailInput, { target: { value: 'daniela@forma.com' } });
-      fireEvent.change(passInput, { target: { value: 'Vendedor2026*' } });
+      fireEvent.change(passInput, { target: { value: 'VendedorTest*' } });
       fireEvent.change(sedeSelect, { target: { value: 'Punto Centro (Cúcuta)' } });
       fireEvent.click(submitBtn);
 
@@ -86,7 +86,7 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
       const submitBtn = screen.getByRole('button', { name: /Ingresar a Turno POS/i });
 
       fireEvent.change(emailInput, { target: { value: 'daniela@forma.com' } });
-      fireEvent.change(passInput, { target: { value: 'Vendedor2026*' } });
+      fireEvent.change(passInput, { target: { value: 'VendedorTest*' } });
       fireEvent.change(sedeSelect, { target: { value: 'Punto Bucaramanga' } });
       fireEvent.click(submitBtn);
 
@@ -109,7 +109,7 @@ describe('Control Estricto de Acceso por Sede y Validaciones Financieras POS', (
       const submitBtn = screen.getByRole('button', { name: /Ingresar a Turno POS/i });
 
       fireEvent.change(emailInput, { target: { value: 'admin@forma.com' } });
-      fireEvent.change(passInput, { target: { value: 'Admin2026*' } });
+      fireEvent.change(passInput, { target: { value: 'AdminTest*' } });
       fireEvent.change(sedeSelect, { target: { value: 'Punto Ocaña' } });
       fireEvent.click(submitBtn);
 

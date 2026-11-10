@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { authenticateJWT, requireRole } from '../../shared/middlewares/authPermission.js';
 
 export interface SesionPagoQR {
   consecutivo: string;
@@ -9,6 +10,7 @@ export interface SesionPagoQR {
   estado: 'PENDIENTE' | 'PAGADO';
   creadoEn: string;
   pagadoEn?: string;
+  aprobadoPor?: number;
 }
 
 // Almacén en memoria de sesiones de pago QR con TTL de 2 horas
@@ -22,7 +24,7 @@ export const qrPagoRouter = Router();
  * POST /api/qr-pago/iniciar
  * Registra una sesión de cobro QR para el POS
  */
-qrPagoRouter.post('/iniciar', (req: Request, res: Response) => {
+qrPagoRouter.post('/iniciar', authenticateJWT, requireRole('ADMIN', 'VENDEDOR'), (req: Request, res: Response) => {
   const { consecutivo, totalCop, sede, cliente, items } = req.body;
 
   if (!consecutivo || totalCop === undefined) {
@@ -53,7 +55,7 @@ qrPagoRouter.post('/iniciar', (req: Request, res: Response) => {
  * GET /api/qr-pago/estado/:consecutivo
  * Consulta el estado del pago en vivo (para polling del POS)
  */
-qrPagoRouter.get('/estado/:consecutivo', (req: Request, res: Response) => {
+qrPagoRouter.get('/estado/:consecutivo', authenticateJWT, requireRole('ADMIN', 'VENDEDOR'), (req: Request, res: Response) => {
   const clave = normalizar(String(req.params.consecutivo || ''));
   const sesion = sesionesQR.get(clave);
 
@@ -80,34 +82,29 @@ qrPagoRouter.get('/estado/:consecutivo', (req: Request, res: Response) => {
  * POST /api/qr-pago/aprobar/:consecutivo
  * Marca la sesión como PAGADA inmediatamente (al ser escaneada o confirmada)
  */
-qrPagoRouter.post('/aprobar/:consecutivo', (req: Request, res: Response) => {
+qrPagoRouter.post('/aprobar/:consecutivo', authenticateJWT, requireRole('ADMIN', 'VENDEDOR'), (req: Request, res: Response) => {
   const clave = normalizar(String(req.params.consecutivo || ''));
   const sesion = sesionesQR.get(clave);
 
-  const fechaPago = new Date().toISOString();
-
-  if (sesion) {
-    sesion.estado = 'PAGADO';
-    sesion.pagadoEn = fechaPago;
-    sesionesQR.set(clave, sesion);
-  } else {
-    // Crear sesión ya pagada directamente
-    sesionesQR.set(clave, {
-      consecutivo: clave,
-      totalCop: Number(req.body.totalCop) || 0,
-      sede: req.body.sede || 'Punto Centro',
-      cliente: req.body.cliente || 'Consumidor Final',
-      estado: 'PAGADO',
-      creadoEn: fechaPago,
-      pagadoEn: fechaPago,
+  if (!sesion) {
+    // F0: no se permite crear una sesión ya pagada desde un consecutivo arbitrario.
+    return res.status(404).json({
+      ok: false,
+      error: 'Sesión de pago QR no encontrada o expirada. Iníciela de nuevo desde el POS.',
     });
   }
 
-  console.log(`💳 [QR-Pago] Pago QR aprobado exitosamente para la factura #${clave}`);
+  const fechaPago = sesion.pagadoEn || new Date().toISOString();
+  sesion.estado = 'PAGADO';
+  sesion.pagadoEn = fechaPago;
+  if (req.user?.id !== undefined) {
+    sesion.aprobadoPor = req.user.id;
+  }
+  sesionesQR.set(clave, sesion);
 
   return res.json({
     ok: true,
-    mensaje: `Pago de la factura #${clave} aprobado exitosamente`,
+    mensaje: `Pago de la factura #${clave} confirmado por caja`,
     estado: 'PAGADO',
     pagadoEn: fechaPago,
   });
@@ -131,8 +128,17 @@ qrPagoRouter.get('/detalle/:consecutivo', (req: Request, res: Response) => {
     });
   }
 
+  // Endpoint público de solo lectura para la pantalla del cliente.
+  // No expone quién aprobó el pago.
   return res.json({
     ok: true,
-    ...sesion,
+    consecutivo: sesion.consecutivo,
+    totalCop: sesion.totalCop,
+    sede: sesion.sede,
+    cliente: sesion.cliente,
+    items: sesion.items,
+    estado: sesion.estado,
+    creadoEn: sesion.creadoEn,
+    pagadoEn: sesion.pagadoEn,
   });
 });

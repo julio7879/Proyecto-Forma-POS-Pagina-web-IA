@@ -9,6 +9,7 @@ import 'express-async-errors';
 };
 
 import { errorHandler } from './shared/middlewares/errorHandler.js';
+import { env } from './config/env.js';
 import { identidadRouter, authRouter } from './modules/01-identidad/index.js';
 import { ubicacionesRouter } from './modules/02-ubicaciones/index.js';
 import { catalogoRouter } from './modules/03-catalogo/index.js';
@@ -27,8 +28,22 @@ import { qrPagoRouter } from './modules/15-qr-pago/index.js';
 
 export const app = express();
 
+const allowedOrigins = env.CORS_ORIGINS.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Sin cabecera Origin: health checks, curl y llamadas server-to-server.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false);
+    },
+    credentials: false,
+  })
+);
 app.use(express.json());
 
 // Verificación de estado de la API

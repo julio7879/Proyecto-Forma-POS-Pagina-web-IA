@@ -340,6 +340,7 @@ export const PosTerminalPage: React.FC = () => {
   const [mostrarQrModalGrande, setMostrarQrModalGrande] = useState(false);
   const [copiadoCuenta, setCopiadoCuenta] = useState(false);
   const [pagoQrAprobadoEnVivo, setPagoQrAprobadoEnVivo] = useState(false);
+  const [errorPagoQr, setErrorPagoQr] = useState<string | null>(null);
 
   // Estados de Envío de Recibo Digital por Telegram (Omnicanal)
   const [mostrarModalTelegram, setMostrarModalTelegram] = useState(false);
@@ -651,18 +652,20 @@ export const PosTerminalPage: React.FC = () => {
     efectivoInputRef.current?.focus();
   };
 
-  const handleSimularPagoQR = async () => {
+  const handleConfirmarPagoQR = async () => {
+    setErrorPagoQr(null);
     try {
       await apiRequest(`/qr-pago/aprobar/${consecutivoGenerado}`, {
         method: 'POST',
-        body: JSON.stringify({ totalCop: totalPagarCOP, sede: 'Punto Centro' }),
+        body: JSON.stringify({}),
       });
       setPagoQrAprobadoEnVivo(true);
       setTimeout(() => {
         handleConfirmarVenta();
       }, 700);
-    } catch {
-      handleConfirmarVenta();
+    } catch (err: any) {
+      // F0: si el backend no confirma, la venta NO se asienta.
+      setErrorPagoQr(err?.message || 'No se pudo confirmar el pago en el servidor.');
     }
   };
 
@@ -1584,7 +1587,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                       {bancoQrActivo === 'PAGO_DIRECTO' ? (
                         <div className="space-y-1">
                           <p className="font-semibold text-[#1C1311] text-[11px]">
-                            ⚡ Escaneo Inmediato: Solo leer el QR con el celular y ya cobra la cuenta.
+                            ⚡ El cliente escanea el QR; el cajero confirma la recepción del pago.
                           </p>
                           <a
                             href={`/pago-qr/${consecutivoGenerado}`}
@@ -1644,12 +1647,17 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                     <div className="pt-1">
                       <button
                         type="button"
-                        onClick={handleSimularPagoQR}
+                        onClick={handleConfirmarPagoQR}
                         className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#661521] to-[#52101a] hover:from-[#52101a] hover:to-[#3e0b13] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-[#D19650]" />
-                        <span>⚡ Confirmar Lectura de QR ({formatCOP(totalPagarCOP)})</span>
+                        <span>Confirmar pago recibido ({formatCOP(totalPagarCOP)})</span>
                       </button>
+                      {errorPagoQr && (
+                        <p className="mt-1.5 text-[11px] font-semibold text-rose-600">
+                          {errorPagoQr}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1658,7 +1666,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                 <div className="p-2.5 rounded-xl bg-emerald-50 border border-[#059669]/30 flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0 mt-0.5" />
                   <p className="text-[11px] text-[#059669] leading-snug">
-                    <strong className="font-bold">Verificación Automática:</strong> Al leer el QR desde el celular del cliente, la pantalla de caja detecta la autorización en vivo y asienta la venta automáticamente.
+                    <strong className="font-bold">Confirmación en caja:</strong> el cliente escanea el QR y el cajero verifica la recepción del pago. La venta se asienta solo cuando el cajero confirma.
                   </p>
                 </div>
               </div>

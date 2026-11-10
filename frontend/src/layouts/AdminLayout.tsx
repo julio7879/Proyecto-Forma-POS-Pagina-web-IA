@@ -76,8 +76,8 @@ export const AdminLayout: React.FC = () => {
   });
 
   // Formulario de Acceso Administrativo
-  const [loginEmail, setLoginEmail] = useState<string>('admin@forma.com');
-  const [loginPassword, setLoginPassword] = useState<string>('Admin2026*');
+  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginLoading, setLoginLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -99,29 +99,7 @@ export const AdminLayout: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Sincronización proactiva de token administrativo para asegurar JWT firmado válido
-    if (typeof window !== 'undefined' && !isTestEnv()) {
-      const currentToken = localStorage.getItem('forma_admin_token');
-      if (currentToken === 'jwt-admin-session-forma') {
-        const isTest = import.meta.env.MODE === 'test';
-        const rawBaseUrl = isTest ? '' : (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '');
-        const baseUrl = typeof rawBaseUrl === 'string' ? rawBaseUrl.replace(/\/$/, '') : '';
-        fetch(`${baseUrl}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ correo: 'admin@forma.com', password: 'Admin2026*' }),
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data?.datos?.token) {
-              setPortalAuth('admin', { token: data.datos.token, usuario: data.datos.usuario });
-              setUsuario(data.datos.usuario);
-              adminQueryClient.invalidateQueries();
-            }
-          })
-          .catch(() => {});
-      }
-    }
+    // [F0] Se eliminó la sincronización con credenciales embebidas.
 
     const handleSedeSync = () => {
       const saved = localStorage.getItem('forma_admin_sede') as SedeAdminFiltro | null;
@@ -206,28 +184,6 @@ export const AdminLayout: React.FC = () => {
         }
       }
 
-      // Salvaguarda: Si el endpoint backend no está configurado (404 en Vercel) o servidor falla
-      if (
-        (res.status === 404 || res.status >= 500) &&
-        loginEmail.trim() === 'admin@forma.com' &&
-        loginPassword === 'Admin2026*'
-      ) {
-        const adminSession: UsuarioAdminSession = {
-          id: 1,
-          rol: 'ADMIN',
-          nombreCompleto: 'Dirección General FORMA',
-          correo: 'admin@forma.com',
-        };
-        setPortalAuth('admin', { token: 'jwt-admin-session-forma', usuario: adminSession });
-        if (isTestEnv()) {
-          localStorage.setItem('token', 'jwt-admin-session-forma');
-          localStorage.setItem('usuario', JSON.stringify(adminSession));
-        }
-        setUsuario(adminSession);
-        setLoginLoading(false);
-        return;
-      }
-
       // Si el servidor retornó error HTTP (401, 403, etc.)
       const errorPayload = await res.json().catch(() => null);
       setLoginError(
@@ -235,25 +191,8 @@ export const AdminLayout: React.FC = () => {
       );
       setLoginLoading(false);
     } catch {
-      // Manejo en entorno de pruebas u offline cuando el servidor no responde
-      if (loginEmail.trim() === 'admin@forma.com' && loginPassword === 'Admin2026*') {
-        const offlineAdmin: UsuarioAdminSession = {
-          id: 1,
-          rol: 'ADMIN',
-          nombreCompleto: 'Dirección General FORMA',
-          correo: 'admin@forma.com',
-        };
-        setPortalAuth('admin', { token: 'jwt-admin-session-forma', usuario: offlineAdmin });
-        if (isTestEnv()) {
-          localStorage.setItem('token', 'jwt-admin-session-forma');
-          localStorage.setItem('usuario', JSON.stringify(offlineAdmin));
-        }
-        setUsuario(offlineAdmin);
-        setLoginLoading(false);
-      } else {
-        setLoginError('Credenciales incorrectas o servidor no disponible.');
-        setLoginLoading(false);
-      }
+      setLoginError('Credenciales incorrectas o servidor no disponible.');
+      setLoginLoading(false);
     }
   };
 
@@ -327,7 +266,7 @@ export const AdminLayout: React.FC = () => {
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="admin@forma.com"
+                  placeholder="correo@forma.com"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F5F3EF] border border-[#E7E0D8] text-xs font-bold text-[#292827] focus:outline-none focus:border-[#741C2B] focus:ring-1 focus:ring-[#741C2B]/20 transition-all placeholder:text-[#77736E]/60"
                 />
               </div>
