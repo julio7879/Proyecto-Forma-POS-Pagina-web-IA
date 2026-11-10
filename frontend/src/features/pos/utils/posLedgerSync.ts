@@ -71,7 +71,7 @@ const STORAGE_KEYS = {
   EXCHANGES: 'forma_pos_cambios_registrados',
 };
 
-export const CLEAN_RESET_KEY = 'forma_clean_zero_store_stock_v1';
+export const CLEAN_RESET_KEY = 'forma_clean_canonical_4196_v4';
 
 export const ensureCleanZeroStoreStockReset = (): void => {
   try {
@@ -90,6 +90,11 @@ export const ensureCleanZeroStoreStockReset = (): void => {
         'forma_pos_recepciones_kardex',
         'forma_pos_solicitudes_traslado',
         'forma_admin_traslados',
+        'forma_pedidos_web',
+        'forma_pedidos_web_global',
+        'forma_admin_compras',
+        'forma_admin_ventas',
+        'forma_admin_clientes',
       ];
       keysToClear.forEach((k) => localStorage.removeItem(k));
       localStorage.setItem(CLEAN_RESET_KEY, '1');

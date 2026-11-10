@@ -55,22 +55,10 @@ export const AdminInventarioPage: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<InventarioDTO | null>(null);
   const [drawerTab, setDrawerTab] = useState<'detalle' | 'productos' | 'actividad' | 'comprobantes'>('detalle');
 
-  // Sincronización con Sede seleccionada
+  // Sincronización con Sede seleccionada y actualización reactiva de inventario
   const [sedeGlobal, setSedeGlobal] = useState<string>(
     () => localStorage.getItem('forma_admin_sede') || 'Todas las Sedes (Consolidado)'
   );
-
-  useEffect(() => {
-    const handleSedeChange = () => {
-      setSedeGlobal(localStorage.getItem('forma_admin_sede') || 'Todas las Sedes (Consolidado)');
-    };
-    window.addEventListener('forma-admin-sede-change', handleSedeChange);
-    window.addEventListener('storage', handleSedeChange);
-    return () => {
-      window.removeEventListener('forma-admin-sede-change', handleSedeChange);
-      window.removeEventListener('storage', handleSedeChange);
-    };
-  }, []);
 
   const handleCambiarSede = (nuevaSede: string) => {
     setSedeGlobal(nuevaSede);
@@ -102,6 +90,24 @@ export const AdminInventarioPage: React.FC = () => {
     queryFn: () => fetchInventario(filtro),
     staleTime: 30_000,
   });
+
+  useEffect(() => {
+    const handleSedeChange = () => {
+      setSedeGlobal(localStorage.getItem('forma_admin_sede') || 'Todas las Sedes (Consolidado)');
+      refetch();
+    };
+    const handleLedgerUpdate = () => {
+      refetch();
+    };
+    window.addEventListener('forma-admin-sede-change', handleSedeChange);
+    window.addEventListener('forma-pos-ledger-update', handleLedgerUpdate);
+    window.addEventListener('storage', handleSedeChange);
+    return () => {
+      window.removeEventListener('forma-admin-sede-change', handleSedeChange);
+      window.removeEventListener('forma-pos-ledger-update', handleLedgerUpdate);
+      window.removeEventListener('storage', handleSedeChange);
+    };
+  }, [refetch]);
 
   // Filtrado por sede seleccionada (Bodega Central, tiendas o consolidado)
   const dataFiltradaSede = useMemo(() => {

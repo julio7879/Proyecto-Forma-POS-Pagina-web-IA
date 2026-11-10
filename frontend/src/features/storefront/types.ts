@@ -39,6 +39,7 @@ export interface CartItem {
   color?: string;
   precioUnitarioCOP: number; // Entero COP
   cantidad: number;
+  stockDisponible?: number; // Stock físico máximo disponible para venta
   imagenUrl: string;
   sedeDespacho: SedeId;
 }

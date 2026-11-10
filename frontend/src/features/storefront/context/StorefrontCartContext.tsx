@@ -121,16 +121,23 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
         const existingIndex = prev.findIndex((it) => it.id === newItem.id);
         if (existingIndex >= 0) {
           const updated = [...prev];
+          const actual = updated[existingIndex];
+          const stockMax = newItem.stockDisponible ?? actual.stockDisponible ?? 999;
+          const targetCantidad = actual.cantidad + newItem.cantidad;
           updated[existingIndex] = {
-            ...updated[existingIndex],
-            cantidad: updated[existingIndex].cantidad + newItem.cantidad,
+            ...actual,
+            stockDisponible: stockMax,
+            cantidad: Math.min(stockMax, targetCantidad),
           };
           return updated;
         }
+        const stockMax = newItem.stockDisponible ?? 999;
         return [
           ...prev,
           {
             ...newItem,
+            stockDisponible: stockMax,
+            cantidad: Math.min(stockMax, newItem.cantidad),
             sedeDespacho: newItem.sedeDespacho || sedeActiva.id,
           },
         ];
@@ -143,7 +150,12 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
   const updateCantidad = useCallback((id: string, delta: number) => {
     setItems((prev) =>
       prev
-        .map((it) => (it.id === id ? { ...it, cantidad: Math.max(0, it.cantidad + delta) } : it))
+        .map((it) => {
+          if (it.id !== id) return it;
+          const maxStock = it.stockDisponible ?? 999;
+          const nuevaCantidad = Math.min(maxStock, Math.max(0, it.cantidad + delta));
+          return { ...it, cantidad: nuevaCantidad };
+        })
         .filter((it) => it.cantidad > 0)
     );
   }, []);

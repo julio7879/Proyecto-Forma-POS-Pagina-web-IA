@@ -11,18 +11,21 @@ import {
   Search,
   History,
   MapPin,
-  PackagePlus,
   ArrowUpRight,
   ArrowDownLeft,
+  Eye,
+  FileText,
+  Truck,
 } from 'lucide-react';
 import { CATALOGO_INICIAL_POS, CATEGORIAS_POS, type CategoriaPOS } from '../PosTerminalPage';
 import {
   applyStockDelta,
-  applyBodegaCentralDelta,
   getStockDelta,
   getPosRegisteredSales,
   getPosRegisteredExchanges,
 } from '../utils/posLedgerSync';
+import { DetailDrawer } from '../components/DetailDrawer';
+import { mismaSede } from '../utils/webOrdersStore';
 
 export type SubcategoriaInventarioSede = 'EXISTENCIAS' | 'SOLICITUD' | 'RECEPCION' | 'KARDEX';
 
@@ -81,7 +84,7 @@ export interface DespachoEntranteItem {
   origen: string;
   destino: string;
   fechaDespacho: string;
-  estado: 'EN_TRANSITO' | 'RECIBIDO' | 'RECIBIDO_CON_NOVEDAD';
+  estado: 'PENDIENTE_DESPACHO' | 'EN_TRANSITO' | 'RECIBIDO' | 'RECIBIDO_CON_NOVEDAD';
   observaciones: string;
   lineas: LineaRecepcionTraslado[];
 }
@@ -182,62 +185,71 @@ const loadDespachosFromAdminStorage = (sedeActiva: string): DespachoEntranteItem
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.map((t: any, idx: number) => {
-      const estadoRaw = String(t.estado || 'ENVIADO');
-      const estadoMapped: 'EN_TRANSITO' | 'RECIBIDO' | 'RECIBIDO_CON_NOVEDAD' =
-        estadoRaw === 'RECIBIDO'
-          ? 'RECIBIDO'
-          : estadoRaw === 'RECIBIDO_CON_NOVEDAD'
-          ? 'RECIBIDO_CON_NOVEDAD'
-          : 'EN_TRANSITO';
+    return parsed
+      .filter((t: any) => {
+        if (!t.destinoNombre) return true;
+        return mismaSede(t.destinoNombre, sedeActiva);
+      })
+      .map((t: any, idx: number) => {
+        const estadoRaw = String(t.estado || 'PENDIENTE').toUpperCase();
+        let estadoMapped: 'PENDIENTE_DESPACHO' | 'EN_TRANSITO' | 'RECIBIDO' | 'RECIBIDO_CON_NOVEDAD';
+        if (estadoRaw === 'RECIBIDO') {
+          estadoMapped = 'RECIBIDO';
+        } else if (estadoRaw === 'RECIBIDO_CON_NOVEDAD') {
+          estadoMapped = 'RECIBIDO_CON_NOVEDAD';
+        } else if (estadoRaw === 'ENVIADO' || estadoRaw === 'EN_TRANSITO') {
+          estadoMapped = 'EN_TRANSITO';
+        } else {
+          estadoMapped = 'PENDIENTE_DESPACHO';
+        }
 
-      const lineas: LineaRecepcionTraslado[] = Array.isArray(t.lineas)
-        ? t.lineas.map((l: any, lIdx: number) => {
-            const refCat = CATALOGO_INICIAL_POS.find(
-              (c) => c.sku.toUpperCase() === String(l.sku || '').toUpperCase()
-            );
-            const cantEnv =
-              Number(l.cantidadEnviada) ||
-              Number(l.cantidadAprobada) ||
-              Number(l.cantidadSolicitada) ||
-              1;
-            const recBuena =
-              estadoMapped === 'EN_TRANSITO'
-                ? cantEnv
-                : Number(l.recibidaBuena ?? cantEnv);
-            const recDanada =
-              estadoMapped === 'EN_TRANSITO' ? 0 : Number(l.recibidaDanada ?? 0);
+        const lineas: LineaRecepcionTraslado[] = Array.isArray(t.lineas)
+          ? t.lineas.map((l: any, lIdx: number) => {
+              const refCat = CATALOGO_INICIAL_POS.find(
+                (c) => c.sku.toUpperCase() === String(l.sku || '').toUpperCase()
+              );
+              const cantEnv =
+                Number(l.cantidadEnviada) ||
+                Number(l.cantidadAprobada) ||
+                Number(l.cantidadSolicitada) ||
+                1;
+              const recBuena =
+                estadoMapped === 'EN_TRANSITO'
+                  ? cantEnv
+                  : Number(l.recibidaBuena ?? cantEnv);
+              const recDanada =
+                estadoMapped === 'EN_TRANSITO' ? 0 : Number(l.recibidaDanada ?? 0);
 
-            return {
-              id: String(l.id || `lin-${idx}-${lIdx}`),
-              sku: String(l.sku || refCat?.sku || 'SKU-POS'),
-              nombre: String(l.nombreProducto || l.nombre || refCat?.nombre || 'Prenda FORMA'),
-              talla: refCat?.talla || 'Única',
-              color: refCat?.color || 'Estándar',
-              imagenUrl: refCat?.imagenUrl || '/products/blazer-imperial-vinotinto.png',
-              cantidadEnviada: cantEnv,
-              recibidasBuenas: recBuena,
-              recibidasDanadas: recDanada,
-            };
-          })
-        : [];
+              return {
+                id: String(l.id || `lin-${idx}-${lIdx}`),
+                sku: String(l.sku || refCat?.sku || 'SKU-POS'),
+                nombre: String(l.nombreProducto || l.nombre || refCat?.nombre || 'Prenda FORMA'),
+                talla: refCat?.talla || 'Única',
+                color: refCat?.color || 'Estándar',
+                imagenUrl: refCat?.imagenUrl || '/products/blazer-imperial-vinotinto.png',
+                cantidadEnviada: cantEnv,
+                recibidasBuenas: recBuena,
+                recibidasDanadas: recDanada,
+              };
+            })
+          : [];
 
-      return {
-        id: String(t.id || `adm-tra-${idx}`),
-        adminTrasladoId: Number(t.id) || undefined,
-        codigo: String(t.codigo || `TRL-00${idx + 1}`),
-        origen: String(t.origenNombre || 'Bodega Central'),
-        destino: String(t.destinoNombre || sedeActiva),
-        fechaDespacho: t.fechaEnvio
-          ? formatFechaBogota(t.fechaEnvio)
-          : t.fechaSolicitud
-          ? formatFechaBogota(t.fechaSolicitud)
-          : 'Hoy · Turno Actual',
-        estado: estadoMapped,
-        observaciones: String(t.observaciones || ''),
-        lineas,
-      };
-    });
+        return {
+          id: String(t.id || `adm-tra-${idx}`),
+          adminTrasladoId: Number(t.id) || undefined,
+          codigo: String(t.codigo || `TRL-00${idx + 1}`),
+          origen: String(t.origenNombre || 'Bodega Central'),
+          destino: String(t.destinoNombre || sedeActiva),
+          fechaDespacho: t.fechaEnvio
+            ? formatFechaBogota(t.fechaEnvio)
+            : t.fechaSolicitud
+            ? formatFechaBogota(t.fechaSolicitud)
+            : 'Hoy · Turno Actual',
+          estado: estadoMapped,
+          observaciones: String(t.observaciones || ''),
+          lineas,
+        };
+      });
   } catch {
     return [];
   }
@@ -405,14 +417,21 @@ export const PosTrasladosPage: React.FC = () => {
   const [despachosEntrantes, setDespachosEntrantes] = useState<DespachoEntranteItem[]>(() =>
     loadDespachosFromAdminStorage(sedeActiva)
   );
+  const despachosPendientes = useMemo(() => {
+    return despachosEntrantes.filter((d) => d.estado === 'EN_TRANSITO');
+  }, [despachosEntrantes]);
+  const despachosRecibidos = useMemo(() => {
+    return despachosEntrantes.filter(
+      (d) => d.estado === 'RECIBIDO' || d.estado === 'RECIBIDO_CON_NOVEDAD'
+    );
+  }, [despachosEntrantes]);
+  const [tabRecepcion, setTabRecepcion] = useState<'TRANSITO' | 'RECIBIDOS'>('TRANSITO');
+  const [despachoParaRecepcionModal, setDespachoParaRecepcionModal] =
+    useState<DespachoEntranteItem | null>(null);
+  const [despachoDetalleDrawer, setDespachoDetalleDrawer] =
+    useState<DespachoEntranteItem | null>(null);
   const [errorRecepcion, setErrorRecepcion] = useState<string | null>(null);
   const [mensajeRecepcionExito, setMensajeRecepcionExito] = useState<string | null>(null);
-
-  // Formulario rápido para registrar un despacho entrante desde Bodega Central
-  const [skuNuevoDespacho, setSkuNuevoDespacho] = useState<string>(
-    () => CATALOGO_INICIAL_POS[0]?.sku || ''
-  );
-  const [cantidadNuevoDespacho, setCantidadNuevoDespacho] = useState<number>(6);
 
   // =========================================================================
   // ESTADO SUBCATEGORÍA 4: MOVIMIENTOS DE INVENTARIO (KARDEX SEDE)
@@ -424,6 +443,41 @@ export const PosTrasladosPage: React.FC = () => {
     'TODOS' | 'VENTA_POS' | 'CAMBIOS' | 'RECEPCION_TRASLADO'
   >('TODOS');
   const [busquedaKardex, setBusquedaKardex] = useState<string>('');
+
+  // Sincronización reactiva de las solicitudes con forma_admin_traslados
+  const solicitudesSincronizadas = useMemo(() => {
+    try {
+      const rawAdmin = localStorage.getItem(STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS);
+      const adminList = rawAdmin ? JSON.parse(rawAdmin) : [];
+      if (!Array.isArray(adminList)) return solicitudes;
+
+      return solicitudes.map((sol) => {
+        const matchAdmin = adminList.find(
+          (a: any) =>
+            String(a.codigo || '').toUpperCase() === String(sol.codigo || '').toUpperCase() ||
+            Number(a.id) === Number(sol.id.replace('sol-', ''))
+        );
+        if (!matchAdmin) return sol;
+        const admEstado = String(matchAdmin.estado || '').toUpperCase();
+        if (admEstado === 'RECIBIDO' || admEstado === 'RECIBIDO_CON_NOVEDAD') {
+          return { ...sol, estado: 'RECIBIDA' as const };
+        }
+        if (admEstado === 'ENVIADO' || admEstado === 'EN_TRANSITO') {
+          return { ...sol, estado: 'EN_CAMINO' as const };
+        }
+        return { ...sol, estado: 'APROBADA' as const };
+      });
+    } catch {
+      return solicitudes;
+    }
+  }, [solicitudes, tickLedger]);
+
+  // Registro seleccionado para el DetailDrawer en Subcategoría 4
+  const [selectedKardexMovimiento, setSelectedKardexMovimiento] =
+    useState<MovimientoKardexSede | null>(null);
+  const [drawerTabKardex, setDrawerTabKardex] = useState<
+    'detalle' | 'prendas' | 'observaciones'
+  >('detalle');
 
   // Crear solicitud de mercancía a Bodega Central y sincronizar con forma_admin_traslados
   const handleCrearSolicitud = (e: React.FormEvent) => {
@@ -446,8 +500,13 @@ export const PosTrasladosPage: React.FC = () => {
     }
 
     const nowIso = new Date().toISOString();
-    const nextNum = solicitudes.length + 1;
-    const codigoSol = `SOL-${new Date().getFullYear()}-${String(nextNum).padStart(3, '0')}`;
+    const rawAdmin = localStorage.getItem(STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS);
+    const actualesAdmin = rawAdmin ? JSON.parse(rawAdmin) : [];
+    const arrAdmin = Array.isArray(actualesAdmin) ? actualesAdmin : [];
+
+    const nextNum = arrAdmin.length + 1;
+    const codigoCanonica = `TRL-${new Date().getFullYear()}-${String(nextNum).padStart(3, '0')}`;
+    const nuevoTrasladoId = Date.now();
 
     const desgloseTallas: DesgloseTallaSolicitud[] = itemsSolicitados.map((it) => ({
       sku: it.sku,
@@ -463,8 +522,8 @@ export const PosTrasladosPage: React.FC = () => {
     const primeraVar = itemsSolicitados[0];
 
     const nuevaSol: SolicitudTrasladoItem = {
-      id: `sol-${Date.now()}`,
-      codigo: codigoSol,
+      id: `sol-${nuevoTrasladoId}`,
+      codigo: codigoCanonica,
       fecha: `Hoy · ${formatFechaBogota(nowIso)}`,
       fechaIso: nowIso,
       sedeDestino: sedeActiva,
@@ -474,7 +533,7 @@ export const PosTrasladosPage: React.FC = () => {
       color: itemsSolicitados.length === 1 ? primeraVar.color : 'Variados',
       cantidad: totalUnidades,
       motivo: motivoSolicitud.trim() || 'Reposición regular de tienda',
-      estado: 'EN_CAMINO',
+      estado: 'APROBADA',
       desgloseTallas,
     };
 
@@ -482,14 +541,8 @@ export const PosTrasladosPage: React.FC = () => {
     setSolicitudes(nuevasSolicitudes);
     saveSolicitudesGuardadas(nuevasSolicitudes);
 
-    // Sincronizar también en forma_admin_traslados para trazabilidad con Admin y Recepción
+    // Sincronizar en forma_admin_traslados como una única entidad canónica TRL
     try {
-      const rawAdmin = localStorage.getItem(STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS);
-      const actualesAdmin = rawAdmin ? JSON.parse(rawAdmin) : [];
-      const arrAdmin = Array.isArray(actualesAdmin) ? actualesAdmin : [];
-      const nuevoTrasladoId = Date.now();
-      const codigoTrl = `TRL-${String(arrAdmin.length + 1).padStart(4, '0')}`;
-
       const lineasTraslado = itemsSolicitados.map((it, idx) => ({
         id: nuevoTrasladoId + idx + 1,
         varianteId: idx + 1,
@@ -497,27 +550,28 @@ export const PosTrasladosPage: React.FC = () => {
         nombreProducto: `${productoSeleccionado.nombre} (Talla ${it.talla})`,
         cantidadSolicitada: it.cantidad,
         cantidadAprobada: it.cantidad,
-        cantidadEnviada: it.cantidad,
-        recibidaBuena: it.cantidad,
+        cantidadEnviada: 0,
+        recibidaBuena: 0,
         recibidaDanada: 0,
       }));
 
       const nuevoAdminTraslado = {
         id: nuevoTrasladoId,
-        codigo: codigoTrl,
+        codigo: codigoCanonica,
         origenId: 1,
         origenNombre: 'Bodega Central',
         destinoId: 2,
         destinoNombre: sedeActiva,
-        estado: 'ENVIADO',
+        estado: 'APROBADO',
         fechaSolicitud: nowIso,
-        fechaEnvio: nowIso,
         observaciones: nuevaSol.motivo,
         lineas: lineasTraslado,
       };
 
       const nuevosAdmin = [nuevoAdminTraslado, ...arrAdmin];
       localStorage.setItem(STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS, JSON.stringify(nuevosAdmin));
+      window.dispatchEvent(new Event('forma-pos-ledger-update'));
+      window.dispatchEvent(new Event('storage'));
       setDespachosEntrantes(loadDespachosFromAdminStorage(sedeActiva));
     } catch {
       /* noop */
@@ -537,98 +591,38 @@ export const PosTrasladosPage: React.FC = () => {
     setTimeout(() => setMensajeSolicitudExito(null), 6000);
   };
 
-  // Registrar un despacho entrante desde Bodega Central en la pestaña de Recepción
-  const handleRegistrarDespachoEntrante = (e: React.FormEvent) => {
-    e.preventDefault();
-    const refCat =
-      CATALOGO_INICIAL_POS.find((c) => c.sku === skuNuevoDespacho) || CATALOGO_INICIAL_POS[0];
-    if (!refCat) return;
-
-    const cant = Math.max(1, Math.trunc(cantidadNuevoDespacho || 1));
-    const nowIso = new Date().toISOString();
-
-    try {
-      const rawAdmin = localStorage.getItem(STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS);
-      const actualesAdmin = rawAdmin ? JSON.parse(rawAdmin) : [];
-      const arrAdmin = Array.isArray(actualesAdmin) ? actualesAdmin : [];
-      const nuevoId = Date.now();
-      const codigoTrl = `TRL-${String(arrAdmin.length + 1).padStart(4, '0')}`;
-
-      const nuevoAdminTraslado = {
-        id: nuevoId,
-        codigo: codigoTrl,
-        origenId: 1,
-        origenNombre: 'Bodega Central',
-        destinoId: 2,
-        destinoNombre: sedeActiva,
-        estado: 'ENVIADO',
-        fechaSolicitud: nowIso,
-        fechaEnvio: nowIso,
-        observaciones: '',
-        lineas: [
-          {
-            id: nuevoId + 1,
-            varianteId: 1,
-            sku: refCat.sku,
-            nombreProducto: refCat.nombre,
-            cantidadSolicitada: cant,
-            cantidadAprobada: cant,
-            cantidadEnviada: cant,
-            recibidaBuena: cant,
-            recibidaDanada: 0,
-          },
-        ],
-      };
-
-      localStorage.setItem(
-        STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS,
-        JSON.stringify([nuevoAdminTraslado, ...arrAdmin])
-      );
-      setDespachosEntrantes(loadDespachosFromAdminStorage(sedeActiva));
-    } catch {
-      /* noop */
-    }
-  };
-
-  // Ajustar conteo de unidades buenas y con avería en Recepción
-  const handleAjustarConteo = (
-    trasladoId: string,
+  // Ajustar conteo de unidades buenas y con avería dentro del Modal de Recepción
+  const handleAjustarConteoEnModal = (
     lineaId: string,
     campo: 'recibidasBuenas' | 'recibidasDanadas',
     delta: number
   ) => {
     setErrorRecepcion(null);
-    setDespachosEntrantes((prev) =>
-      prev.map((tra) => {
-        if (tra.id !== trasladoId || tra.estado !== 'EN_TRANSITO') return tra;
-        return {
-          ...tra,
-          lineas: tra.lineas.map((lin) => {
-            if (lin.id !== lineaId) return lin;
-            const nuevo = Math.max(0, lin[campo] + delta);
-            const otro =
-              campo === 'recibidasBuenas' ? lin.recibidasDanadas : lin.recibidasBuenas;
-            if (nuevo + otro > lin.cantidadEnviada) {
-              setErrorRecepcion(
-                `La suma de unidades en buen estado (${
-                  campo === 'recibidasBuenas' ? nuevo : lin.recibidasBuenas
-                }) y con avería (${
-                  campo === 'recibidasDanadas' ? nuevo : lin.recibidasDanadas
-                }) no puede superar la cantidad enviada (${lin.cantidadEnviada}).`
-              );
-              return lin;
-            }
-            return { ...lin, [campo]: nuevo };
-          }),
-        };
-      })
-    );
+    setDespachoParaRecepcionModal((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        lineas: prev.lineas.map((lin) => {
+          if (lin.id !== lineaId) return lin;
+          const nuevo = Math.max(0, lin[campo] + delta);
+          const otro =
+            campo === 'recibidasBuenas' ? lin.recibidasDanadas : lin.recibidasBuenas;
+          if (nuevo + otro > lin.cantidadEnviada) {
+            setErrorRecepcion(
+              `La suma de buenas (${campo === 'recibidasBuenas' ? nuevo : lin.recibidasBuenas}) y averías (${
+                campo === 'recibidasDanadas' ? nuevo : lin.recibidasDanadas
+              }) no puede superar la cantidad enviada (${lin.cantidadEnviada}).`
+            );
+            return lin;
+          }
+          return { ...lin, [campo]: nuevo };
+        }),
+      };
+    });
   };
 
-  const handleUpdateObservacionRecepcion = (trasladoId: string, texto: string) => {
-    setDespachosEntrantes((prev) =>
-      prev.map((tra) => (tra.id === trasladoId ? { ...tra, observaciones: texto } : tra))
-    );
+  const handleUpdateObservacionModal = (texto: string) => {
+    setDespachoParaRecepcionModal((prev) => (prev ? { ...prev, observaciones: texto } : null));
   };
 
   // Confirmar recepción de mercancía sumando las unidades buenas al stock físico de la sede
@@ -636,7 +630,11 @@ export const PosTrasladosPage: React.FC = () => {
     setErrorRecepcion(null);
     setMensajeRecepcionExito(null);
 
-    const target = despachosEntrantes.find((t) => t.id === trasladoId);
+    const target =
+      despachoParaRecepcionModal && (despachoParaRecepcionModal.id === trasladoId || despachoParaRecepcionModal.codigo === trasladoId)
+        ? despachoParaRecepcionModal
+        : despachosEntrantes.find((t) => t.id === trasladoId || t.codigo === trasladoId);
+
     if (!target || target.estado !== 'EN_TRANSITO') return;
 
     const tieneDanadas = target.lineas.some((l) => l.recibidasDanadas > 0);
@@ -663,11 +661,13 @@ export const PosTrasladosPage: React.FC = () => {
     target.lineas.forEach((linea) => {
       if (linea.recibidasBuenas > 0) {
         applyStockDelta(linea.sku, +linea.recibidasBuenas);
+        applyStockDelta(`${sedeActiva}::${linea.sku}`, +linea.recibidasBuenas);
         totalBuenasSumadas += linea.recibidasBuenas;
       }
-      if (linea.cantidadEnviada > 0) {
-        applyBodegaCentralDelta(linea.sku, -linea.cantidadEnviada);
+      if (linea.recibidasDanadas > 0) {
+        applyStockDelta(`${sedeActiva}::AVERIA::${linea.sku}`, +linea.recibidasDanadas);
       }
+      // NOTA CANÓNICA: NO se descuenta Bodega Central aquí porque ya fue descontada al momento del despacho en Admin.
       const faltantes = Math.max(
         0,
         linea.cantidadEnviada - (linea.recibidasBuenas + linea.recibidasDanadas)
@@ -721,14 +721,15 @@ export const PosTrasladosPage: React.FC = () => {
           };
         });
         localStorage.setItem(STORAGE_KEYS_TRASLADOS.ADMIN_TRASLADOS, JSON.stringify(actualizados));
+        window.dispatchEvent(new Event('forma-pos-ledger-update'));
+        window.dispatchEvent(new Event('storage'));
       }
     } catch {
       /* noop */
     }
 
-    setDespachosEntrantes((prev) =>
-      prev.map((tra) => (tra.id === trasladoId ? { ...tra, estado: nuevoEstado } : tra))
-    );
+    setDespachoParaRecepcionModal(null);
+    setDespachosEntrantes(loadDespachosFromAdminStorage(sedeActiva));
     setTickLedger((n) => n + 1);
     setMensajeRecepcionExito(
       `Recepción confirmada para ${target.codigo}: +${totalBuenasSumadas} unidades incorporadas al inventario disponible de ${sedeActiva}.`
@@ -1303,10 +1304,10 @@ export const PosTrasladosPage: React.FC = () => {
                   Trazabilidad del Turno
                 </span>
                 <h2 className="text-base font-black text-[#1C1311]">
-                  Solicitudes Enviadas a Bodega Central ({solicitudes.length})
+                  Solicitudes Enviadas a Bodega Central ({solicitudesSincronizadas.length})
                 </h2>
               </div>
-              {solicitudes.length > 0 && (
+              {solicitudesSincronizadas.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setSubcategoriaActiva('RECEPCION')}
@@ -1317,7 +1318,7 @@ export const PosTrasladosPage: React.FC = () => {
               )}
             </div>
 
-            {solicitudes.length === 0 ? (
+            {solicitudesSincronizadas.length === 0 ? (
               <div className="p-10 rounded-2xl bg-[#FAF7F4] border border-dashed border-[#D8CFC6] text-center space-y-2">
                 <Send className="w-9 h-9 text-stone-300 mx-auto" />
                 <p className="text-sm font-black text-[#1C1311]">
@@ -1330,7 +1331,7 @@ export const PosTrasladosPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {solicitudes.map((sol) => (
+                {solicitudesSincronizadas.map((sol) => (
                   <div
                     key={sol.id}
                     className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
@@ -1376,13 +1377,25 @@ export const PosTrasladosPage: React.FC = () => {
                           ? `${sol.desgloseTallas.length} SKUs (${sol.cantidad} uds)`
                           : `SKU: ${sol.sku}`}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setSubcategoriaActiva('RECEPCION')}
-                        className="px-2.5 py-1 rounded-lg bg-[#661521] text-white font-bold text-[11px] cursor-pointer"
-                      >
-                        Recibir Mercancía
-                      </button>
+                      {sol.estado === 'RECIBIDA' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-[#059669] font-black text-[11px] border border-emerald-300">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Recibida en Tienda</span>
+                        </span>
+                      ) : sol.estado === 'EN_CAMINO' ? (
+                        <button
+                          type="button"
+                          onClick={() => setSubcategoriaActiva('RECEPCION')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#661521] hover:bg-stone-800 text-white font-bold text-[11px] cursor-pointer transition-colors"
+                        >
+                          <Truck className="w-3 h-3" />
+                          <span>En Tránsito · Recibir →</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-bold text-[11px] border border-amber-200">
+                          ⏳ Pendiente Despacho en Central
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1393,58 +1406,45 @@ export const PosTrasladosPage: React.FC = () => {
       )}
 
       {/* =========================================================================
-          SUBCATEGORÍA 3: RECEPCIÓN DE DESPACHOS
+          SUBCATEGORÍA 3: RECEPCIÓN DE DESPACHOS (TABLA COMPACTA + MODAL DEDICADO)
       ========================================================================= */}
       {subcategoriaActiva === 'RECEPCION' && (
-        <div className="space-y-4">
-          {/* Barra Superior para Registrar Guía / Despacho Entrante desde Bodega Central */}
-          <form
-            onSubmit={handleRegistrarDespachoEntrante}
-            className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 flex flex-col lg:flex-row lg:items-end justify-between gap-3"
-          >
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-stone-600 mb-1">
-                  Registrar Despacho Entrante desde Bodega Central (Prenda / SKU):
-                </label>
-                <select
-                  value={skuNuevoDespacho}
-                  onChange={(e) => setSkuNuevoDespacho(e.target.value)}
-                  className="w-full min-h-[42px] px-3 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] text-xs font-bold text-[#1C1311]"
-                >
-                  {CATALOGO_INICIAL_POS.map((p) => (
-                    <option key={p.sku} value={p.sku}>
-                      {p.nombre} ({p.sku} · Talla {p.talla})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-stone-600 mb-1">
-                  Cantidad Enviada en Guía:
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={cantidadNuevoDespacho}
-                  onChange={(e) =>
-                    setCantidadNuevoDespacho(Math.max(1, parseInt(e.target.value, 10) || 1))
-                  }
-                  className="w-full min-h-[42px] px-3 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] font-mono text-sm font-black text-[#1C1311]"
-                />
-              </div>
+        <section className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 sm:p-5 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE4]">
+            <div>
+              <h2 className="text-base font-black text-[#1C1311]">
+                Control y Recepción de Despachos Entrantes
+              </h2>
+              <p className="text-xs text-stone-500">
+                Verifica físicamente los traslados enviados desde Bodega Central hacia {sedeActiva} antes de ingresarlos al inventario.
+              </p>
             </div>
 
-            <button
-              type="submit"
-              className="min-h-[42px] px-4 rounded-xl bg-[#1C1311] hover:bg-stone-800 text-[#D19650] font-black text-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-            >
-              <PackagePlus className="w-4 h-4" />
-              <span>Cargar Guía de Despacho para Conteo</span>
-            </button>
-          </form>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setTabRecepcion('TRANSITO')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tabRecepcion === 'TRANSITO'
+                    ? 'bg-[#661521] text-white shadow-sm'
+                    : 'bg-[#FAF7F4] text-stone-600 hover:bg-stone-200 border border-[#D8CFC6]'
+                }`}
+              >
+                1. Despachos en Tránsito ({despachosPendientes.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabRecepcion('RECIBIDOS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tabRecepcion === 'RECIBIDOS'
+                    ? 'bg-[#661521] text-white shadow-sm'
+                    : 'bg-[#FAF7F4] text-stone-600 hover:bg-stone-200 border border-[#D8CFC6]'
+                }`}
+              >
+                2. Historial de Despachos Recibidos ({despachosRecibidos.length})
+              </button>
+            </div>
+          </div>
 
           {errorRecepcion && (
             <div className="p-3.5 rounded-xl bg-red-50 border-2 border-[#661521] text-[#661521] text-xs font-bold flex items-center justify-between gap-3">
@@ -1463,271 +1463,579 @@ export const PosTrasladosPage: React.FC = () => {
           )}
 
           {mensajeRecepcionExito && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border-2 border-[#059669] text-[#059669] text-xs font-bold flex items-center justify-between gap-3">
+            <div className="p-3.5 rounded-xl bg-emerald-50 border-2 border-[#059669] text-[#059669] text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{mensajeRecepcionExito}</span>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMensajeRecepcionExito(null);
+                    setSubcategoriaActiva('KARDEX');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#661521] text-white text-xs font-bold cursor-pointer hover:bg-stone-800 transition-colors"
+                >
+                  Ver en Kardex / Historial →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMensajeRecepcionExito(null)}
+                  className="px-3 py-1.5 rounded-lg bg-[#059669] text-white text-xs font-bold cursor-pointer hover:bg-emerald-700 transition-colors"
+                >
+                  Aceptar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tabRecepcion === 'TRANSITO' && (
+            <>
+              {despachosPendientes.length === 0 ? (
+                <div className="p-10 rounded-2xl bg-[#FAF7F4] border border-dashed border-[#D8CFC6] text-center space-y-2">
+                  <PackageCheck className="w-10 h-10 text-stone-300 mx-auto" />
+                  <p className="text-sm font-black text-[#1C1311]">
+                    No hay despachos en tránsito pendientes por recibir en {sedeActiva}
+                  </p>
+                  <p className="text-xs text-stone-500 max-w-md mx-auto">
+                    Cuando Bodega Central despache un traslado hacia este punto de venta, aparecerá
+                    automáticamente aquí en estado &ldquo;En Tránsito&rdquo;. Podrás pulsar &ldquo;Confirmar Recepción de Mercancía&rdquo; para abrir el modal de conteo físico y verificar las unidades.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#E5DDD3] text-[10px] font-black uppercase text-stone-500 bg-[#FAF7F4]">
+                        <th className="py-2.5 px-3 rounded-tl-xl">Guía / Código</th>
+                        <th className="py-2.5 px-3">Ruta Logística</th>
+                        <th className="py-2.5 px-3">Fecha de Envío</th>
+                        <th className="py-2.5 px-3">Prendas y Unidades</th>
+                        <th className="py-2.5 px-3 text-center">Estado Logístico</th>
+                        <th className="py-2.5 px-3 text-right rounded-tr-xl">Acción Operativa</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EFEAE4]">
+                      {despachosPendientes.map((despacho) => {
+                        const totalUds = despacho.lineas.reduce(
+                          (acc, l) => acc + l.cantidadEnviada,
+                          0
+                        );
+                        return (
+                          <tr
+                            key={despacho.id}
+                            onClick={() => {
+                              setErrorRecepcion(null);
+                              setDespachoParaRecepcionModal(
+                                JSON.parse(JSON.stringify(despacho))
+                              );
+                            }}
+                            className="hover:bg-[#FAF7F4] cursor-pointer transition-colors"
+                          >
+                            <td className="py-3 px-3 font-mono font-black text-sm text-[#1C1311]">
+                              #{despacho.codigo}
+                            </td>
+                            <td className="py-3 px-3 text-stone-700">
+                              <span className="font-semibold">{despacho.origen}</span> →{' '}
+                              <strong className="text-[#1C1311]">{despacho.destino}</strong>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-[11px] text-stone-500">
+                              {despacho.fechaDespacho}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-black text-[#1C1311] block">
+                                {totalUds} unidades
+                              </span>
+                              <span className="text-[11px] text-stone-500">
+                                {despacho.lineas.length}{' '}
+                                {despacho.lineas.length === 1 ? 'referencia' : 'referencias'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                                <Truck className="w-3 h-3" />
+                                <span>En Tránsito</span>
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setErrorRecepcion(null);
+                                  setDespachoParaRecepcionModal(
+                                    JSON.parse(JSON.stringify(despacho))
+                                  );
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#059669] hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-xs shadow-sm cursor-pointer transition-all"
+                              >
+                                <PackageCheck className="w-4 h-4" />
+                                <span>Confirmar Recepción de Mercancía</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {tabRecepcion === 'RECIBIDOS' && (
+            <>
+              {despachosRecibidos.length === 0 ? (
+                <div className="p-10 rounded-2xl bg-[#FAF7F4] border border-dashed border-[#D8CFC6] text-center space-y-2">
+                  <PackageCheck className="w-10 h-10 text-stone-300 mx-auto" />
+                  <p className="text-sm font-black text-[#1C1311]">
+                    Aún no se registran despachos recibidos en esta sede
+                  </p>
+                  <p className="text-xs text-stone-500 max-w-md mx-auto">
+                    Cuando confirmes la recepción de un despacho en tránsito, quedará archivado aquí con el detalle de unidades incorporadas y bitácora.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#E5DDD3] text-[10px] font-black uppercase text-stone-500 bg-[#FAF7F4]">
+                        <th className="py-2.5 px-3 rounded-tl-xl">Guía / Código</th>
+                        <th className="py-2.5 px-3">Ruta Logística</th>
+                        <th className="py-2.5 px-3">Fecha de Envío</th>
+                        <th className="py-2.5 px-3">Prendas Recibidas</th>
+                        <th className="py-2.5 px-3 text-center">Estado</th>
+                        <th className="py-2.5 px-3 text-right rounded-tr-xl">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EFEAE4]">
+                      {despachosRecibidos.map((despacho) => {
+                        const totalBuenas = despacho.lineas.reduce(
+                          (acc, l) => acc + l.recibidasBuenas,
+                          0
+                        );
+                        const totalDanadas = despacho.lineas.reduce(
+                          (acc, l) => acc + l.recibidasDanadas,
+                          0
+                        );
+                        return (
+                          <tr
+                            key={despacho.id}
+                            onClick={() => setDespachoDetalleDrawer(despacho)}
+                            className="hover:bg-[#FAF7F4] cursor-pointer transition-colors"
+                          >
+                            <td className="py-3 px-3 font-mono font-black text-sm text-[#1C1311]">
+                              #{despacho.codigo}
+                            </td>
+                            <td className="py-3 px-3 text-stone-700">
+                              <span className="font-semibold">{despacho.origen}</span> →{' '}
+                              <strong className="text-[#1C1311]">{despacho.destino}</strong>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-[11px] text-stone-500">
+                              {despacho.fechaDespacho}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-black text-[#059669] block">
+                                +{totalBuenas} uds ingresadas
+                              </span>
+                              {totalDanadas > 0 && (
+                                <span className="text-[11px] text-[#661521] font-semibold">
+                                  {totalDanadas} uds avería
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                                  despacho.estado === 'RECIBIDO'
+                                    ? 'bg-emerald-100 text-[#059669] border border-emerald-300'
+                                    : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                }`}
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>
+                                  {despacho.estado === 'RECIBIDO'
+                                    ? 'Recibido Completo'
+                                    : 'Recibido con Novedad'}
+                                </span>
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDespachoDetalleDrawer(despacho);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FAF7F4] hover:bg-stone-200 border border-[#D8CFC6] text-[11px] font-bold text-[#661521] cursor-pointer transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Ver Detalle</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Modal Dedicado de Recepción y Conteo Físico de Mercancía */}
+      {despachoParaRecepcionModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-[#292827]/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+        >
+          <div className="bg-white rounded-3xl border border-[#E7E0D8] shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE4]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-[#1C1311] text-[#D19650] font-mono text-xs font-black">
+                    #{despachoParaRecepcionModal.codigo}
+                  </span>
+                  <span className="text-xs font-black text-stone-500 uppercase">
+                    Recepción y Conteo Físico
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-[#1C1311] mt-0.5">
+                  Verificación de Mercancía Entrante en {sedeActiva}
+                </h3>
+                <p className="text-xs text-stone-500">
+                  {despachoParaRecepcionModal.origen} → {despachoParaRecepcionModal.destino} · Despachado:{' '}
+                  {despachoParaRecepcionModal.fechaDespacho}
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => setMensajeRecepcionExito(null)}
-                className="px-2.5 py-1 rounded bg-[#059669] text-white text-xs font-bold cursor-pointer"
+                onClick={() => {
+                  setErrorRecepcion(null);
+                  setDespachoParaRecepcionModal(null);
+                }}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center cursor-pointer transition-colors font-black"
               >
-                Cerrar
+                ✕
               </button>
             </div>
-          )}
 
-          {despachosEntrantes.length === 0 ? (
-            <div className="bg-white rounded-2xl border-2 border-[#E2D9CE] p-10 text-center space-y-2">
-              <PackageCheck className="w-10 h-10 text-stone-300 mx-auto" />
-              <p className="text-sm font-black text-[#1C1311]">
-                No hay despachos pendientes por recibir en {sedeActiva}
-              </p>
-              <p className="text-xs text-stone-500 max-w-md mx-auto">
-                Cuando Bodega Central envíe mercancía hacia este punto de venta (o cargues una guía
-                en la barra superior), aparecerá aquí para verificar Unidades en Buen Estado,
-                Unidades con Avería y Faltantes.
-              </p>
+            {/* Error si aplica */}
+            {errorRecepcion && (
+              <div className="p-3 rounded-xl bg-red-50 border border-[#661521] text-[#661521] text-xs font-bold flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{errorRecepcion}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorRecepcion(null)}
+                  className="px-2 py-0.5 rounded bg-[#661521] text-white text-[11px] font-bold cursor-pointer"
+                >
+                  Entendido
+                </button>
+              </div>
+            )}
+
+            {/* Instrucción clara */}
+            <div className="p-3 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] text-xs text-stone-600 flex items-center gap-2">
+              <PackageCheck className="w-4 h-4 text-[#059669] shrink-0" />
+              <span>
+                Cuenta físicamente cada prenda. Ajusta las unidades en buen estado y registra averías si las prendas llegaron con defectos de fábrica o transporte.
+              </span>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {despachosEntrantes.map((despacho) => {
-                const totalEnviado = despacho.lineas.reduce(
-                  (acc, l) => acc + l.cantidadEnviada,
-                  0
-                );
-                const totalBuenas = despacho.lineas.reduce(
-                  (acc, l) => acc + l.recibidasBuenas,
-                  0
-                );
-                const totalDanadas = despacho.lineas.reduce(
-                  (acc, l) => acc + l.recibidasDanadas,
-                  0
-                );
-                const totalFaltantes = Math.max(0, totalEnviado - (totalBuenas + totalDanadas));
 
-                return (
-                  <article
-                    key={despacho.id}
-                    className="bg-white rounded-2xl border-2 border-[#E2D9CE] shadow-sm p-4 sm:p-5 space-y-4"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE4]">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="px-3 py-1 rounded-xl bg-[#1C1311] text-[#D19650] font-mono text-sm font-black">
-                          #{despacho.codigo}
-                        </span>
-                        <span className="text-xs font-semibold text-stone-600">
-                          {despacho.origen} →{' '}
-                          <strong className="text-[#1C1311]">{despacho.destino}</strong>
-                        </span>
-                        <span className="text-xs text-stone-500 font-mono">
-                          ({despacho.fechaDespacho})
-                        </span>
-                      </div>
-
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase ${
-                          despacho.estado === 'EN_TRANSITO'
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : despacho.estado === 'RECIBIDO'
-                            ? 'bg-emerald-100 text-[#059669] border border-emerald-300'
-                            : 'bg-red-100 text-[#661521] border border-red-300'
-                        }`}
-                      >
-                        {despacho.estado === 'EN_TRANSITO' && 'En Tránsito (Pendiente por Recibir)'}
-                        {despacho.estado === 'RECIBIDO' && 'Mercancía Recibida Completa'}
-                        {despacho.estado === 'RECIBIDO_CON_NOVEDAD' && 'Recibido con Novedades'}
-                      </span>
-                    </div>
-
-                    {/* Tabla Clara de Recepción */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-[#E5DDD3] text-[10px] font-black uppercase text-stone-500 bg-[#FAF7F4]">
-                            <th className="py-2.5 px-3 rounded-tl-xl">Producto</th>
-                            <th className="py-2.5 px-3 text-center">Cantidad Enviada</th>
-                            <th className="py-2.5 px-3 text-center">Unidades en Buen Estado</th>
-                            <th className="py-2.5 px-3 text-center">Unidades con Avería</th>
-                            <th className="py-2.5 px-3 text-center rounded-tr-xl">Faltantes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#EFEAE4]">
-                          {despacho.lineas.map((linea) => {
-                            const faltantes = Math.max(
-                              0,
-                              linea.cantidadEnviada -
-                                (linea.recibidasBuenas + linea.recibidasDanadas)
-                            );
-                            return (
-                              <tr key={linea.id} className="bg-white">
-                                <td className="py-3 px-3">
-                                  <div className="flex items-center gap-2.5">
-                                    <img
-                                      src={linea.imagenUrl}
-                                      alt={linea.nombre}
-                                      className="w-11 h-11 rounded-xl object-cover border border-stone-200 shrink-0"
-                                    />
-                                    <div>
-                                      <p className="font-black text-[#1C1311]">{linea.nombre}</p>
-                                      <p className="font-mono text-[11px] text-stone-500">
-                                        SKU: {linea.sku} · Talla {linea.talla}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                <td className="py-3 px-3 text-center font-mono text-sm font-black text-[#1C1311]">
-                                  {linea.cantidadEnviada} uds
-                                </td>
-
-                                <td className="py-3 px-3">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      disabled={
-                                        despacho.estado !== 'EN_TRANSITO' ||
-                                        linea.recibidasBuenas <= 0
-                                      }
-                                      onClick={() =>
-                                        handleAjustarConteo(
-                                          despacho.id,
-                                          linea.id,
-                                          'recibidasBuenas',
-                                          -1
-                                        )
-                                      }
-                                      className="w-7 h-7 rounded-lg bg-stone-100 border border-stone-300 flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
-                                    >
-                                      <Minus className="w-3.5 h-3.5" />
-                                    </button>
-                                    <span className="w-8 text-center font-mono text-sm font-black text-[#059669]">
-                                      {linea.recibidasBuenas}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      disabled={despacho.estado !== 'EN_TRANSITO'}
-                                      onClick={() =>
-                                        handleAjustarConteo(
-                                          despacho.id,
-                                          linea.id,
-                                          'recibidasBuenas',
-                                          1
-                                        )
-                                      }
-                                      className="w-7 h-7 rounded-lg bg-[#059669] text-white flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-
-                                <td className="py-3 px-3">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      disabled={
-                                        despacho.estado !== 'EN_TRANSITO' ||
-                                        linea.recibidasDanadas <= 0
-                                      }
-                                      onClick={() =>
-                                        handleAjustarConteo(
-                                          despacho.id,
-                                          linea.id,
-                                          'recibidasDanadas',
-                                          -1
-                                        )
-                                      }
-                                      className="w-7 h-7 rounded-lg bg-stone-100 border border-stone-300 flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
-                                    >
-                                      <Minus className="w-3.5 h-3.5" />
-                                    </button>
-                                    <span className="w-8 text-center font-mono text-sm font-black text-[#661521]">
-                                      {linea.recibidasDanadas}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      disabled={despacho.estado !== 'EN_TRANSITO'}
-                                      onClick={() =>
-                                        handleAjustarConteo(
-                                          despacho.id,
-                                          linea.id,
-                                          'recibidasDanadas',
-                                          1
-                                        )
-                                      }
-                                      className="w-7 h-7 rounded-lg bg-[#661521] text-white flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-
-                                <td className="py-3 px-3 text-center">
-                                  <span
-                                    className={`font-mono text-xs font-black px-2.5 py-1 rounded-lg ${
-                                      faltantes > 0
-                                        ? 'bg-amber-200 text-amber-950'
-                                        : 'bg-stone-100 text-stone-600'
-                                    }`}
-                                  >
-                                    {faltantes} uds
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Observación de Recepción */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-stone-600 mb-1">
-                        Observaciones de Recepción:
-                      </label>
-                      <input
-                        type="text"
-                        disabled={despacho.estado !== 'EN_TRANSITO'}
-                        value={despacho.observaciones}
-                        onChange={(e) =>
-                          handleUpdateObservacionRecepcion(despacho.id, e.target.value)
-                        }
-                        placeholder="Describe cualquier avería o unidad faltante si aplica..."
-                        className="w-full min-h-[42px] px-3.5 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] text-xs font-medium text-[#1C1311] focus:outline-none focus:border-[#661521] disabled:opacity-60"
-                      />
-                    </div>
-
-                    {despacho.estado === 'EN_TRANSITO' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleConfirmarRecepcion(despacho.id)}
-                        className="w-full min-h-[52px] px-6 rounded-2xl bg-[#059669] hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
-                      >
-                        <PackageCheck className="w-5 h-5" />
-                        <span>
-                          Confirmar Recepción de Mercancía (+{totalBuenas} uds en buen estado al
-                          stock de tienda
-                          {totalDanadas > 0 ? `, ${totalDanadas} con avería` : ''}
-                          {totalFaltantes > 0 ? `, ${totalFaltantes} faltantes` : ''})
-                        </span>
-                      </button>
-                    ) : (
-                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#059669] text-xs font-bold flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>
-                          Mercancía recibida: +{totalBuenas} unidades incorporadas al stock físico
-                          de {sedeActiva}.
-                        </span>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
+            {/* Tabla de Conteo */}
+            <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-[#E5DDD3] text-[10px] font-black uppercase text-stone-500 bg-[#FAF7F4] sticky top-0 z-10">
+                    <th className="py-2 px-3">Prenda / Referencia</th>
+                    <th className="py-2 px-3 text-center">Enviadas</th>
+                    <th className="py-2 px-3 text-center">En Buen Estado</th>
+                    <th className="py-2 px-3 text-center">Con Avería</th>
+                    <th className="py-2 px-3 text-center">Faltantes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFEAE4]">
+                  {despachoParaRecepcionModal.lineas.map((linea) => {
+                    const faltantes = Math.max(
+                      0,
+                      linea.cantidadEnviada - (linea.recibidasBuenas + linea.recibidasDanadas)
+                    );
+                    return (
+                      <tr key={linea.id} className="bg-white">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={linea.imagenUrl}
+                              alt={linea.nombre}
+                              className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0"
+                            />
+                            <div>
+                              <p className="font-black text-[#1C1311]">{linea.nombre}</p>
+                              <p className="font-mono text-[11px] text-stone-500">
+                                SKU: {linea.sku} · Talla {linea.talla} · {linea.color}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-black text-sm text-[#1C1311]">
+                          {linea.cantidadEnviada} uds
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={linea.recibidasBuenas <= 0}
+                              onClick={() =>
+                                handleAjustarConteoEnModal(linea.id, 'recibidasBuenas', -1)
+                              }
+                              className="w-7 h-7 rounded-lg bg-stone-100 border border-stone-300 flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="w-8 text-center font-mono text-sm font-black text-[#059669]">
+                              {linea.recibidasBuenas}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleAjustarConteoEnModal(linea.id, 'recibidasBuenas', 1)
+                              }
+                              className="w-7 h-7 rounded-lg bg-[#059669] text-white flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={linea.recibidasDanadas <= 0}
+                              onClick={() =>
+                                handleAjustarConteoEnModal(linea.id, 'recibidasDanadas', -1)
+                              }
+                              className="w-7 h-7 rounded-lg bg-stone-100 border border-stone-300 flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="w-8 text-center font-mono text-sm font-black text-[#661521]">
+                              {linea.recibidasDanadas}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleAjustarConteoEnModal(linea.id, 'recibidasDanadas', 1)
+                              }
+                              className="w-7 h-7 rounded-lg bg-[#661521] text-white flex items-center justify-center font-black disabled:opacity-40 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span
+                            className={`font-mono text-xs font-black px-2 py-0.5 rounded-md ${
+                              faltantes > 0
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-stone-100 text-stone-600'
+                            }`}
+                          >
+                            {faltantes} uds
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
+
+            {/* Observaciones de Recepción */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-stone-600 mb-1">
+                Observaciones de Recepción:
+              </label>
+              <input
+                type="text"
+                value={despachoParaRecepcionModal.observaciones}
+                onChange={(e) => handleUpdateObservacionModal(e.target.value)}
+                placeholder="Describe cualquier avería, faltante o novedad logística observada..."
+                className="w-full min-h-[42px] px-3.5 rounded-xl bg-[#FAF7F4] border border-[#D8CFC6] text-xs font-medium text-[#1C1311] focus:outline-none focus:border-[#661521]"
+              />
+            </div>
+
+            {/* Footer con Resumen y Botón de Confirmación */}
+            {(() => {
+              const totalEnv = despachoParaRecepcionModal.lineas.reduce(
+                (a, b) => a + b.cantidadEnviada,
+                0
+              );
+              const totalB = despachoParaRecepcionModal.lineas.reduce(
+                (a, b) => a + b.recibidasBuenas,
+                0
+              );
+              const totalD = despachoParaRecepcionModal.lineas.reduce(
+                (a, b) => a + b.recibidasDanadas,
+                0
+              );
+              const totalF = Math.max(0, totalEnv - (totalB + totalD));
+
+              return (
+                <div className="pt-3 border-t border-[#EFEAE4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-xs text-stone-600 space-x-2">
+                    <span>Enviadas: <strong>{totalEnv}</strong></span>
+                    <span>·</span>
+                    <span className="text-[#059669]">Buenas: <strong>+{totalB}</strong></span>
+                    <span>·</span>
+                    <span className="text-[#661521]">Averías: <strong>{totalD}</strong></span>
+                    <span>·</span>
+                    <span>Faltantes: <strong>{totalF}</strong></span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorRecepcion(null);
+                        setDespachoParaRecepcionModal(null);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-[#FAF7F4] hover:bg-stone-200 border border-[#D8CFC6] text-xs font-bold text-stone-700 cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmarRecepcion(despachoParaRecepcionModal.id)}
+                      className="px-5 py-2.5 rounded-xl bg-[#059669] hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all"
+                    >
+                      <PackageCheck className="w-4 h-4" />
+                      <span>Confirmar Recepción de Mercancía (+{totalB} uds al stock)</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
+      )}
+
+      {/* DetailDrawer para Inspección de Despacho Recibido */}
+      {despachoDetalleDrawer && (
+        <DetailDrawer
+          isOpen={Boolean(despachoDetalleDrawer)}
+          onClose={() => setDespachoDetalleDrawer(null)}
+          title={`Despacho ${despachoDetalleDrawer.codigo}`}
+          subtitle={`${despachoDetalleDrawer.origen} → ${despachoDetalleDrawer.destino} · ${despachoDetalleDrawer.fechaDespacho}`}
+          badge={{
+            label:
+              despachoDetalleDrawer.estado === 'RECIBIDO'
+                ? 'Recibido Completo'
+                : 'Recibido con Novedades',
+            variant:
+              despachoDetalleDrawer.estado === 'RECIBIDO' ? 'success' : 'warning',
+          }}
+          tabs={[
+            { id: 'detalle', label: 'Información Logística' },
+            { id: 'prendas', label: 'Prendas Recibidas' },
+            { id: 'observaciones', label: 'Observaciones y Bitácora' },
+          ]}
+          activeTab={drawerTabKardex}
+          onTabChange={(tabId) =>
+            setDrawerTabKardex(tabId as 'detalle' | 'prendas' | 'observaciones')
+          }
+        >
+          {drawerTabKardex === 'detalle' && (
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-semibold">Código Guía:</span>
+                  <span className="font-mono font-bold text-[#1C1311]">
+                    #{despachoDetalleDrawer.codigo}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-semibold">Origen:</span>
+                  <span className="font-semibold text-stone-800">
+                    {despachoDetalleDrawer.origen}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-semibold">Destino:</span>
+                  <span className="font-bold text-[#1C1311]">
+                    {despachoDetalleDrawer.destino}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-semibold">Fecha Despacho:</span>
+                  <span className="font-mono text-stone-700">
+                    {despachoDetalleDrawer.fechaDespacho}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-semibold">Estado:</span>
+                  <span className="font-bold text-[#059669]">
+                    {despachoDetalleDrawer.estado}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          {drawerTabKardex === 'prendas' && (
+            <div className="space-y-3 text-xs">
+              {despachoDetalleDrawer.lineas.map((l) => (
+                <div
+                  key={l.id}
+                  className="p-3 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={l.imagenUrl}
+                      alt={l.nombre}
+                      className="w-9 h-9 rounded-lg object-cover border border-stone-200"
+                    />
+                    <div>
+                      <p className="font-black text-[#1C1311]">{l.nombre}</p>
+                      <p className="font-mono text-[11px] text-stone-500">
+                        SKU: {l.sku} · Talla {l.talla}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <span className="text-[#059669] font-bold block">
+                      +{l.recibidasBuenas} buenas
+                    </span>
+                    {l.recibidasDanadas > 0 && (
+                      <span className="text-[#661521] text-[11px] block">
+                        {l.recibidasDanadas} averías
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {drawerTabKardex === 'observaciones' && (
+            <div className="space-y-3 text-xs">
+              <div className="p-3.5 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3]">
+                <span className="block font-bold text-stone-500 mb-1 uppercase text-[10px]">
+                  Observación de Entrada:
+                </span>
+                <p className="text-stone-800">
+                  {despachoDetalleDrawer.observaciones ||
+                    'Sin observaciones registradas. Mercancía verificada y conforme.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </DetailDrawer>
       )}
 
       {/* =========================================================================
@@ -1801,12 +2109,17 @@ export const PosTrasladosPage: React.FC = () => {
                     <th className="py-2.5 px-3">Documento</th>
                     <th className="py-2.5 px-3">SKU / Prenda</th>
                     <th className="py-2.5 px-3 text-center">Impacto Stock Vendible</th>
-                    <th className="py-2.5 px-3 rounded-tr-xl">Detalle Operativo</th>
+                    <th className="py-2.5 px-3">Detalle Operativo</th>
+                    <th className="py-2.5 px-3 text-right rounded-tr-xl">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EFEAE4]">
                   {movimientosKardexFiltrados.map((m) => (
-                    <tr key={m.id} className="hover:bg-[#FAF7F4]">
+                    <tr
+                      key={m.id}
+                      onClick={() => setSelectedKardexMovimiento(m)}
+                      className="hover:bg-[#FAF7F4] cursor-pointer transition-colors"
+                    >
                       <td className="py-2.5 px-3 font-mono text-[11px] text-stone-600">
                         {m.fecha}
                       </td>
@@ -1854,6 +2167,19 @@ export const PosTrasladosPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-stone-600">{m.detalle}</td>
+                      <td className="py-2.5 px-3 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedKardexMovimiento(m);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FAF7F4] hover:bg-stone-200 border border-[#D8CFC6] text-[11px] font-bold text-[#661521] cursor-pointer transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver Detalle</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1861,6 +2187,128 @@ export const PosTrasladosPage: React.FC = () => {
             </div>
           )}
         </section>
+      )}
+
+      {/* DetailDrawer para Inspección de Movimiento Kardex */}
+      {selectedKardexMovimiento && (
+        <DetailDrawer
+          isOpen={Boolean(selectedKardexMovimiento)}
+          onClose={() => setSelectedKardexMovimiento(null)}
+          title={`Movimiento Kardex ${selectedKardexMovimiento.referencia}`}
+          subtitle={`${selectedKardexMovimiento.fecha} · Sede: ${sedeActiva}`}
+          badge={{
+            label:
+              selectedKardexMovimiento.tipo === 'RECEPCION_TRASLADO'
+                ? 'Recepción Traslado'
+                : selectedKardexMovimiento.tipo === 'VENTA_POS'
+                ? 'Venta POS Mostrador'
+                : selectedKardexMovimiento.tipo === 'CAMBIO_SALIDA'
+                ? 'Cambio Entregado'
+                : selectedKardexMovimiento.tipo === 'CAMBIO_REINGRESO'
+                ? 'Reingreso Buen Estado'
+                : 'Avería No Vendible',
+            variant:
+              selectedKardexMovimiento.tipo === 'RECEPCION_TRASLADO' ||
+              selectedKardexMovimiento.tipo === 'CAMBIO_REINGRESO'
+                ? 'success'
+                : selectedKardexMovimiento.tipo === 'VENTA_POS'
+                ? 'danger'
+                : selectedKardexMovimiento.tipo === 'CAMBIO_SALIDA'
+                ? 'warning'
+                : 'neutral',
+          }}
+          tabs={[
+            { id: 'detalle', label: 'Información y Cuadre' },
+            { id: 'prendas', label: 'Prendas y Unidades' },
+            { id: 'observaciones', label: 'Observaciones y Bitácora' },
+          ]}
+          activeTab={drawerTabKardex}
+          onTabChange={(tabId) =>
+            setDrawerTabKardex(tabId as 'detalle' | 'prendas' | 'observaciones')
+          }
+        >
+          {drawerTabKardex === 'detalle' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-stone-500 font-semibold">Documento / Consecutivo:</span>
+                  <span className="font-mono font-black text-[#1C1311]">
+                    {selectedKardexMovimiento.referencia}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-stone-500 font-semibold">Fecha y Hora (Colombia):</span>
+                  <span className="font-mono text-stone-700">
+                    {formatFechaBogota(selectedKardexMovimiento.fechaIso)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-stone-500 font-semibold">Punto de Venta / Sede:</span>
+                  <span className="font-bold text-[#1C1311]">{sedeActiva}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-stone-500 font-semibold">Tipo de Operación:</span>
+                  <span className="font-bold text-[#661521]">
+                    {selectedKardexMovimiento.tipo.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs pt-2 border-t border-[#EFEAE4]">
+                  <span className="text-stone-500 font-semibold">Impacto en Stock Vendible:</span>
+                  <span className="font-mono font-black text-sm">
+                    {selectedKardexMovimiento.deltaVendible > 0 ? (
+                      <span className="text-[#059669]">+{selectedKardexMovimiento.deltaVendible} unidades</span>
+                    ) : selectedKardexMovimiento.deltaVendible < 0 ? (
+                      <span className="text-[#661521]">{selectedKardexMovimiento.deltaVendible} unidades</span>
+                    ) : (
+                      <span className="text-stone-600">0 unidades (Avería aislada)</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {drawerTabKardex === 'prendas' && (
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-white border border-[#E5DDD3] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-sm text-[#1C1311]">
+                    {selectedKardexMovimiento.nombreProducto}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-[#661521]">
+                    {selectedKardexMovimiento.sku}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-600">
+                  {selectedKardexMovimiento.detalle}
+                </p>
+                <div className="pt-2 border-t border-[#EFEAE4] flex items-center justify-between text-xs">
+                  <span className="text-stone-500">Unidades Afectadas:</span>
+                  <span className="font-mono font-black text-stone-900">
+                    {Math.abs(selectedKardexMovimiento.deltaVendible)} uds
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {drawerTabKardex === 'observaciones' && (
+            <div className="space-y-3 text-xs">
+              <div className="p-4 rounded-xl bg-[#FAF7F4] border border-[#E5DDD3] space-y-2">
+                <p className="font-bold text-[#1C1311] flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#661521]" />
+                  <span>Bitácora Operativa de Inventario</span>
+                </p>
+                <p className="text-stone-700 leading-relaxed">
+                  {selectedKardexMovimiento.detalle}
+                </p>
+                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-[#059669] font-medium text-[11px] mt-2">
+                  ✓ Registro inmutable de Kardex auditado según regla RN-GEN-02.
+                </div>
+              </div>
+            </div>
+          )}
+        </DetailDrawer>
       )}
     </div>
   );

@@ -167,7 +167,8 @@ export const BolsaPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => updateCantidad(item.id, 1)}
-                        className="p-2 sm:p-2.5 hover:bg-[#E7DED2] text-[#50322A] transition-colors active:scale-95"
+                        disabled={item.stockDisponible !== undefined && item.cantidad >= item.stockDisponible}
+                        className="p-2 sm:p-2.5 hover:bg-[#E7DED2] text-[#50322A] transition-colors active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
                         aria-label="Aumentar una unidad"
                       >
                         <Plus className="w-3.5 h-3.5" />

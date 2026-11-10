@@ -228,7 +228,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           <button
                             type="button"
                             onClick={() => onUpdateCantidad(item.id, 1)}
-                            className="p-1.5 hover:bg-[#E7DED2] text-[#50322A] transition-colors"
+                            disabled={item.stockDisponible !== undefined && item.cantidad >= item.stockDisponible}
+                            className="p-1.5 hover:bg-[#E7DED2] text-[#50322A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             aria-label="Aumentar una unidad"
                           >
                             <Plus className="w-3 h-3" />
