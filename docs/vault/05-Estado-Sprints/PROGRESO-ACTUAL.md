@@ -1,122 +1,129 @@
-# Tablero Vivo de Progreso y Estado de Sprints: Sistema POS + Tienda Web Forma
-
-> **Estado Actual del Proyecto:** `EN DESARROLLO ACTIVO (FASE 1, FASE 2 Y FASE 4 CONSOLIDADAS EN DEVELOP, FASE 3 CON CORE TRANSACCIONAL FUSIONADO)`  
-> **Última Actualización Oficial:** `9 de Noviembre de 2026 - 18:55 COT`  
-> **Hito Reciente:** Fusión exitosa en `develop` de PR #66 (`SP2-02` Compras a Proveedor en Central con Idempotencia), PR #60 (`SP2-05` Panel Administrativo en AdminLayout con correcciones de Exneider) y PR #71 (`SP3-01` Sesiones de Caja, `SP3-02` Venta POS Atómica con Preempción y `SP3-04` Devoluciones/Cambios) con 222 tests backend y 41 tests frontend (263 tests totales) en verde.  
-> **Documentos de Referencia:** [[PLAN-MAESTRO-SPRINTS]] | [[MATRIZ-ROLES-Y-TAREAS]] | [[Matriz-CA-01-a-CA-65]]
-
+---
+id: PROGRESO-ACTUAL
+tags: [estado, sprints, generado, backlog]
+generado_por: scripts/gen-progress.mjs
+fuente: docs/vault/05-Estado-Sprints/backlog.yaml
+fecha_corte: 2026-11-10
+commit: 20fd212
 ---
 
-## 1. Resumen Ejecutivo de Avance Global
+# Tablero Vivo de Progreso y Estado de Sprints
 
-| Sprint / Fase | Objetivo Central | Tareas Totales | Fusionadas en `develop` | En Progreso / Diseño | Estado Semáforo |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Fase 1 (Sprint 1)** | Identidad, Seguridad Híbrida, Sedes y Catálogo | 9 | 8 | 1 (QA Gate #7) | 🟢 Estable (88.9% en develop) |
-| **Fase 2 (Sprint 2)** | Kardex Centralizado, Compras y Traslados | 8 | 7 | 1 (Thomas #58 / Sofía #40) | 🟢 Consolidado (87.5% en develop) |
-| **Fase 3 (Sprint 3)** | Caja, Terminal POS, Descuentos y Devoluciones | 9 | 6 | 3 (Exneider #62, Duvan #83) | 🟢 Avanzado (66.7% en develop) |
-| **Fase 4 (Sprint 4)** | E-Commerce, Despachos DANE, Worker TTL y Devoluciones | 8 | 5 | 3 (Yeimer #74, Thomas, Exneider) | 🟢 Avanzado (62.5% en develop) |
-| **Fase 5 (Sprint 5)** | Reportes Financieros, Dashboard y Auditoría Final | 6 | 0 | 0 | ⚪ Planificado (0.0%) |
-| **TOTAL** | **Sistema POS + Tienda Web Multisede** | **46** | **26** | **8** | **56.5% MERGED / 73.9% EN CURSO** |
+> **Generado automáticamente. No editar a mano.**
+> Fuente única: `docs/vault/05-Estado-Sprints/backlog.yaml`.
+> Corte: **2026-11-10** · Commit: `20fd212` · Rama: `test/sandbox-testeo`.
+> Operación: **1 persona** · Flujo: `test/sandbox-testeo → main`.
 
----
+## 1. Resumen global
 
-## 2. Mapa de Tareas por Responsable
+| Métrica | Valor |
+| :--- | ---: |
+| Tareas totales | **46** |
+| Hechas con evidencia | **27** |
+| En curso | **2** |
+| Declaradas sin evidencia | **5** |
+| Pendientes | **12** |
+| Avance verificado | **58.7 %** ██████░░░░ |
+| Avance con declaradas | **69.6 %** ███████░░░ |
 
-```mermaid
-pie title Distribución de Carga y Tareas Concluidas/En Proceso
-    "Julio (Tech Lead / Backend)" : 15
-    "Yeimer (Backend Dev)" : 6
-    "Exneider (Frontend Lead)" : 8
-    "Sofía (UI/UX Designer)" : 6
-    "Thomas (Frontend / POS)" : 6
-    "Duvan (QA Lead / Gate)" : 6
+> `Declarado` significa que el tablero anterior lo daba por certificado, pero no hay PR, commit ni salida de test reproducible. **No cuenta como hecho.**
+
+## 2. Resumen por sprint
+
+| Sprint | Tareas | Hechas | En curso | Declaradas | Pendientes | Avance verificado |
+| :--- | ---: | ---: | ---: | ---: | ---: | :--- |
+| **Sprint 0** — Fundación, datos y utilidades | 6 | 3 | 0 | 1 | 2 | **50.0 %** █████░░░░░ |
+| **Sprint 1** — Identidad, sedes y catálogo | 9 | 7 | 0 | 1 | 1 | **77.8 %** ████████░░ |
+| **Sprint 2** — Kardex, compras y traslados | 8 | 5 | 1 | 1 | 1 | **62.5 %** ██████░░░░ |
+| **Sprint 3** — Caja, POS, descuentos y devoluciones | 9 | 7 | 0 | 1 | 1 | **77.8 %** ████████░░ |
+| **Sprint 4** — Tienda web, DANE y reservas | 8 | 4 | 1 | 0 | 3 | **50.0 %** █████░░░░░ |
+| **Sprint 5** — Reportes, dashboard y certificación | 6 | 1 | 0 | 1 | 4 | **16.7 %** ██░░░░░░░░ |
+
+## 3. Detalle por sprint
+
+### Sprint 0 — Fundación, datos y utilidades
+
+| ID | Tarea | Responsable | Estado | Evidencia |
+| :--- | :--- | :--- | :---: | :--- |
+| **SP0-01** | Conectar Supabase, configurar Prisma y correr migración inicial | Julio | ✅ Hecho | schema.prisma con 35 modelos y 2 migraciones que crean 35 tablas |
+| **SP0-02** | Aplicar constraints SQL nativas | Julio | ✅ Hecho | backend/prisma/constraints_post_migrate.sql |
+| **SP0-03** | Catálogo DANE y tarifas de Zonas 1 a 4 | Thomas | ⚪ Pendiente | la ruta declarada backend/src/shared/seeds/daneCatalog.ts no existe |
+| **SP0-04** | Validar MoneyCOP y ColombiaTime | Yeimer | ✅ Hecho | MoneyCOP.test.ts y ColombiaTime.test.ts en verde |
+| **SP0-05** | Wireframes y guía visual de los 3 portales | Sofía | 🟠 Declarado | docs/design y ARQ-06 existen; no hay Figma enlazado |
+| **SP0-06** | QA Gate de constraints de base de datos | Duvan | ⚪ Pendiente | sin registro de ejecución |
+
+### Sprint 1 — Identidad, sedes y catálogo
+
+| ID | Tarea | Responsable | Estado | Evidencia |
+| :--- | :--- | :--- | :---: | :--- |
+| **SP1-01** | Middleware JWT y cache de permisos con invalidación | Julio | ✅ Hecho | authPermission.ts y authPermission.test.ts |
+| **SP1-02** | Auth híbrida correo/contrasena y Google OAuth con bloqueo | Julio | ✅ Hecho | authRoutes.test.ts y modulo 01-identidad |
+| **SP1-03** | Gestión de sedes y 5 condiciones de desactivación | Yeimer | ✅ Hecho | modulo 02-ubicaciones y PR #31 |
+| **SP1-04** | Seed de categorías, productos y variantes | Thomas | ✅ Hecho | backend/prisma/seed.ts y catalogSeedData.ts |
+| **SP1-05** | Login, registro Ley 1581 y navbar del storefront | Exneider | ✅ Hecho | LoginForm, RegisterForm y PR #17 |
+| **SP1-06** | Prototipo de terminal POS en mostrador | Sofía | 🟠 Declarado | PR #30 citado; no hay prototipo enlazado |
+| **SP1-07** | QA Gate Sprint 1 de seguridad y permisos | Duvan | ⚪ Pendiente | Issue #7 sin cierre |
+| **SP1-08** | Guia de diseño y sistema visual multi-portal | Sofía | ✅ Hecho | ARQ-06 y docs/design |
+| **SP1-09** | Catálogo público del storefront con filtros y variantes | Exneider | ✅ Hecho | CatalogPage y PR #27 |
+
+### Sprint 2 — Kardex, compras y traslados
+
+| ID | Tarea | Responsable | Estado | Evidencia |
+| :--- | :--- | :--- | :---: | :--- |
+| **SP2-01** | InventoryLedgerService con bloqueo y orden anti-deadlock | Julio | ✅ Hecho | InventoryLedgerService.ts y suite de concurrencia |
+| **SP2-02** | Compras a proveedor en Central con idempotencia | Yeimer | ✅ Hecho | PR #66 |
+| **SP2-03** | Máquina de estados de traslados y retorno a Central | Julio | ✅ Hecho | PR #44 |
+| **SP2-04** | Recepcion de traslados con dañados y novedades | Julio | ✅ Hecho | PR #64 |
+| **SP2-05** | Panel admin de inventario, compras y traslados | Exneider | ✅ Hecho | PR #60 |
+| **SP2-06** | Prototipos de arqueo de caja y cobro rápido | Sofía | ⚪ Pendiente | Issue #40 sin cierre |
+| **SP2-07** | QA Gate Sprint 2 de concurrencia e idempotencia | Duvan | 🟠 Declarado | PR #61 citado; docs/qa/SP2-07 no tiene resultados |
+| **SP2-08** | Modal de recepción de traslados en POS | Thomas | 🟡 En curso | Issue #58; componente existe sin certificación |
+
+### Sprint 3 — Caja, POS, descuentos y devoluciones
+
+| ID | Tarea | Responsable | Estado | Evidencia |
+| :--- | :--- | :--- | :---: | :--- |
+| **SP3-01** | Sesiones de caja, base contada y arqueo ciego | Julio | ✅ Hecho | PR #71 |
+| **SP3-02** | Venta POS atomica con preempción de reservas blandas | Julio | ✅ Hecho | backend PR #71; la UI del POS aun opera en localStorage |
+| **SP3-03** | Motor de descuentos y prorrateo exacto | Yeimer | ✅ Hecho | PR #42 y DiscountEngine.test.ts |
+| **SP3-04** | Devoluciones con plazo raiz y cambios a cero | Julio | ✅ Hecho | PR #71 |
+| **SP3-05** | Ticket POS de 80 mm y recibo digital por Telegram | Thomas | ✅ Hecho | PR #26 y TicketVentaPOS.tsx |
+| **SP3-06** | Terminal POS completa en PosLayout | Exneider | ✅ Hecho | PosTerminalPage y suites POS en verde |
+| **SP3-07** | Prototipos de catálogo público y checkout en 3 pasos | Sofía | ⚪ Pendiente | sin issue ni PR |
+| **SP3-08** | QA Gate Sprint 3 de venta, descuentos y caja | Duvan | 🟠 Declarado | el tablero cita 50 tests que no existen en el archivo citado |
+| **SP3-09** | Modal de cobro rápido y teclado táctil | Thomas | ✅ Hecho | PR #75 |
+
+### Sprint 4 — Tienda web, DANE y reservas
+
+| ID | Tarea | Responsable | Estado | Evidencia |
+| :--- | :--- | :--- | :---: | :--- |
+| **SP4-01** | Checkout atomico y algoritmo determinista DANE | Julio | ✅ Hecho | PR #47 |
+| **SP4-02** | Worker periódico de expiracion de reservas TTL | Julio | 🟡 En curso | el codigo existe pero no se arranca desde server.ts |
+| **SP4-03** | Flujo No puedo despachar y custodia en Central | Julio | ✅ Hecho | PR #53 |
+| **SP4-04** | Plantilla HTML de correo transaccional de pedido | Thomas | ⚪ Pendiente | sin issue ni PR |
+| **SP4-05** | Adaptador de notificaciones Telegram | Yeimer | ⚪ Pendiente | Issue #74 sin cierre |
+| **SP4-06** | Retorno logístico vs devolución comercial web | Julio | ✅ Hecho | PR #56 |
+| **SP4-07** | Rediseño canónico del storefront ARQ-07 | Exneider | ✅ Hecho | StorefrontLayout y componentes ARQ-07 |
+| **SP4-08** | QA Gate Sprint 4 de reservas y retornos | Duvan | ⚪ Pendiente | sin issue ni PR |
+
+### Sprint 5 — Reportes, dashboard y certificación
+
+| ID | Tarea | Responsable | Estado | Evidencia |
+| :--- | :--- | :--- | :---: | :--- |
+| **SP5-01** | Reporte de Ventas Netas y exportación Excel | Julio | 🟠 Declarado | el tablero lo certifica pero no hay PR ni salida reproducible |
+| **SP5-02** | Centro de alertas operativas | Yeimer | ⚪ Pendiente | sin issue ni PR; el tablero lo confunde con auditoría Kardex |
+| **SP5-03** | Documentación de API y errores HTTP | Thomas | ⚪ Pendiente | Issue #T5 sin cierre |
+| **SP5-04** | Dashboard ejecutivo con KPIs y auditoría | Exneider | ✅ Hecho | AdminDashboardPage y ARQ-08 |
+| **SP5-05** | Revisión WCAG 2.2 AA de los 3 portales | Sofía | ⚪ Pendiente | sin issue ni PR |
+| **SP5-06** | QA Gate final de 65 CA y 25 QA | Duvan | ⚪ Pendiente | sin evidencia de ejecución |
+
+## 4. Cómo regenerar
+
+```bash
+node scripts/gen-progress.mjs
+node scripts/gen-progress.mjs --check
 ```
 
----
+El segundo comando falla si este archivo no coincide con `backlog.yaml`; sirve para CI.
 
-## 3. Detalle de Tareas por Sprint
-
-### Sprint 1: Arquitectura Base, Identidad y Sedes
-**Objetivo:** Autenticación híbrida, RBAC territorial, gestión de sedes con blindaje y catálogo base.
-
-- [x] **SP1-01 (Julio):** Esquema Canónico de Base de Datos PostgreSQL / Prisma (`RN-GEN-01 a 08`, `RNF-001 a 009`). *(PR #2 FUSIONADO en `develop`)*
-- [x] **SP1-02 (Julio):** Módulo de Autenticación Híbrida y Protección contra Fuerza Bruta (`RF-USU-01`, `RF-USU-02`, `RN-ROL-06 a 08`). *(PR #4 FUSIONADO en `develop`)*
-- [x] **SP1-03 (Yeimer):** Módulo de Sedes y Bodega Central con 5 Condiciones de Desactivación (`RN-UBI-01 a 05`). *(PR #31 FUSIONADO en `develop`)*
-- [x] **SP1-04 (Julio):** Middleware de Autorización RBAC con Caché en Memoria e Invalidador Instantáneo (`RN-ROL-01 a 05`, `CA-50`). *(PR #10 FUSIONADO en `develop`)*
-- [x] **SP1-05 (Exneider):** Vistas de Autenticación Storefront en StorefrontLayout (`ARQ-05`). *(PR #17 FUSIONADO en `develop` - Issue #15 en manos de Duvan)*
-- [x] **SP1-06 (Sofía):** Prototipos UX/UI de la Terminal POS en Pantalla Mostrador (`CA-53`). *(PR #30 FUSIONADO en `develop` - Issue #33 en manos de Duvan)*
-- [ ] **SP1-07 (Duvan):** QA Gate Sprint 1: Certificación de Seguridad y Permisos (`QA-001`, `QA-022`). *(Issue #7)*
-- [x] **SP1-08 (Sofía):** Guía de Diseño y Sistema Visual Multi-Portal (Apple Liquid Glass UI). *(PR #29 FUSIONADO en `develop` - Issue #32 en manos de Duvan)*
-- [x] **SP1-09 (Exneider):** Catálogo Público de Productos, Filtros por Categoría y Selector de Variantes (Storefront). *(PR #27 FUSIONADO en `develop` - Issue #34 en manos de Duvan)*
-
-**Progreso del Sprint 1:** `88.9%` [█████████░] (8/9 tareas completadas y fusionadas en `develop`)
-
----
-
-### Sprint 2: Inventario, Compras y Traslados
-**Objetivo:** Motor de consistencia de stock con Kardex append-only, órdenes canónicas anti-deadlock, compras simplificadas a proveedores y traslados seguros entre sedes.
-
-- [x] **SP2-01 (Julio):** Motor Kardex Centralizado con Bloqueo Pesimista `FOR UPDATE` y Orden Canónico (`RF-INV-01`, `RN-GEN-02`, `RNF-003`). *(PR #12 FUSIONADO en `develop` - Issue #11 Closed)*
-- [x] **SP2-02 (Yeimer):** Módulo de Compras a Proveedor en Bodega Central con Idempotencia (`RF-COM-01`, `02`). *(PR #66 FUSIONADO en `develop` - Issue #36 Closed)*
-- [x] **SP2-03 (Julio):** Traslados entre Ubicaciones y Flujo Retornando a Central (`RF-TRA-01 a 04`). *(PR #44 FUSIONADO en `develop` - Issue #37 Closed)*
-- [x] **SP2-04 (Julio):** Recepción de Traslados y Control de Dañados/Novedades (`RF-TRA-05`, `06`). *(PR #64 FUSIONADO en `develop` - Issue #38 Closed)*
-- [x] **SP2-05 (Exneider):** Panel Administrativo de Inventario, Compras y Traslados en AdminLayout (`RF-INV-02`). *(PR #60 FUSIONADO en `develop` - Issue #39 Closed)*
-- [ ] **SP2-06 (Sofía):** Prototipos UX/UI de Inventarios, Compras y Recepción con Novedades (`ARQ-06`). *(Issue #40)*
-- [x] **SP2-07 (Duvan):** QA Gate Sprint 2: Matriz de Concurrencia, Traslados e Idempotencia (`QA-003`). *(PR #61 FUSIONADO en `develop` - Issue #41)*
-- [ ] **SP2-08 (Thomas):** Interfaz y Modal de Recepción de Traslados en Punto de Venta con Checklist de Novedades y Dañados (`RF-TRA-05`, `CA-07`, `CA-08`). *(Issue #58)*
-
-**Progreso del Sprint 2:** `87.5%` [█████████░] (7/8 tareas completadas y fusionadas en `develop`)
-
----
-
-### Sprint 3: Caja, Terminal POS, Descuentos y Devoluciones
-**Objetivo:** Operación de caja física, comprobantes térmicos, motor canónico de descuentos, preempción física y terminal de cobro.
-
-- [x] **SP3-01 (Julio):** Sesiones de Caja, Base Contada, Movimientos Manuales y Cierre Ciego con Fórmula Integral (`RF-CAJ-01 a 03`, `CA-15`, `CA-55`, `CA-56`, `QA-008`). *(PR #71 FUSIONADO en `develop` - Issue #68 Closed)*
-- [x] **SP3-02 (Julio):** Confirmación Atómica de Venta POS con Preempción de Reservas Web Blandas y Protección de Reserva Dura (`RF-POS-02`, `CA-60`, `CA-61`, `QA-004`, `QA-005`). *(PR #71 FUSIONADO en `develop` - Issue #69 Closed)*
-- [x] **SP3-03 (Julio):** Motor Canónico de Descuentos y Prorrateo Exacto (`DiscountEngine.ts`, `RN-DES-09`, `CA-19` a `25`). *(PR #42 FUSIONADO en `develop` - Issue #23 Closed)*
-- [x] **SP3-04 (Julio):** Devoluciones con Plazo Raíz de 5 Días, Sobreescritura PIN Admin, Cuarentena No Vendible, Excepción Iliquidez y Cambios Atómicos (`RF-DEV-01 a 03`, `CA-26`, `CA-27`, `CA-30`, `CA-31`, `CA-54`, `CA-63`, `QA-017`, `QA-019`). *(PR #71 FUSIONADO en `develop` - Issue #70 Closed)*
-- [x] **SP3-05 (Thomas):** Plantilla de Comprobante de Venta POS (80 mm) y Recibo Digital Telegram (`RN-VTA-09`, `10`). *(PR #26 FUSIONADO en `develop` - Issue #22 Closed)*
-- [x] **SP3-06 (Exneider):** Terminal POS Completa en PosLayout con Menú Lateral Compacto (190-210px), Rediseño de Cards Cuadradas 1:1, Cero Desbordamiento Horizontal, Bloqueo por Turno Activo (Opción A) y Patrón Master-Detail (`DetailDrawer` + `ActivityTimeline`). *(Completado y Certificado con 22 suites / 126 tests frontend en verde)*
-- [ ] **SP3-07 (Sofía):** Prototipos Catálogo Público Web y Checkout 3 Pasos.
-- [x] **SP3-08 (Duvan):** QA Gate Sprint 3: Pruebas de Venta, Preempción, Descuentos y Cortes de Caja (`PosFullSimulationAudit.test.tsx`, 50 tests POS). *(Completado y Verificado)*
-- [x] **SP3-09 (Thomas):** Modal de Cobro Rápido y Teclado Numérico Táctil con Cálculo de Cambio para Terminal POS (`RF-POS-01`, `CA-51`, `CA-52`). *(PR #75 FUSIONADO en `develop` - Issue #59 Closed - QA Gate Issue #83 en manos de Duvan)*
-
-**Progreso del Sprint 3:** `66.7%` [███████░░░] (6/9 tareas completadas y fusionadas en `develop`)
-
----
-
-### Sprint 4: Tienda Web, Envíos DANE, Reservas TTL y Custodia Central
-**Objetivo:** E-Commerce público, algoritmo determinista de despacho DANE, worker TTL, cuarentena de SKU, custodia en Central y retornos logísticos.
-
-- [x] **SP4-01 (Julio):** Algoritmo Determinista DANE y Checkout Atómico de Pedidos Web (`RF-WEB-02`, `RF-WEB-03`, `CA-35 a 39`). *(PR #47 FUSIONADO en `develop` - Issue #46 Closed)*
-- [x] **SP4-02 (Julio):** Worker Periódico de Expiración de Reservas TTL por Transferencia Vencida (`RF-WEB-04`, `CA-39`, `QA-015`). *(PR #50 FUSIONADO en `develop` - Issue #49 Closed)*
-- [x] **SP4-03 (Julio):** Flujo «No puedo despachar» con Flag `bloqueadoDespachoWeb` y Custodia Central (`RF-WEB-06`, `CA-43`, `CA-62`). *(PR #53 FUSIONADO en `develop` - Issue #52 Closed)*
-- [ ] **SP4-04 (Thomas):** Plantilla HTML de Correo Transaccional de Confirmación de Pedido y Seguimiento (`NotificacionPort`).
-- [ ] **SP4-05 (Yeimer):** Integración `TelegramNotificationAdapter` y Envío de Alertas Web (`NotificacionPort`). *(Issue #74 Asignado)*
-- [x] **SP4-06 (Julio):** Retorno Logístico vs Devolución Comercial Web (`RF-WEB-07`, `RF-DEV-04`, `CA-64`, `CA-65`, `QA-020`, `QA-021`). *(PR #56 FUSIONADO en `develop` - Issue #55 Closed)*
-- [x] **SP4-07 (Exneider / @Arquitecto-UX / @Vitral-UI / @Forja-Backend):** Rediseño Canónico Integral de Tienda Web en `StorefrontLayout` (Fases 1, 2, 3 y 4 de ARQ-07 100% Completadas: Breadcrumbs GPS, Buscador Predictivo, Menú en Cascada, Toolbar Catálogo con Grid/List y Sort By, Hero compacto above the fold, PDP Inmersivo con Galería Multi-Ángulo, Zoom y Opiniones `ProductReviews.tsx`, Carrito Despejado, Stepper 3 Pasos Checkout y Lazy Loading). *(CERTIFICADO con 41/41 tests en verde y build Vite código 0)*
-- [ ] **SP4-08 (Duvan):** QA Gate Sprint 4: Certificación de Reservas Web, Retornos Logísticos y Custodia Central.
-
-**Progreso del Sprint 4:** `62.5%` [██████░░░░] (5/8 tareas completadas y fusionadas en `develop`)
-
----
-
-### Sprint 5: Reportes Financieros, Dashboard y Auditoría
-**Objetivo:** Reporte inmutable de Ventas Netas, bitácora de auditoría de solo adición, centro de alertas y certificación final.
-- [x] **SP5-01 (Julio):** Reporte Inmutable de Ventas Netas y Exportación Excel (.xlsx). *(CERTIFICADO)*
-- [x] **SP5-02 (Julio):** Auditoría y Trazabilidad Kardex Multi-Sede en Servidor. *(CERTIFICADO)*
-- [x] **SP5-03 (Exneider):** Dashboard Administrativo 3D Mirror y Reportes Dinámicos. *(CERTIFICADO)*
-- [x] **SP5-04 (Duvan):** Certificación E2E de Flujo Completo Real (PostgreSQL sin simulaciones). *(CERTIFICADO)*
-
-**Progreso del Sprint 5:** `100%` [██████████] (4/4 tareas completadas y certificadas)
-
----
-
-## 4. Consolidado General del Proyecto
-- **Total Entregables Principales:** 46 tareas.
-- **Entregables Concluidos y Certificados:** **46 hitos** (`100%` del sistema MVP real consolidado).
-- **Total Tests Automatizados:** **370+ tests** (260+ backend + 112 frontend) con **100% de éxito**.
-- **Errores de Compilación TypeScript:** **0 errores** (`npm run typecheck --prefix backend` y `npm --prefix frontend run build` en verde).
-- **Simulación E2E Real:** Certificada contra PostgreSQL (`backend/test-mvp-e2e-flow.ts` exitoso).
-
+_Total: 46 tareas · 27 hechas · 2 en curso · 5 declaradas · 12 pendientes._

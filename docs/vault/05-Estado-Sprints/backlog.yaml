@@ -1,0 +1,330 @@
+meta:
+  proyecto: FORMA SPOS
+  corte: 2026-11-10
+  rama: test/sandbox-testeo
+  commit: 20fd212
+  operacion: 1 persona
+  flujo: test/sandbox-testeo → main
+
+tareas:
+  - id: SP0-01
+    sprint: 0
+    titulo: Conectar Supabase, configurar Prisma y correr migración inicial
+    responsable: Julio
+    estado: done
+    evidencia: schema.prisma con 35 modelos y 2 migraciones que crean 35 tablas
+
+  - id: SP0-02
+    sprint: 0
+    titulo: Aplicar constraints SQL nativas
+    responsable: Julio
+    estado: done
+    evidencia: backend/prisma/constraints_post_migrate.sql
+
+  - id: SP0-03
+    sprint: 0
+    titulo: Catálogo DANE y tarifas de Zonas 1 a 4
+    responsable: Thomas
+    estado: pending
+    evidencia: la ruta declarada backend/src/shared/seeds/daneCatalog.ts no existe
+
+  - id: SP0-04
+    sprint: 0
+    titulo: Validar MoneyCOP y ColombiaTime
+    responsable: Yeimer
+    estado: done
+    evidencia: MoneyCOP.test.ts y ColombiaTime.test.ts en verde
+
+  - id: SP0-05
+    sprint: 0
+    titulo: Wireframes y guía visual de los 3 portales
+    responsable: Sofía
+    estado: declared
+    evidencia: docs/design y ARQ-06 existen; no hay Figma enlazado
+
+  - id: SP0-06
+    sprint: 0
+    titulo: QA Gate de constraints de base de datos
+    responsable: Duvan
+    estado: pending
+    evidencia: sin registro de ejecución
+
+  - id: SP1-01
+    sprint: 1
+    titulo: Middleware JWT y cache de permisos con invalidación
+    responsable: Julio
+    estado: done
+    evidencia: authPermission.ts y authPermission.test.ts
+
+  - id: SP1-02
+    sprint: 1
+    titulo: Auth híbrida correo/contrasena y Google OAuth con bloqueo
+    responsable: Julio
+    estado: done
+    evidencia: authRoutes.test.ts y modulo 01-identidad
+
+  - id: SP1-03
+    sprint: 1
+    titulo: Gestión de sedes y 5 condiciones de desactivación
+    responsable: Yeimer
+    estado: done
+    evidencia: modulo 02-ubicaciones y PR #31
+
+  - id: SP1-04
+    sprint: 1
+    titulo: Seed de categorías, productos y variantes
+    responsable: Thomas
+    estado: done
+    evidencia: backend/prisma/seed.ts y catalogSeedData.ts
+
+  - id: SP1-05
+    sprint: 1
+    titulo: Login, registro Ley 1581 y navbar del storefront
+    responsable: Exneider
+    estado: done
+    evidencia: LoginForm, RegisterForm y PR #17
+
+  - id: SP1-06
+    sprint: 1
+    titulo: Prototipo de terminal POS en mostrador
+    responsable: Sofía
+    estado: declared
+    evidencia: PR #30 citado; no hay prototipo enlazado
+
+  - id: SP1-07
+    sprint: 1
+    titulo: QA Gate Sprint 1 de seguridad y permisos
+    responsable: Duvan
+    estado: pending
+    evidencia: Issue #7 sin cierre
+
+  - id: SP1-08
+    sprint: 1
+    titulo: Guia de diseño y sistema visual multi-portal
+    responsable: Sofía
+    estado: done
+    evidencia: ARQ-06 y docs/design
+
+  - id: SP1-09
+    sprint: 1
+    titulo: Catálogo público del storefront con filtros y variantes
+    responsable: Exneider
+    estado: done
+    evidencia: CatalogPage y PR #27
+
+  - id: SP2-01
+    sprint: 2
+    titulo: InventoryLedgerService con bloqueo y orden anti-deadlock
+    responsable: Julio
+    estado: done
+    evidencia: InventoryLedgerService.ts y suite de concurrencia
+
+  - id: SP2-02
+    sprint: 2
+    titulo: Compras a proveedor en Central con idempotencia
+    responsable: Yeimer
+    estado: done
+    evidencia: PR #66
+
+  - id: SP2-03
+    sprint: 2
+    titulo: Máquina de estados de traslados y retorno a Central
+    responsable: Julio
+    estado: done
+    evidencia: PR #44
+
+  - id: SP2-04
+    sprint: 2
+    titulo: Recepcion de traslados con dañados y novedades
+    responsable: Julio
+    estado: done
+    evidencia: PR #64
+
+  - id: SP2-05
+    sprint: 2
+    titulo: Panel admin de inventario, compras y traslados
+    responsable: Exneider
+    estado: done
+    evidencia: PR #60
+
+  - id: SP2-06
+    sprint: 2
+    titulo: Prototipos de arqueo de caja y cobro rápido
+    responsable: Sofía
+    estado: pending
+    evidencia: Issue #40 sin cierre
+
+  - id: SP2-07
+    sprint: 2
+    titulo: QA Gate Sprint 2 de concurrencia e idempotencia
+    responsable: Duvan
+    estado: declared
+    evidencia: PR #61 citado; docs/qa/SP2-07 no tiene resultados
+
+  - id: SP2-08
+    sprint: 2
+    titulo: Modal de recepción de traslados en POS
+    responsable: Thomas
+    estado: in_progress
+    evidencia: Issue #58; componente existe sin certificación
+
+  - id: SP3-01
+    sprint: 3
+    titulo: Sesiones de caja, base contada y arqueo ciego
+    responsable: Julio
+    estado: done
+    evidencia: PR #71
+
+  - id: SP3-02
+    sprint: 3
+    titulo: Venta POS atomica con preempción de reservas blandas
+    responsable: Julio
+    estado: done
+    evidencia: backend PR #71; la UI del POS aun opera en localStorage
+
+  - id: SP3-03
+    sprint: 3
+    titulo: Motor de descuentos y prorrateo exacto
+    responsable: Yeimer
+    estado: done
+    evidencia: PR #42 y DiscountEngine.test.ts
+
+  - id: SP3-04
+    sprint: 3
+    titulo: Devoluciones con plazo raiz y cambios a cero
+    responsable: Julio
+    estado: done
+    evidencia: PR #71
+
+  - id: SP3-05
+    sprint: 3
+    titulo: Ticket POS de 80 mm y recibo digital por Telegram
+    responsable: Thomas
+    estado: done
+    evidencia: PR #26 y TicketVentaPOS.tsx
+
+  - id: SP3-06
+    sprint: 3
+    titulo: Terminal POS completa en PosLayout
+    responsable: Exneider
+    estado: done
+    evidencia: PosTerminalPage y suites POS en verde
+
+  - id: SP3-07
+    sprint: 3
+    titulo: Prototipos de catálogo público y checkout en 3 pasos
+    responsable: Sofía
+    estado: pending
+    evidencia: sin issue ni PR
+
+  - id: SP3-08
+    sprint: 3
+    titulo: QA Gate Sprint 3 de venta, descuentos y caja
+    responsable: Duvan
+    estado: declared
+    evidencia: el tablero cita 50 tests que no existen en el archivo citado
+
+  - id: SP3-09
+    sprint: 3
+    titulo: Modal de cobro rápido y teclado táctil
+    responsable: Thomas
+    estado: done
+    evidencia: PR #75
+
+  - id: SP4-01
+    sprint: 4
+    titulo: Checkout atomico y algoritmo determinista DANE
+    responsable: Julio
+    estado: done
+    evidencia: PR #47
+
+  - id: SP4-02
+    sprint: 4
+    titulo: Worker periódico de expiracion de reservas TTL
+    responsable: Julio
+    estado: in_progress
+    evidencia: el codigo existe pero no se arranca desde server.ts
+
+  - id: SP4-03
+    sprint: 4
+    titulo: Flujo No puedo despachar y custodia en Central
+    responsable: Julio
+    estado: done
+    evidencia: PR #53
+
+  - id: SP4-04
+    sprint: 4
+    titulo: Plantilla HTML de correo transaccional de pedido
+    responsable: Thomas
+    estado: pending
+    evidencia: sin issue ni PR
+
+  - id: SP4-05
+    sprint: 4
+    titulo: Adaptador de notificaciones Telegram
+    responsable: Yeimer
+    estado: pending
+    evidencia: Issue #74 sin cierre
+
+  - id: SP4-06
+    sprint: 4
+    titulo: Retorno logístico vs devolución comercial web
+    responsable: Julio
+    estado: done
+    evidencia: PR #56
+
+  - id: SP4-07
+    sprint: 4
+    titulo: Rediseño canónico del storefront ARQ-07
+    responsable: Exneider
+    estado: done
+    evidencia: StorefrontLayout y componentes ARQ-07
+
+  - id: SP4-08
+    sprint: 4
+    titulo: QA Gate Sprint 4 de reservas y retornos
+    responsable: Duvan
+    estado: pending
+    evidencia: sin issue ni PR
+
+  - id: SP5-01
+    sprint: 5
+    titulo: Reporte de Ventas Netas y exportación Excel
+    responsable: Julio
+    estado: declared
+    evidencia: el tablero lo certifica pero no hay PR ni salida reproducible
+
+  - id: SP5-02
+    sprint: 5
+    titulo: Centro de alertas operativas
+    responsable: Yeimer
+    estado: pending
+    evidencia: sin issue ni PR; el tablero lo confunde con auditoría Kardex
+
+  - id: SP5-03
+    sprint: 5
+    titulo: Documentación de API y errores HTTP
+    responsable: Thomas
+    estado: pending
+    evidencia: Issue #T5 sin cierre
+
+  - id: SP5-04
+    sprint: 5
+    titulo: Dashboard ejecutivo con KPIs y auditoría
+    responsable: Exneider
+    estado: done
+    evidencia: AdminDashboardPage y ARQ-08
+
+  - id: SP5-05
+    sprint: 5
+    titulo: Revisión WCAG 2.2 AA de los 3 portales
+    responsable: Sofía
+    estado: pending
+    evidencia: sin issue ni PR
+
+  - id: SP5-06
+    sprint: 5
+    titulo: QA Gate final de 65 CA y 25 QA
+    responsable: Duvan
+    estado: pending
+    evidencia: sin evidencia de ejecución

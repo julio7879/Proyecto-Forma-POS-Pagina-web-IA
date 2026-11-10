@@ -4,6 +4,8 @@ tags: [equipo, roles, gitflow, metodologia, gobernanza]
 ---
 # Matriz Oficial de Roles, Asignación de Tareas y Flujo GitFlow
 
+> **HISTÓRICO (hasta 9-nov-2026).** Este documento describe el equipo de 6 personas y el GitFlow anterior. La operación actual es **1 persona** (`test/sandbox-testeo` → `main`); `develop` está archivada y el PR no es obligatorio. No usar este documento para decidir el flujo actual. Ver [[SSOT]].
+
 Este documento rige la metodología de trabajo, asignación de responsabilidades y flujo de colaboración para el equipo del **Sistema POS + Tienda Web Multisede**.
 
 ---

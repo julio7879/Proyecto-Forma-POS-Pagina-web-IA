@@ -4,6 +4,8 @@ tags: [sprints, plan, cronograma, tareas, equipo]
 ---
 # Plan Maestro de Sprints y Asignación de Tareas por Rol
 
+> **HISTÓRICO (hasta 9-nov-2026).** Este documento describe el equipo de 6 personas y el plan original. La operación actual es **1 persona** (`test/sandbox-testeo` → `main`). El estado vivo es [[PROGRESO-ACTUAL]], generado desde `backlog.yaml`; este plan se conserva como referencia, no como estado.
+
 Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** en 6 Sprints técnicos adaptables, distribuyendo la carga de trabajo según las capacidades y roles de **Julio, Sofía, Duvan, Exneider, Yeimer y Thomas**.
 
 ---

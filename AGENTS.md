@@ -1,5 +1,15 @@
 # Harness de Ingeniería Agéntica: Sistema POS + Tienda Web Multisede (v2.1)
 
+## 0. Contexto operativo real (10-nov-2026)
+
+- **Una persona.** No hay equipo de 6 ni reparto de carga vigente.
+- **Flujo:** `test/sandbox-testeo` → `main`. `develop` está archivada.
+- **PR:** no obligatorio. La evidencia es commit + `tsc` + `vitest` + checklist.
+- **Node:** 22.x para tests y build. Node 26 rompe Vitest 0.34 (`localStorage` indefinido).
+- **Estado vivo:** `docs/vault/05-Estado-Sprints/PROGRESO-ACTUAL.md`, generado desde `backlog.yaml` con `node scripts/gen-progress.mjs`.
+- **SSOT:** `docs/vault/00-GOBERNANZA/SSOT.md`.
+- El flujo de 5 etapas de la sección 2 se mantiene.
+
 ## 1. Regla de Oro de Ahorro de Tokens y Cero Suposiciones (RAG Quirúrgico y Consulta Obligatoria)
 - **PROHIBIDO adivinar o suponer reglas de negocio, estados, fórmulas o alcance.**
 - Antes de planificar o editar código de cualquier módulo, consulta únicamente la nota atómica correspondiente dentro de `docs/vault/` (vía el servidor MCP `qmd-pos-vault` o leyendo el archivo puntual de `docs/vault/01-Reglas-Dominio/`).
