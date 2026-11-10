@@ -135,7 +135,7 @@ Si `@Vigía-Requerimientos` (o cualquier agente en el flujo) detecta:
 
 **Acción Inquebrantable:**
 1. **DETENER LA EJECUCIÓN:** No generar código, no abrir PRs, no crear archivos ni ejecutar comandos modificadores.
-2. **FORMULAR PREGUNTAS AL USUARIO:** Usar la herramienta `ask_question` para presentar opciones múltiples bien fundamentadas (o formular preguntas directas en lenguaje claro).
+2. **FORMULAR PREGUNTAS AL USUARIO:** Usar la herramienta `ask_user_question` para presentar opciones múltiples bien fundamentadas (o formular preguntas directas en lenguaje claro).
 3. **BLOQUEO HASTA RESPUESTA:** La tarea se pausa por completo hasta recibir la respuesta explícita y decisión del usuario.
 4. **PROSEGUIR TRAS LA RESPUESTA:** Solo una vez resuelta la duda y documentada la decisión en el Vault, se continúa con la planificación y construcción.
 

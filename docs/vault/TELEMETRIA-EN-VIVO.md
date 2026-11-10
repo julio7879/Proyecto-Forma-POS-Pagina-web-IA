@@ -8,7 +8,7 @@ estado_oficina: 🟢 OPERATIVA Y EN LÍNEA
 # 📡 Radar de Actividad y Telemetría en Vivo de la Oficina
 
 > [!NOTE]
-> **Monitoreo en Tiempo Real:** Este documento se actualiza automáticamente conforme los agentes de IA (@Vigía, @Oráculo, @Forja, @Vitral, @Sabueso, @Juez y @Centinela) procesan tareas en el proyecto. Gracias al *File Watcher* de Obsidian, cualquier cambio reflejado aquí se actualiza **en vivo y sin recargar** dentro de tu `Oficina-Agentes.canvas`.
+> **Monitoreo en Tiempo Real:** Este documento se actualiza automáticamente conforme los agentes de IA (@Vigía-Requerimientos, @Oraculo-Analista, @Forja-Backend, @Vitral-UI, @Sabueso-Hunter, @Juez-Esceptico y @Centinela-QA) procesan tareas en el proyecto. Gracias al *File Watcher* de Obsidian, cualquier cambio reflejado aquí se actualiza **en vivo y sin recargar** dentro de tu `Oficina-Agentes.canvas`.
 
 ---
 
@@ -39,7 +39,7 @@ estado_oficina: 🟢 OPERATIVA Y EN LÍNEA
 ```text
 [15:42:10] [@Vigía-Requerimientos]    🟢 DoR Evaluado: Requerimiento claro. Base $200.000 COP, control horario Colombia. Pase a Etapa 1.
 [15:42:12] [@Oraculo-Analista]        📜 RAG Quirúrgico: Consulta RN-CAJ-VTA.md. Contrato de 28 líneas generado (Modelos: SesionCaja, uq_unica_sesion_caja_abierta_por_punto).
-[15:42:14] [@Arquitecto-UX]           📐 Ley Canónica E-Commerce: Consulta ARQ-07.md y 13 figuras normativas. Aplica jerarquía Z/F y ofertas above the fold.
+[15:42:14] [@Arquitecto-UX-Storefront]           📐 Ley Canónica E-Commerce: Consulta ARQ-07.md y 13 figuras normativas. Aplica jerarquía Z/F y ofertas above the fold.
 [15:42:15] [@Forja-Backend]           ⚙️ Guardrails validados: MoneyCOP (enteros sin decimales), ColombiaTime.ts (America/Bogota).
 [15:42:17] [@Sabueso-Hunter]          🐕 ATAQUE ADVERSARIAL: Intento de abrir caja con $200.000,50 COP y sesión con fecha de ayer.
 [15:42:19] [@Juez-Esceptico]          ⚖️ REFUTACIÓN: El constraint SQL 'chk_monto_entero' y la regla CA-56 bloquean el intento. Falsa alarma refutada. Código blindado.

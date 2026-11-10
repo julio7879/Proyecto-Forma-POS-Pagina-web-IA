@@ -3,6 +3,7 @@ id: SKI-ADVERSARIAL
 tags: [skill, auditoria, adversarial, seguridad]
 skill_dir: ".agent/skills/pos-adversarial-audit"
 agente_responsable: "[[AGE-06-Sabueso-Hunter]]"
+agente_secundario: "[[AGE-07-Juez-Esceptico]]"
 ---
 # 🛠️ Skill: pos-adversarial-audit
 

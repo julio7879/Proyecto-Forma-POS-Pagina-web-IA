@@ -27,12 +27,16 @@ Todo Pull Request debe cumplir estrictamente la nomenclatura de ramas:
 
 Antes de emitir aprobación, el revisor debe verificar punto por punto:
 
+0. **Alineación con el Contrato del Issue (DoR vs DoD):** ¿El PR cumple con el contrato técnico de DTOs, esquemas Zod y rutas especificado en el Issue correspondiente? Si el Issue estaba sub-especificado, la revisión debe documentar los ajustes requeridos con soluciones exactas y enriquecer el Issue.
 1. **Dinero Entero (`RN-GEN-04`):** ¿Todos los montos en COP son enteros `INT`? ¿Se usó `MoneyCOP.ts` para cálculos y prorrateos con residuo a la última línea elegible (`RN-DES-09`)?
 2. **Hora Oficial de Colombia (`RN-GEN-05`):** ¿Las fechas se guardan en UTC pero los cortes de día (`YYYY-MM-DD`), mes (`YYYY-MM`) y sesiones de caja se evalúan en `America/Bogota` usando `ColombiaTime.ts`?
 3. **Kardex Único (`RN-GEN-02`):** ¿Toda modificación de `SaldoStock` pasa obligatoriamente por `InventoryLedgerService.ts`? (Rechazo inmediato si se detecta `prisma.saldoStock.update()` suelto).
 4. **Orden Anti-Deadlock (`RNF-003`):** ¿Las transacciones que bloquean múltiples variantes ejecutan ordenamiento canónico `varianteId ASC` antes de `SELECT ... FOR UPDATE`?
 5. **Validación Zod (`RN-SEG-02`):** ¿Cada endpoint valida sus entradas con esquema Zod exigiendo enteros positivos y formatos válidos?
-6. **Compilación y Tests:** ¿Se ejecutó `npx tsc --noEmit` sin errores y `npx vitest run` con todos los tests en verde?
+6. **Configuración de Entorno y Arquitectura Multi-Portal (`ARQ-05`):**
+   - En frontend: ¿Se preserva `AppRouter.tsx` con carga diferida (`React.lazy`) para Storefront, POS y Admin?
+   - ¿Está configurado el proxy de Vite (`server.proxy` para `/api`) para conectar el dev server con Express?
+7. **Compilación y Tests:** ¿Se ejecutó `npx tsc --noEmit` sin errores y `npx vitest run` con todos los tests en verde?
 
 ---
 
@@ -67,6 +71,35 @@ El PR **no se puede mergear** hasta que Duvan marque todas las casillas de verif
 ## 4. Formato Estructurado de Comentarios en el PR
 
 La skill debe emitir la retroalimentación dividida en 3 niveles de severidad:
+- **🔴 Bloqueante:** Violación de invariante, fallo de compilación o falta de tests.
+- **🟡 Advertencia:** Código mejorable o documentación faltante.
+- **🟢 Aprobado:** Listo para QA Gate.
+
+---
+
+## 5. Plantilla Obligatoria de Acompañamiento en Issues (Guía Operativa GitFlow y Testing)
+
+**Regla Inquebrantable:** Cada vez que se crea una nueva Issue en GitHub, debe publicarse un comentario de acompañamiento técnico para el integrante asignado, detallando:
+1. **Ruta y Rama GitFlow:**
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/<codigo-tarea>-<descripcion-corta>
+   ```
+2. **Convención de Tests Unitarios (Vitest):**
+   - Ubicación: `__tests__/<modulo>.test.ts`
+   - Estructura Arrange-Act-Assert con `describe`, `it`, `expect`.
+   - Comprobación: `npx vitest run` y `npx tsc --noEmit`.
+3. **Flujo de Push y Pull Request:**
+   ```bash
+   git add .
+   git commit -m "feat(<modulo>): descripcion clara del cambio"
+   git push -u origin feature/<codigo-tarea>-<descripcion-corta>
+   gh pr create --base develop --head feature/<codigo-tarea>-<descripcion-corta> --title "[CODIGO] Titulo" --body "..."
+   ```
+4. **Para Roles No-Código (Sofía / UX-UI):**
+   - Indicar exportación de tokens, enlaces navegables en Figma/Lovable y registro de maquetas para alimentar el frontend de Exneider sin tocar código fuente.
+
 
 - **🔴 BLOQUEANTE (Blocker):** Fallos que impiden el merge (violación de invariantes, dinero flotante, falta de lock pesimista, `tsc` fallando o falta de pruebas para los criterios `CA-*`).
 - **🟡 ADVERTENCIA (Warning):** Oportunidades de mejora de rendimiento, nombrado confuso o deuda técnica menor.

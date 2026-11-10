@@ -4,12 +4,21 @@ description: Guía y orquesta el desarrollo, implementación y auditoría advers
 ---
 # Orquestador Multi-Agente con RAG Quirúrgico y Auditoría Adversarial (POS + Tienda Web)
 
-Esta skill implementa el flujo de trabajo en 4 fases (RAG Quirúrgico, Implementación con Guardrails, Auditoría Adversarial en 2 etapas estilo Cloudflare y Auto-Verificación) para construir el Sistema POS y Tienda Web sin alucinaciones y con mínimo consumo de tokens.
+Esta skill implementa el flujo de trabajo en 5 fases (Paso 0 a Paso 4) (RAG Quirúrgico, Implementación con Guardrails, Auditoría Adversarial en 2 etapas estilo Cloudflare y Auto-Verificación) para construir el Sistema POS y Tienda Web sin alucinaciones y con mínimo consumo de tokens.
 
 ## Cuándo Usar Esta Skill
 - Al planificar o programar cualquiera de los 12 módulos del Sistema POS y Tienda Web.
 - Al escribir transacciones de Prisma/PostgreSQL que afecten inventario, caja, ventas, devoluciones, cambios, traslados o pedidos web.
 - Al realizar auditorías de seguridad, concurrencia o lógica de negocio sobre código existente del proyecto.
+
+## Regla Transversal: Parada y Consulta Obligatoria ante la Duda
+- **Cero Suposiciones:** Si en cualquier fase (planificación, contratos, codificación, auditoría o QA) el agente no sabe algo, encuentra ambigüedad o falta de especificación en el Vault, **debe detenerse de inmediato**.
+- **Preguntar y Esperar:** Formular preguntas al usuario (utilizando `ask_user_question` para opciones o pregunta directa) y **no continuar hasta que el usuario responda**.
+
+## Paso 0: Evaluación Pre-Vuelo y Filtro de Ambigüedad (`@Vigía-Requerimientos`)
+- Auditar la solicitud antes de planificar.
+- Detectar dependencias tempranas de equipo, evaluar las 7 invariantes y verificar si la tarea está lista (DoR).
+- Si la solicitud es confusa o incompleta, emitir dictamen y preguntar al usuario antes de dar luz verde.
 
 ## Paso 1: Consulta Quirúrgica de Reglas (`@Oraculo-Analista`)
 - No asumas reglas de negocio ni cargues documentos completos innecesarios.

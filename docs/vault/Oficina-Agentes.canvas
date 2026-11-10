@@ -23,7 +23,7 @@
 		{
 			"id": "node-inquisidor",
 			"type": "text",
-			"text": "### ❓ @Inquisidor-Dudas\n**Área:** Clarificación Socrática\n**Skills:** `pos-clarification-interview`, `grilling`\n\n- **Misión:** Protocolo de parada obligatoria ante vacíos o dudas.\n- **Regla de Oro:** Prohibido suponer o adivinar reglas de negocio.\n- **Interacción:** Formula de 1 a 3 preguntas con opciones (`ask_question`).\n- **Reanudación:** Solo continúa tras respuesta explícita del usuario.",
+			"text": "### ❓ @Inquisidor-Dudas\n**Área:** Clarificación Socrática\n**Skills:** `pos-clarification-interview`, `grilling`\n\n- **Misión:** Protocolo de parada obligatoria ante vacíos o dudas.\n- **Regla de Oro:** Prohibido suponer o adivinar reglas de negocio.\n- **Interacción:** Formula de 1 a 3 preguntas con opciones (`ask_user_question`).\n- **Reanudación:** Solo continúa tras respuesta explícita del usuario.",
 			"x": 0,
 			"y": 450,
 			"width": 380,

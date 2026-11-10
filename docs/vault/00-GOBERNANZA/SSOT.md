@@ -22,8 +22,8 @@ fecha: 2026-11-10
 | Calidad (`CA-*`, `DV-*`) | `docs/vault/04-Calidad-y-Parametros/` | Casos `QA-*` y gates |
 | Estado del proyecto | `docs/vault/05-Estado-Sprints/backlog.yaml` | `PROGRESO-ACTUAL.md` (generado) |
 | Arquitectura y diseño | `docs/vault/06-Arquitectura-y-Patrones/` (`ARQ-01`…`ARQ-08`) | `docs/design/` como anexo |
-| Agentes | `docs/vault/07-Agentes/` | Handles y matriz de skills |
-| Skills | `.agent/skills/` | Notas `SKI-*` como índice |
+| Agentes | `docs/vault/07-Agentes/` | 11 roles documentados; no hay agentes ejecutables |
+| Skills | `.agent/skills/` | `.claude/skills/` es copia generada; notas `SKI-*` y `CATALOGO-SKILLS` como índice |
 | Harness y flujo | `AGENTS.md` + este documento | `CLAUDE.md` como puntero |
 | QA y ejecuciones | `docs/qa/` | Informes, gates y regresiones |
 
@@ -60,6 +60,8 @@ fecha: 2026-11-10
 | Notas `SKI-*` | `.agent/skills/` | Son índice, no fuente |
 | Conteo de tests | salida de `vitest` | No usar cifras escritas a mano |
 | IDs `RN-*` citados | `node scripts/check-ids.mjs --check` | 0 faltantes y 0 duplicados |
+| Copia `.claude/skills` | `node scripts/sync-skills.mjs` | `--check` falla si diverge de `.agent/skills` |
+| Catálogo de skills | `docs/vault/08-Skills/CATALOGO-SKILLS.md` | 19 de dominio + 14 genéricas; un dueño por skill |
 
 ---
 
@@ -78,7 +80,7 @@ fecha: 2026-11-10
 
 1. Cambiar la **fuente**, no la copia.
 2. Regenerar los derivados (`node scripts/gen-progress.mjs`).
-3. Ejecutar `node scripts/gen-progress.mjs --check` y `node scripts/check-ids.mjs --check`.
+3. Ejecutar `node scripts/gen-progress.mjs --check`, `node scripts/check-ids.mjs --check` y `node scripts/sync-skills.mjs --check`.
 4. Commit con evidencia (qué, por qué, archivo).
 5. Si cambia una regla de negocio, actualizar `RN-*`, `RF-*`, `CA-*` y la matriz de trazabilidad.
 6. Si el cambio es de alcance, registrarlo como ADR o `DV-*` con fecha.

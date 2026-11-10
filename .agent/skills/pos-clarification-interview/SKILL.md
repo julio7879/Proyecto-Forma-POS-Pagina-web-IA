@@ -28,7 +28,7 @@ Esta skill traslada el patrón de **interrogatorio pre-construcción** (populari
 - Si no existe o hay contradicción, formula el interrogatorio.
 
 ### 3. Formulación de Preguntas al Usuario
-- Emplea la herramienta interactiva `ask_question` para brindar opciones fundamentadas (o redacta preguntas concisas si son aclaraciones abiertas).
+- Emplea la herramienta interactiva `ask_user_question` para brindar opciones fundamentadas (o redacta preguntas concisas si son aclaraciones abiertas).
 - Reglas para las preguntas:
   - Máximo 3 preguntas por ronda.
   - Cada opción debe detallar el impacto técnico y en las 7 invariantes (ej. Opción A: reserva en BD con bloqueo pesimista vs. Opción B: reserva en memoria).

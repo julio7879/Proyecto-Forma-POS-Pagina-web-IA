@@ -13,3 +13,4 @@ description: Procedimiento obligatorio para programar cualquier caso de uso que 
    - Venta POS: verifica `fisico - reservadoDuro >= cantidad`. Si toma unidades de `reservadoBlando`, reasigna el pedido web afectado en la misma transacción (`RN-WEB-16`).
    - Pedido Web / Traslado: verifica `fisico - reservadoBlando - reservadoDuro >= cantidad`.
 6. **Consecutivo Diferido (`RN-VTA-09`):** Incrementa `ConsecutivoUbicacion` como última instrucción antes del `COMMIT`.
+7. **Cero Suposición y Consulta Obligatoria:** Si el caso de uso involucra un tipo de movimiento no documentado o un flujo de reversión/custodia ambiguo, detente y pregunta al usuario antes de modificar saldos o escribir la transacción.

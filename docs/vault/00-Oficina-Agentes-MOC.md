@@ -1,7 +1,7 @@
 ---
 id: MOC-OFICINA-AGENTES
 tags: [oficina, agentes, subagentes, skills, roles, arquitectura, orquestacion, grafo]
-fecha_actualizacion: 2026-11-08
+fecha_actualizacion: 2026-11-10
 relacionados:
   - "[[00-Indice-Mapa-Mental-MOC]]"
   - "[[RN-GEN-Principios-Inmutables]]"
@@ -16,6 +16,8 @@ Este documento actúa como el **Nodo Central (Hub)** para el grafo de Obsidian y
 > [!TIP]
 > **Para ver el lienzo interactivo completo:** Abre en Obsidian el archivo [[Oficina-Agentes.canvas]].  
 > **Para ver la constelación de relaciones:** Presiona `Ctrl + G` en Obsidian (Vista de Grafo) y filtra por la etiqueta `#agente`.
+>
+> **Catálogo canónico de skills:** [[CATALOGO-SKILLS]]. Los 11 agentes son **roles documentados**, no ejecutables: no existen `.agent/agents` ni `.claude/agents` (ver `docs/vault/07-Agentes/README.md`).
 
 ---
 
@@ -53,7 +55,7 @@ flowchart LR
   - **Skills:** `pos-evaluador-solicitudes`
   - **Relacionado:** [[PLAN-MAESTRO-SPRINTS]] | [[RN-GEN-Principios-Inmutables]]
 - **Agente:** `@Inquisidor-Dudas`
-  - **Función:** Protocolo de parada obligatoria ante cualquier ambigüedad técnica o de negocio. Formula preguntas interactivas (`ask_question`).
+  - **Función:** Protocolo de parada obligatoria ante cualquier ambigüedad técnica o de negocio. Formula preguntas interactivas (`ask_user_question`).
   - **Skills:** `pos-clarification-interview`, `grilling`, `grill-me`
   - **Regla Inquebrantable:** Prohibido rellenar vacíos con suposiciones.
 
@@ -82,7 +84,7 @@ flowchart LR
   - **Relacionado:** [[ARQ-07-Ley-Diseno-Ecommerce-Navegacion-UIUX]] | [[AGE-09-Arquitecto-UX-Storefront]] | [[SKI-pos-ecommerce-ux-law]]
 - **Agente:** `@Vitral-Dashboard`
   - **Función:** Arquitectura de información, leyes de diseño y visualización de datos para Paneles de Control (Dashboards Ejecutivos y Operativos) en React + Tailwind CSS. Aplica los principios canónicos de Justinmind: analogía del automóvil, pantalla única (Single-Screen Glance), límite de 5-6 tarjetas primarias, números grandes, alto contraste y paleta luxury atelier sin estridencias.
-  - **Skills:** `pos-dashboard-designer`, `react-shadcn-admin`, `ui-ux-pro-max`
+  - **Skills:** `pos-dashboard-designer`
   - **Relacionado:** [[ARQ-08-Guia-Maestra-Diseno-Paneles-de-Control-Dashboards]] | [[AGE-10-Vitral-Dashboard]] | [[SKI-pos-dashboard-designer]]
 
 ### 🔍 Área 3: Seguridad y Auditoría Adversarial
