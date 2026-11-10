@@ -21,7 +21,7 @@ fecha: 2026-11-10
 | Base de datos | `backend/prisma/schema.prisma` + `migrations/` | Conteo de modelos, nota de esquema |
 | Calidad (`CA-*`, `DV-*`) | `docs/vault/04-Calidad-y-Parametros/` | Casos `QA-*` y gates |
 | Estado del proyecto | `docs/vault/05-Estado-Sprints/backlog.yaml` | `PROGRESO-ACTUAL.md` (generado) |
-| Arquitectura y diseño | `docs/vault/06-Arquitectura-y-Patrones/` (`ARQ-01`…`ARQ-08`) | `docs/design/` como anexo |
+| Arquitectura y diseño | `docs/vault/06-Arquitectura-y-Patrones/` (`ARQ-01`…`ARQ-08`) + `DISENO-SSOT` | `docs/design/` como anexo; una ley por portal |
 | Agentes | `docs/vault/07-Agentes/` | 11 roles documentados; no hay agentes ejecutables |
 | Skills | `.agent/skills/` | `.claude/skills/` es copia generada; notas `SKI-*` y `CATALOGO-SKILLS` como índice |
 | Harness y flujo | `AGENTS.md` + este documento | `CLAUDE.md` como puntero |

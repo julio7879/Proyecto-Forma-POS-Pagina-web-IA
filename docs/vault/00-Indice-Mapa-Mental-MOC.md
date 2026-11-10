@@ -76,13 +76,14 @@ Cada nota en este vault está autocontenida (50 a 140 líneas), cuenta con metad
 - [[ARQ-05-Estructura-Carpetas-y-Tres-Portales]] — Arquitectura de 3 portales y árbol oficial de directorios Backend/Frontend (Sección 4.1 y 4.2).
 - [[ARQ-06-Guia-Diseno-Sistema-Visual]] — Sistema de diseño visual, Liquid Glass UI estilo Apple para Storefront, ergonomía POS y tokens (Sección 2 y 4).
 - [[ARQ-07-Ley-Diseno-Ecommerce-Navegacion-UIUX]] — Ley Canónica de Diseño E-Commerce, Navegación Intuitiva, Jerarquía Visual, PDP, Catálogo (Grid/List), Carrito, Checkout y Rendimiento (14 Mandamientos y 13 Figuras Normativas).
-- [[ARQ-08-Guia-Maestra-Diseno-Paneles-de-Control-Dashboards]] — Ley Canónica de Diseño de Paneles de Control (Dashboards UI/UX), Metodología Justinmind, Analogía del Automóvil, Pantalla Única, 5-6 Tarjetas Primarias, Visualización de Datos y 37 Modelos de Referencia.
+- [[ARQ-08-Guia-Maestra-Diseno-Paneles-de-Control-Dashboards]] — Ley Canónica de Diseño de Paneles de Control (Dashboards UI/UX), Metodología Justinmind, Analogía del Automóvil, Pantalla Única, 5-6 Tarjetas Primarias, Visualización de Datos y 37 Modelos de Referencia. Ver [[DISENO-SSOT]] para la regla de conteo.
 
 ---
 
 ## 7. Gobernanza y Estado Vivo
 
 - [[SSOT]] — Fuente única de verdad, precedencia y protocolo de cambio.
+- [[DISENO-SSOT]] — Constitución visual: ley por portal, paleta vigente y alcance MVP.
 - [[PROGRESO-ACTUAL]] — Tablero generado desde `backlog.yaml`; no editar a mano.
 - `docs/vault/05-Estado-Sprints/backlog.yaml` — Backlog canónico de 46 tareas con evidencia.
 - `docs/qa/AUDITORIA-2026-11/` — Auditoría integral y ejecución de F0 (fuera del vault).

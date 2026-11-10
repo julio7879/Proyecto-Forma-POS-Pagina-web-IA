@@ -31,6 +31,10 @@ Esta guía constituye la **fuente canónica e inquebrantable** para el diseño, 
 
 ---
 
+> **Regla de conteo (F4):** «5-6 tarjetas primarias» se refiere a **bloques primarios** (filas o paneles), no a tarjetas individuales. El layout de 4 KPIs + línea 65 % + dona 35 % + histograma + 2 monitores = **6 bloques** y cumple. Contar cada KPI por separado daría 9 y haría la regla inaplicable. Ver [[DISENO-SSOT]] §4.
+
+---
+
 ## 1. ¿Qué es un Panel de Control?
 
 En su forma más simple, un panel de control es una pantalla de tu aplicación que muestra información. Normalmente, un panel de control proporciona al usuario una visión global, con acceso a los datos, funciones y controles más importantes. En realidad, un panel de control suele convertirse en una especie de página de inicio, sobre todo para los usuarios avanzados.

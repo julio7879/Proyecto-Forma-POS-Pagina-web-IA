@@ -6,6 +6,28 @@
 
 ---
 
+## 0. Los 14 Mandamientos Canónicos
+
+> **Lista única y vinculante.** Sustituye las enumeraciones que antes mantenían `SKI-pos-ecommerce-ux-law` y `AGE-09`. Se cita, no se reescribe.
+> El alcance MVP de los mandamientos 6, 8 y 11 se define en [[DISENO-SSOT]] §3.
+
+1. **Navegación intuitiva y migas de pan (GPS).** Etiquetas claras y jerarquía visible: `Inicio / Ropa / Camisas / Camisa Azul` (§1).
+2. **Búsqueda predictiva y prominente.** Autocompletado, sugerencias relacionadas y acceso en la cabecera (§1.2, §26.1).
+3. **Jerarquía visual Z/F.** Tamaño, color y contraste guían la mirada hacia el CTA (§5).
+4. **Coherencia de marca.** Una paleta, una tipografía, un UI kit y un tono de voz (§7).
+5. **Home de alta conversión.** Hero compacto y ofertas visibles *above the fold* (§8).
+6. **PDP inmersivo.** Multi-ángulo, zoom y copy persuasivo; la vista 360° es fase 2 (§13, §15).
+7. **Precios transparentes y urgencia.** Precio final, descuento y vigencia sin ambigüedad (§16).
+8. **Prueba social verificada.** Reseñas con compra verificada; los datos semilla se marcan como demo (§18).
+9. **Cross-sell y up-sell.** Relacionados y bundles útiles, no ruido (§20).
+10. **Carrito despejado.** Costos, flete y política de devolución visibles antes del checkout (§21).
+11. **Checkout con progreso.** 3 pasos o 1-step; el guest checkout es fase 2 (§23).
+12. **Filtros y orden.** Talla, color, material, precio y `Sort By` (§26).
+13. **Grid/List y rendimiento.** Vista dual, lazy loading, imágenes responsivas y mobile-first (§28, §30, §32).
+14. **CTAs y personalización.** Botones claros y específicos; recomendaciones útiles, no decorativas (§12, §33).
+
+---
+
 ## 1. Crear una Navegación Intuitiva
 
 Es esencial que las etiquetas de los menús, botones y enlaces sean claras y concisas. No abrumes a los clientes con excesivas opciones, ¡o podrían confundirse demasiado y decidirse por tu competencia!
@@ -211,6 +233,8 @@ Imagina que entras en una tienda y ves un producto expuesto en una estantería. 
 * **Vista 360° Interactiva:** Posibilidad de rotar la pieza para una apreciación espacial completa.
 * **Vídeos de Producto en Acción:** Dan vida a las prendas, muestran la caída de la tela, destacan sus características y demuestran sus ventajas reales. Especialmente efectivo para productos difíciles de describir solo con palabras.
 
+> **Alcance MVP:** multi-ángulo y zoom son MVP; la vista 360° es fase 2. No mostrar un badge «360°» hasta que exista un visor real. Ver [[DISENO-SSOT]] §3.
+
 ---
 
 ## 14. Evidencia Visual VI: Exposición de Producto (Multi-Ángulo, Zoom y Vista 360°)
@@ -265,6 +289,8 @@ Imagina que entras en una tienda y ves un producto con una reseña elogiosa de u
 * **Generan Confianza y Credibilidad:** Respaldan la calidad del producto y la satisfacción real.
 * **Decisiones Informadas:** Dan visibilidad sobre el rendimiento, ajuste de talla y acabado.
 * **Impulso SEO Orgánico:** Los motores de búsqueda consideran las reseñas de clientes como un factor clave de posicionamiento.
+
+> **Prueba social:** solo reseñas con compra verificada. Los datos semilla se marcan como demo y nunca como «verificado». Ver [[DISENO-SSOT]] §3.
 
 ---
 
@@ -322,6 +348,8 @@ Estás en una tienda a punto de pagar y suena el teléfono, es tu hijo pidiéndo
 ### 23.2 Opción de Pago como Invitado (Guest Checkout)
 Permite comprar sin obligar a crear una cuenta previa, reduciendo drásticamente la fricción inicial y el abandono.
 
+> **Alcance MVP:** guest checkout está **fuera del MVP** por ARQ-01. El checkout actual exige registro. Esta sección es fase 2; no implementar sin una decisión de alcance.
+
 ### 23.3 Indicadores de Progreso Claros y en Tiempo Real
 * **Barras de progreso paso a paso:** Indicaciones visuales numeradas que muestran la cercanía a la confirmación final.
 * **Etiquetas descriptivas:** «Información de Envío», «Método de Pago», «Revisión del Pedido».
@@ -349,6 +377,8 @@ Permite comprar sin obligar a crear una cuenta previa, reduciendo drásticamente
 * **Cifrado de datos:** Encriptación robusta de extremo a extremo.
 * **Auditorías de seguridad periódicas:** Monitoreo y prevención de vulnerabilidades.
 * **Tokenización:** El sistema nunca almacena números de tarjeta sensibles en plano; opera exclusivamente con tokens bancarios seguros.
+
+> **Alcance MVP:** pasarela y PCI-DSS están **fuera del MVP** por ARQ-01. El MVP usa transferencia y contraentrega. Esta sección es fase 2.
 
 ---
 

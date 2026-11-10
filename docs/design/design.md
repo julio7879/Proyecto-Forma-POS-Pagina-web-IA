@@ -1,4 +1,6 @@
 # SISTEMA DE DISEÑO Y TOKENS VISUALES (design.md)
+
+> **Tokens del Storefront.** La UX la manda ARQ-07; el Admin se rige por ARQ-08. Ver `docs/vault/00-GOBERNANZA/DISENO-SSOT.md`.
 *Tokens Oficiales, Guía de Estilos y Especificaciones Apple Liquid Glass para Sistema POS & Tienda Web v2.1*
 *Basado en Stitch CLI, Obsidian Vault (ARQ-06), hechos.md y brief.md*
 

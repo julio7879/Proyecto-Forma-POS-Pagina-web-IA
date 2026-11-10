@@ -4,6 +4,8 @@ tags: [diseno, ui-ux, liquid-glass, apple-style, storefront, pos, admin]
 ---
 # Guía Canónica de Diseño y Sistema Visual (v2.1)
 
+> **Precedencia (F4):** Storefront = ARQ-07 + ARQ-06 §A; POS = §B; Admin = ARQ-08. Esta guía es referencia general, no ley de portal. Ver [[DISENO-SSOT]].
+
 Relacionado con: [[00-Indice-Mapa-Mental-MOC]] | [[ARQ-05-Estructura-Carpetas-y-Tres-Portales]]
 
 ## 1. Filosofía de los Tres Portales Visuales
@@ -30,6 +32,7 @@ Aunque comparten el mismo backend y base de datos, cada portal responde a una ne
 - **Área de Venta:** Pantalla completa sin scroll vertical (`CA-53`).
 
 ### C. Panel Admin (Datos y Control)
+> **Vigente:** para el Portal Admin manda **ARQ-08**. La paleta slate/índigo de esta sección es histórica y no aplica al dashboard.
 - **Sidebar:** `bg-slate-900 text-slate-300 border-r border-slate-800`.
 - **Tablas:** Tipografía tabular monoespaciada para cifras en COP (`font-mono`).
 

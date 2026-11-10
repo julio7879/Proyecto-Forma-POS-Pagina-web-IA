@@ -1,4 +1,6 @@
 # GUÍA MAESTRA DE DISEÑO Y SISTEMA VISUAL: REAL LIQUID GLASS ESPEJO (v2.1)
+
+> **Anexo experimental, no ley.** La ley del Storefront es ARQ-07 + ARQ-06 §A/`design.md`. Esta guía propone *Obsidian Navy* + champagne y **no se adopta** hasta cerrar `DV-023`. Ver `docs/vault/00-GOBERNANZA/DISENO-SSOT.md`.
 *Sistema POS Multisede & Tienda Web E-Commerce Forma*
 *Dirección de Arte y Motion: Skill Frontend-Design (Claude / Anthropic)*
 

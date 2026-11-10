@@ -1,4 +1,6 @@
 # BRIEF CREATIVO DE DISEÑO UI/UX: STOREFRONT CATÁLOGO BENTO GRID (v2.1)
+
+> **Especificación derivada, no ley.** La UX la manda ARQ-07 y los tokens `design.md`/ARQ-06 §A. Ver `docs/vault/00-GOBERNANZA/DISENO-SSOT.md`.
 *Especificación de Experiencia, Arquitectura de Información y Copywriting Canónico*
 
 ---
