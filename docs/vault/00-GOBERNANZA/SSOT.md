@@ -56,9 +56,10 @@ fecha: 2026-11-10
 | Artefacto | Se genera con | Regla |
 | :--- | :--- | :--- |
 | `docs/vault/05-Estado-Sprints/PROGRESO-ACTUAL.md` | `node scripts/gen-progress.mjs` | No editar a mano; `--check` falla si está desactualizado |
-| Conteo de modelos/enums | `schema.prisma` | La nota `Esquema-Prisma-33-Modelos` debe renombrarse a 35 |
+| Conteo de modelos/enums | `schema.prisma` | La nota `Esquema-Prisma-35-Modelos` ya refleja 35 modelos (F2) |
 | Notas `SKI-*` | `.agent/skills/` | Son índice, no fuente |
 | Conteo de tests | salida de `vitest` | No usar cifras escritas a mano |
+| IDs `RN-*` citados | `node scripts/check-ids.mjs --check` | 0 faltantes y 0 duplicados |
 
 ---
 
@@ -69,6 +70,7 @@ fecha: 2026-11-10
 - `PROGRESO-ACTUAL.md` anterior: reemplazado por el generado.
 - `docs/design/`: especificaciones de diseño; se consideran anexo de ARQ-06/07, no ley.
 - `SandboxRoleDock.tsx`: neutralizado en F0; no usar.
+- `scripts/generate-vault.mjs`: generador obsoleto que sobrescribía el vault; movido a `scripts/archive/` en F2. No ejecutar.
 
 ---
 
@@ -76,7 +78,7 @@ fecha: 2026-11-10
 
 1. Cambiar la **fuente**, no la copia.
 2. Regenerar los derivados (`node scripts/gen-progress.mjs`).
-3. Ejecutar `node scripts/gen-progress.mjs --check`.
+3. Ejecutar `node scripts/gen-progress.mjs --check` y `node scripts/check-ids.mjs --check`.
 4. Commit con evidencia (qué, por qué, archivo).
 5. Si cambia una regla de negocio, actualizar `RN-*`, `RF-*`, `CA-*` y la matriz de trazabilidad.
 6. Si el cambio es de alcance, registrarlo como ADR o `DV-*` con fecha.

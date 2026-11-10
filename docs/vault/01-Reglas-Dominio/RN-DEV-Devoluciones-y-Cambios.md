@@ -18,6 +18,7 @@ Relacionado con: [[MOD-10-Devoluciones-Cambios]] | [[RN-CAJ-VTA-Caja-y-Ventas-PO
   El plazo en mostrador POS es de **5 días calendario** contados estrictamente desde la **fecha de la venta original (raíz)**. Realizar un cambio de prenda **NO reinicia el plazo** (`CA-63`). Vencidos los 5 días (Día 6+), el vendedor queda bloqueado y solo el Administrador puede autorizar la operación (`CA-27`) digitando su PIN o contraseña en el modal de sobreescritura de la pantalla POS, generando un registro auditable e inmutable en `RegistroAuditoria`.
 - **RN-DEV-06 [D] (Reembolso sobre Neto Prorrateado, `CA-26`):**
   El monto a devolver por cada unidad es exactamente su precio neto unitario pagado (`precioNetoTotalCop / cantidad`), nunca el precio de lista. Si el artículo tenía 100% de descuento ($0 COP), el reembolso es de $0 COP.
+  Para mantener COP entero (`RN-GEN-04`), el neto unitario se calcula con `Math.floor(precioNetoTotalCop / cantidad)` y el residuo (`precioNetoTotalCop - netoUnitario * cantidad`) se asigna a la última unidad devuelta, igual que en `RN-DES-09`.
 
 ## 2. Operación de Cambios en POS (`RN-DEV-11`, `CA-30`)
 Un cambio es una operación atómica que vincula una devolución y una nueva venta:

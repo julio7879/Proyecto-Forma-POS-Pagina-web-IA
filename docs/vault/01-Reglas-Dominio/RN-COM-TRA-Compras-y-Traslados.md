@@ -1,7 +1,7 @@
 ---
 id: RN-COM-TRA
 tags: [compras, proveedores, traslados, transito, novedades, faltantes, excedentes, retornando]
-criterios_ca: [CA-04, CA-05, CA-06, CA-07, CA-08, CA-09, CA-10, CA-11, CA-57, CA-58, CA-59, QA-010, QA-011, QA-012]
+criterios_ca: [CA-04, CA-05, CA-06, CA-07, CA-09, CA-10, CA-11, CA-57, CA-58, CA-59, QA-010, QA-011, QA-012]
 modelos_prisma: [CompraProveedor, LineaCompra, Traslado, LineaTraslado, ResolucionNovedadTraslado]
 ---
 # Reglas de Compras y Traslados entre Sedes (RN-COM y RN-TRA)
@@ -11,11 +11,11 @@ Relacionado con: [[MOD-05-Compras]] | [[MOD-06-Traslados]] | [[RN-INV-Kardex-y-S
 ## 1. Compras a Proveedor en Bodega Central (`RN-COM-01` a `RN-COM-07`)
 - **RN-COM-01 [D]:** Toda compra a proveedor ingresa exclusivamente a **Bodega Central**.
 - **RN-COM-02 [D]:** Estados: `PEDIDA -> RECIBIDA` o `CANCELADA`. Mientras esté en `PEDIDA` no altera stock.
-- **RN-COM-03 [D] (Recepción Única e Idempotente, `CA-08`):** La recepción se efectúa una sola vez por las unidades realmente recibidas (`cantidadRecibida`), sumando a `fisico` en Central (`COMPRA_RECIBIDA`). Reintentos no duplican stock.
+- **RN-COM-03 [D] (Recepción Única e Idempotente):** La recepción se efectúa una sola vez por las unidades realmente recibidas (`cantidadRecibida`), sumando a `fisico` en Central (`COMPRA_RECIBIDA`). Reintentos no duplican stock.
 - **RN-COM-04 [D]:** Costo unitario (`costoUnitarioCop`) opcional en MVP.
 - **RN-COM-05 [D]:** Una compra en `RECIBIDA` o `CANCELADA` es inmutable.
 
-## 2. Ciclo de Vida de Traslados y Novedades (`RN-TRA-01` a `RN-TRA-19`)
+## 2. Ciclo de Vida de Traslados y Novedades (`RN-TRA-01`, `03`, `04`, `07`, `08`, `09`, `10`, `12` y `15`)
 - **RN-TRA-01 [D]:** Solicitud desde punto inicia en `SOLICITADO`. Envío directo de Central inicia en `APROBADO`.
 - **RN-TRA-03 [D] (Despacho y Tránsito, `CA-04`, `CA-05`):** Al pasar a `ENVIADO`, resta `cantidadEnviada` del `fisico` de Central. La mercancía queda **en tránsito**; ninguna sede puede venderla.
 - **RN-TRA-04 [D]:** `cantidadAprobada` no puede superar `cantidadSolicitada` (`CA-11`).

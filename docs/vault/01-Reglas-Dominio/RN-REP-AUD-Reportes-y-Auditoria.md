@@ -1,6 +1,8 @@
 ---
 id: RN-REP-AUD
 tags: [reglas-negocio, reportes, ventas-netas, auditoria, bitacora, inmutabilidad]
+criterios_ca: [CA-64, CA-65, QA-023]
+modelos_prisma: [RegistroAuditoria, VentaPOS, DevolucionPOS, PedidoWeb, DevolucionComercialWeb]
 relacionados: [RN-GEN-Principios-Inmutables, MOD-12-Reportes-Auditoria, Matriz-CA-01-a-CA-65]
 ---
 
@@ -40,13 +42,13 @@ Este documento compila las reglas oficiales de cálculo analítico de Ventas Net
 - **RN-AUD-02 [D] (Eventos Auditables Obligatorios):**
   - Se genera un registro de auditoría con `usuarioId`, `accion`, `entidad`, `entidadId`, `ip`, `datosPrevios` y `datosNuevos` ante:
     1. Ajustes manuales motivados de inventario (`RN-INV-02`).
-    2. Apertura, arqueo y cierre forzoso o regular de sesiones de caja (`RN-CAJ-04`).
+    2. Apertura, arqueo y cierre forzoso o regular de sesiones de caja (`RN-CAJ-01`, `RN-CAJ-06` y `RN-CAJ-10`).
     3. Anulaciones de ventas POS o pedidos web.
     4. Cambios de rol o asignación de permisos a usuarios (`RN-ROL-05`).
     5. Desactivación de sedes (`RN-UBI-05`).
 - **RN-AUD-03 [D] (Centro de Alertas Gerenciales):**
   - El sistema detecta y expone en el dashboard gerencial alertas prioritarias:
-    - Sesiones de caja con más de 24 horas abiertas sin cierre (`RN-CAJ-11`).
+    - Sesiones de caja con más de 24 horas abiertas sin cierre (`RN-CAJ-05`).
     - Pedidos web en custodia en Bodega Central con incidencia de stock (`RN-UBI-04`).
     - Descuadres de caja superiores al umbral de tolerancia.
     - SKUs con stock disponible inferior al umbral mínimo de seguridad (`RN-INV-07`).

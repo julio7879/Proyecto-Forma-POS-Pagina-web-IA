@@ -41,7 +41,7 @@
   - `ADMIN`: Control total gerencial, traslados y auditoría multi-sede.
   - `VENDEDOR`: Operación de caja, venta POS, inventario de su sede asignada.
   - `CLIENTE`: Comprador en tienda web e-commerce.
-- **Políticas de Autenticación (`RF-USU-02`, `CA-08`):**
+- **Políticas de Autenticación (`RF-USU-02`, `RN-ROL-08`):**
   - Bloqueo temporal preventivo de **15 minutos** al acumular el **5to intento fallido** consecutivo de inicio de sesión.
   - Soporte de acceso dual: Email + Contraseña y Google OAuth.
 - **Cumplimiento Legal Habeas Data (Colombia):**

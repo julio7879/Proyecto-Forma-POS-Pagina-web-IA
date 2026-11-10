@@ -47,5 +47,5 @@ export const CrearProductoSchema = z.object({
 ### 3.3. Códigos de Respuesta HTTP
 - `201 Created`: Producto maestro creado exitosamente `{ datos: { id, nombre, categoria, ... } }`.
 - `400 Bad Request`: Error de validación Zod en campos o fotos.
-- `403 Forbidden`: Intento de creación por usuario sin permiso `GESTIONAR_CATALOGO`.
+- `403 Forbidden`: Intento de creación por usuario por un rol distinto de `ADMIN`.
 - `409 Conflict`: Nombre de producto duplicado en la misma categoría.

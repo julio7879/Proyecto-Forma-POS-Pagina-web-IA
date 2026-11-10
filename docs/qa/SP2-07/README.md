@@ -19,8 +19,8 @@ Los tests existentes del Kardex y de traslados usan Prisma **mockeado**. Sirven 
 | 1.2 | 10 ventas simultáneas con stock 5 → 5 éxitos, Kardex suma −5, `saldoResultante` = {4,3,2,1,0} | QA-003, Inv. 3 | ✅ implementado |
 | 1.3 | 6 batches simultáneos con orden opuesto (A,B)/(B,A) → sin deadlock, saldos 0 | RNF-003, Inv. 4 | ✅ implementado |
 | 1.4 | `UPDATE fisico = -1` directo → la BD lo rechaza (`chk_saldo_stock_no_negativo`) | RN-INV-01 | ✅ implementado |
-| 2.1 | Ráfaga de recepciones de OC con la misma `Idempotency-Key` → stock +N una sola vez | CA-08, RN-COM-03 | ⛔ bloqueado (SP2-02) |
-| 2.2 | Misma key con cuerpo distinto → rechazo | CA-08 | ⛔ bloqueado (SP2-02) |
+| 2.1 | Ráfaga de recepciones de OC con la misma `Idempotency-Key` → stock +N una sola vez | RN-COM-03, RN-GEN-08 | ⛔ bloqueado (SP2-02) |
+| 2.2 | Misma key con cuerpo distinto → rechazo | RN-COM-03 | ⛔ bloqueado (SP2-02) |
 | 3.1 | Despacho: Central −3, destino no recibe (tránsito), destino no puede vender (409) | CA-04, CA-05 | ✅ implementado |
 | 3.2 | Cancelar en ENVIADO → RETORNANDO_A_CENTRAL sin reponer; confirmar retorno repone | CA-09, CA-59 | ✅ implementado |
 | 3.3 | 2 confirmaciones de retorno simultáneas → reposición única | QA-012 | ✅ implementado |

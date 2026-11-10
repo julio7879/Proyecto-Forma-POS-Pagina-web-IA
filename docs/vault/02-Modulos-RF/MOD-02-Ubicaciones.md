@@ -4,7 +4,7 @@ modulo: 02-ubicaciones-cobertura
 tags: [ubicaciones, central, tiendas, dane, cobertura]
 rf_codes: [RF-UBI-01, RF-UBI-02]
 modelos_prisma: [Ubicacion, MunicipioDane, DepartamentoDane, RegionEnvio]
-criterios_ca: [CA-35, CA-37]
+criterios_ca: []
 ---
 # Módulo 02: Gestión de Ubicaciones y Cobertura Geográfica (RF-UBI)
 

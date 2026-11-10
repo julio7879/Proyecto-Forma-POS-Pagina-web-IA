@@ -1,5 +1,5 @@
 // prisma/schema.prisma
-// Total exacto: 33 modelos relacionales (tablas) y 15 tipos enumerados (enums)
+// Total exacto: 35 modelos relacionales (tablas) y 16 tipos enumerados (enums)
 
 datasource db {
   provider  = "postgresql"
@@ -148,7 +148,7 @@ enum EstadoPagoWeb {
 }
 
 // ============================================================================
-// 33 MODELOS RELACIONALES (TABLAS) CON CLAVES FORÁNEAS COMPLETAS
+// 35 MODELOS RELACIONALES (TABLAS) CON CLAVES FORÁNEAS COMPLETAS
 // ============================================================================
 
 // 1. Región geográfica para cálculo de Zona 3 y Zona 4 (RN-ENV-02)

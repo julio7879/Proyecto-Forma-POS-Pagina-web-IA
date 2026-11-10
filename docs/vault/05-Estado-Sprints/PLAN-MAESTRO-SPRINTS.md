@@ -26,7 +26,7 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 
 | ID Tarea | Descripción de la Tarea | Asignado | Rol | Criterios / Dependencias |
 | :--- | :--- | :--- | :--- | :--- |
-| **SP0-01** | Conectar Supabase (`DATABASE_URL` y `DIRECT_URL`), configurar Prisma y correr migración inicial de 33 modelos. | **Julio** | Backend Lead | `schema.prisma` verificado. |
+| **SP0-01** | Conectar Supabase (`DATABASE_URL` y `DIRECT_URL`), configurar Prisma y correr migración inicial de 35 modelos. | **Julio** | Backend Lead | `schema.prisma` verificado. |
 | **SP0-02** | Aplicar script SQL de restricciones nativas (`constraints_post_migrate.sql` con `chk_saldo_stock_no_negativo`, etc.). | **Julio** | Backend Lead | Restricciones de PostgreSQL. |
 | **SP0-03** | **Issue #T1 de Thomas:** Construir catálogo oficial de Municipios y Departamentos DANE con tarifas de Zonas 1 a 4. | **Thomas** | Junior Backend | `RF-ENV-01 a 04`, archivo `daneCatalog.ts`. |
 | **SP0-04** | Validar utilidades de dominio: `MoneyCOP.ts` (prorrateo) y `ColombiaTime.ts` (fechas Bogotá). | **Yeimer** | Junior Backend | Tests unitarios en verde. |
@@ -41,7 +41,7 @@ Este plan desglosa la construcción del **Sistema POS + Tienda Web Multisede** e
 | ID Tarea | Descripción de la Tarea | Asignado | Rol | Criterios / Dependencias |
 | :--- | :--- | :--- | :--- | :--- |
 | **SP1-01** | Middleware de autenticación JWT + caché de permisos en memoria `UserPermissionCache` con invalidación instantánea. | **Julio** | Backend Lead | `RF-USU-02`, `RF-USU-03`, `CA-50`. |
-| **SP1-02** | Endpoint de autenticación híbrida: tradicional (correo/contraseña) y Google OAuth (`POST /api/auth/google`). | **Julio** | Backend Lead | `RF-USU-01`, `RN-ROL-06`, `RN-SEG-04`. |
+| **SP1-02** | Endpoint de autenticación híbrida: tradicional (correo/contraseña) y Google OAuth (`POST /api/auth/google`). | **Julio** | Backend Lead | `RF-USU-01`, `RN-ROL-06`, `RN-ROL-08`. |
 | **SP1-03** | Endpoints de gestión de Puntos de Venta y reglas de desactivación con 5 condiciones. | **Yeimer** | Junior Backend | `RF-UBI-01`, `RF-UBI-02`, `RN-UBI-05`. |
 | **SP1-04** | **Issue #T2 de Thomas:** Cargar datos semilla (`seed.ts`) de categorías estándar y productos iniciales con variantes/SKU. | **Thomas** | Junior Backend | `RN-CAT-01 a 04`, cosméticos `no reintegrables`. |
 | **SP1-05** | Maquetación del Login, Registro con Ley 1581 y Navbar de navegación en `StorefrontLayout`. | **Exneider** | Frontend | Basado en prototipo de Sofía. |

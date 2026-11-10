@@ -48,7 +48,7 @@ Cada nota en este vault está autocontenida (50 a 140 líneas), cuenta con metad
 ---
 
 ## 3. Modelo de Datos y Restricciones Físicas (`03-Base-de-Datos/`)
-- [[Esquema-Prisma-33-Modelos]] — Catálogo completo de los 33 modelos relacionales y 15 enums con claves foráneas e índices.
+- [[Esquema-Prisma-35-Modelos]] — Catálogo completo de los 35 modelos relacionales y 16 enums con claves foráneas e índices.
 - [[Constraints-SQL-e-Indices]] — Script `constraints_post_migrate.sql` con CHECKs nativos (stock no negativo, precios > 0) e índices únicos parciales.
 
 ---

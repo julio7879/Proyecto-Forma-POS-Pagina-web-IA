@@ -34,7 +34,7 @@ Esta matriz define los 65 criterios de aceptación normativos y los 25 casos de 
 | **CA-12** | Venta POS sin sesión de caja abierta en el punto | Se rechaza. |
 | **CA-13** | Venta en efectivo de $117.000 con billete de $120.000 | Vuelto $3.000; efectivo esperado de la caja sube exactamente $117.000. |
 | **CA-14** | Venta POS por transferencia sin referencia | Se rechaza. Con referencia: no suma al efectivo esperado de la caja. |
-| **CA-15 / QA-008** | Cierre de caja con conteo de dinero | `esperado = baseContada + ventasEfectivo - reembolsosEfectivo`. `efectivoAEntregar = max(0, contado - baseConfigurada)`. |
+| **CA-15 / QA-008** | Cierre de caja con conteo de dinero | `esperado = baseContada + ventasEfectivo - reembolsosEfectivo - sangríasRetiros - gastosMenores + ingresosManuales`. `efectivoAEntregar = max(0, contado - baseConfigurada)`. |
 | **CA-16** | Petición manipulada desde el cliente envía un precio alterado | Backend ignora el precio del cliente y aplica `precioVentaCop` vigente en BD. |
 | **CA-17** | Falla el descuento de inventario durante la venta | ROLLBACK total: no queda venta, ni pago, ni salto de consecutivo. |
 | **CA-18 / QA-006 / QA-025** | Reintento con misma `Idempotency-Key` en venta POS | Se devuelve la venta original; jamás se descuenta doble stock. |
@@ -89,7 +89,7 @@ Esta matriz define los 65 criterios de aceptación normativos y los 25 casos de 
 | **CA-64 / QA-020** | Contraentrega no entregado pasa a `NO_ENTREGADO` | Retorno logístico: repone stock sin restar de Ventas Netas ni contar como devolución financiera. |
 | **CA-65 / QA-021** | Devolución comercial web de prenda en Central | Prenda reingresa a Central pero la resta de Ventas Netas se imputa al punto que despachó (`ubicacionImputacionVentaId`). |
 
-## E. Reportes, Seguridad, Invariantes y UI
+## F. Reportes, Seguridad, Invariantes y UI
 | ID | Escenario Verificable | Resultado Esperado Exacto |
 | :--- | :--- | :--- |
 | **CA-47** | Cálculo de Ventas Netas de un período en hora legal Colombia | `ventasNetas = ventasBrutas - devolucionesAprobadas`; excluye estrictamente fletes de envío y bases iniciales de caja. |

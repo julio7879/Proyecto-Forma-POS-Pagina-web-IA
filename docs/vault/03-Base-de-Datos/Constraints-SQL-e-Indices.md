@@ -5,7 +5,7 @@ criterios_ca: [CA-01, CA-02, CA-12, CA-51, QA-007]
 ---
 # Restricciones Nativas SQL e Índices Únicos Parciales
 
-Relacionado con: [[Esquema-Prisma-33-Modelos]] | [[RN-INV-Kardex-y-Saldos]] | [[RN-CAJ-VTA-Caja-y-Ventas-POS]]
+Relacionado con: [[Esquema-Prisma-35-Modelos]] | [[RN-INV-Kardex-y-Saldos]] | [[RN-CAJ-VTA-Caja-y-Ventas-POS]]
 
 Para blindar la integridad del sistema más allá del ORM Prisma, se ejecuta el script oficial `backend/prisma/constraints_post_migrate.sql` inmediatamente después de la primera migración de Prisma (`RNF-002`):
 
@@ -39,7 +39,7 @@ ALTER TABLE "Variante"
   ADD CONSTRAINT chk_precio_venta_positivo
   CHECK ("precioVentaCop" > 0);
 
--- 5. Prohibir movimientos de caja con montos menores o iguales a cero (RN-CAJ-04, RN-GEN-04)
+-- 5. Prohibir movimientos de caja con montos menores o iguales a cero (RN-CAJ-07, RN-GEN-04)
 ALTER TABLE "MovimientoCaja"
   ADD CONSTRAINT chk_movimiento_caja_monto_positivo
   CHECK ("montoCop" > 0);

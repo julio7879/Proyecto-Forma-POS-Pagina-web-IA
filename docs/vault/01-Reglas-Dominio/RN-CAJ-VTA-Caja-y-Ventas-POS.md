@@ -8,7 +8,7 @@ modelos_prisma: [SesionCaja, MovimientoCaja, RelevoTurnoCaja, VentaPOS, LineaVen
 
 Relacionado con: [[MOD-07-Sesiones-Caja]] | [[MOD-08-Ventas-POS]] | [[RN-INV-Kardex-y-Saldos]]
 
-## 1. Sesiones de Caja, Movimientos y Arqueo (`RN-CAJ-01` a `RN-CAJ-14`)
+## 1. Sesiones de Caja, Movimientos y Arqueo (`RN-CAJ-01`, `02`, `05`, `06`, `07`, `10` y `13`)
 - **RN-CAJ-01 [D]:** Máximo **una sola sesión `ABIERTA`** por punto de venta a la vez, garantizado por el índice único parcial `uq_unica_sesion_caja_abierta_por_punto` (`QA-007`).
 - **RN-CAJ-02 [D] (Apertura con Base Contada):** El cajero ingresa `baseContadaCop`. Si difiere de los $200.000 COP configurados, exige observación.
 - **RN-CAJ-05 [D] (Vigencia Diaria en Colombia, `CA-56`, `QA-009`):**
@@ -42,7 +42,7 @@ Relacionado con: [[MOD-07-Sesiones-Caja]] | [[MOD-08-Ventas-POS]] | [[RN-INV-Kar
   - **Relevo de Turno Oficial:** Sin cerrar la sesión del local, el cajero saliente realiza un conteo rápido (`efectivoContadoCop`). El sistema genera un registro inmutable en `RelevoTurnoCaja` con la foto del efectivo esperado a esa hora, liquidando el saldo de responsabilidad del cajero saliente y entregando la gaveta al entrante.
   - **Ausencias Temporales (Almuerzo / Permiso):** La terminal permite cambiar de cajero activo (mediante PIN de 4 dígitos o selector autenticado). Cada ticket de venta, devolución o movimiento de caja se sella con el `vendedorId` de quien lo ejecuta físicamente, garantizando trazabilidad individual de cada vuelto y cobro.
 
-## 2. Ventas POS y Disponibilidad en Mostrador (`RN-VTA-01` a `RN-VTA-15`)
+## 2. Ventas POS y Disponibilidad en Mostrador (`RN-VTA-01`, `02`, `03`, `09` y `10`)
 - **RN-VTA-01 [D]:** Venta exige sesión de caja abierta y vigente en ese punto.
 - **RN-VTA-02 [D]:** Métodos de pago permitidos en POS: `EFECTIVO` y `TRANSFERENCIA` (exige referencia bancaria, no suma a efectivo esperado, `CA-14`).
 - **RN-VTA-03 [D] (Preempción Física POS sobre Reservas Web, `CA-60`, `CA-61`):**
