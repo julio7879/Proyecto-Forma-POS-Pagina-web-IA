@@ -30,10 +30,13 @@ flowchart LR
     C -->|"Contrato Frontend"| E["🎨 @Vitral-UI<br/>(React/Tailwind)"]
     C -.->|"Arquitectura"| F["🏛️ @Arquitecto-Dominio"]
     C -.->|"Ley E-Commerce"| UX["📐 @Arquitecto-UX-Storefront<br/>(Navegación & Conversión)"]
+    C -.->|"Ley Dashboards"| DB["📊 @Vitral-Dashboard<br/>(BI & Paneles Admin)"]
     UX -->|"Pautas Storefront"| E
+    DB -->|"Pautas Dashboards"| E
     D --> G["🐕 @Sabueso-Hunter<br/>(Auditoría Adversarial)"]
     E --> G
     UX --> G
+    DB --> G
     G --> H["⚖️ @Juez-Esceptico<br/>(Refutador Falsas Alarmas)"]
     H -->|"🔴 Bug Real"| D
     H -->|"🟢 Blindado"| I["🎖️ @Centinela-QA<br/>(Tests & GitFlow)"]
@@ -77,6 +80,10 @@ flowchart LR
   - **Función:** Arquitectura de Navegación, Jerarquía Visual y Conversión E-Commerce para el Storefront (Portal 1). Garantiza la Ley Canónica de E-Commerce: 14 mandamientos normativos, migas de pan (Breadcrumbs GPS), buscador predictivo, hero banner compacto con ofertas visibles de primera vista (*above the fold*), PDP inmersivo con galerías multi-ángulo/zoom/360°, opiniones con estrellas, carrito transparente, checkout con indicador de progreso, filtros multi-criterio y alternancia Cuadrícula/Lista.
   - **Skills:** `pos-ecommerce-ux-law`, `storefront-best-practices`, `ui-ux-pro-max`, `frontend-design`
   - **Relacionado:** [[ARQ-07-Ley-Diseno-Ecommerce-Navegacion-UIUX]] | [[AGE-09-Arquitecto-UX-Storefront]] | [[SKI-pos-ecommerce-ux-law]]
+- **Agente:** `@Vitral-Dashboard`
+  - **Función:** Arquitectura de información, leyes de diseño y visualización de datos para Paneles de Control (Dashboards Ejecutivos y Operativos) en React + Tailwind CSS. Aplica los principios canónicos de Justinmind: analogía del automóvil, pantalla única (Single-Screen Glance), límite de 5-6 tarjetas primarias, números grandes, alto contraste y paleta luxury atelier sin estridencias.
+  - **Skills:** `pos-dashboard-designer`, `react-shadcn-admin`, `ui-ux-pro-max`
+  - **Relacionado:** [[ARQ-08-Guia-Maestra-Diseno-Paneles-de-Control-Dashboards]] | [[AGE-10-Vitral-Dashboard]] | [[SKI-pos-dashboard-designer]]
 
 ### 🔍 Área 3: Seguridad y Auditoría Adversarial
 - **Agente:** `@Sabueso-Hunter`

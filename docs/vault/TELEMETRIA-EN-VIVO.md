@@ -23,6 +23,7 @@ estado_oficina: 🟢 OPERATIVA Y EN LÍNEA
 | **`@Forja-Backend`** | Construcción con Guardrails | 🟢 **ACTIVO** | Verificación de las 7 Invariantes en el servicio de apertura de caja. |
 | **`@Vitral-UI`** | Frontend Tres Portales | 🟢 **ACTIVO** | Rediseño Storefront 100% implementado: Fases 1 a 4 (Breadcrumbs, Toolbar Grid/List, PDP con Opiniones, Stepper Checkout y Lazy Loading). |
 | **`@Arquitecto-UX-Storefront`** | Arquitectura UX Storefront & E-Commerce Law | 🟢 **ACTIVO** | Certificación de las 13 figuras normativas y 14 mandamientos de ARQ-07. |
+| **`@Vitral-Dashboard`** | Dashboards Ejecutivos & BI | 🟢 **ACTIVO** | Rediseño Canónico ARQ-08 implementado: Pantalla única, 4 KPIs compactos, gráficos equilibrados y modales opacos z-[100]. |
 | **`@Sabueso-Hunter`** | Auditoría Adversarial (Ataque) | 🟢 **ACTIVO** | Auditoría adversarial completada: 0 desbordamientos, navegación fluida, precios enteros COP. |
 | **`@Juez-Esceptico`** | Refutación de Falsas Alarmas | 🟢 **ACTIVO** | Blindaje validado con useInRouterContext, CatalogToolbar, ProductReviews y Checkout Stepper. |
 | **`@Centinela-QA`** | Auto-Comprobación & Sprints | 🟢 **ACTIVO** | Auto-comprobación exitosa: 41/41 tests Storefront en verde, build Vite código 0. |
