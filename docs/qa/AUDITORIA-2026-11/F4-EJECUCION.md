@@ -2,7 +2,7 @@
 
 - **Fecha:** 10 de noviembre de 2026, 17:15 COT.
 - **Rama:** `test/sandbox-testeo`.
-- **Commit F4:** `pendiente` (se completa al commitear).
+- **Commit F4:** `12f4dda`.
 - **Corte de estado:** `f7a3754` (F3 publicado).
 - **Objetivo:** una ley por portal, 14 mandamientos en la ley, alcance MVP claro y conflicto de paletas resuelto por precedencia.
 

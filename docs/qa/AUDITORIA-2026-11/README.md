@@ -10,6 +10,7 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 | [`F1-EJECUCION.md`](F1-EJECUCION.md) | Registro de F1: backlog único, tablero generado, SSOT y limpieza de ramas. | Léelo para entender de dónde sale el estado actual. |
 | [`F2-EJECUCION.md`](F2-EJECUCION.md) | Registro de F2: IDs RN, arqueo, CA, 35/16 y generador obsoleto archivado. | Léelo antes de tocar reglas o RF. |
 | [`F3-EJECUCION.md`](F3-EJECUCION.md) | Registro de F3: `CLAUDE.md` puntero, `ask_user_question`, skills sincronizadas y catálogo. | Léelo antes de editar una skill. |
+| [`F4-EJECUCION.md`](F4-EJECUCION.md) | Registro de F4: constitución visual, 14 mandamientos, paleta y alcance MVP. | Léelo antes de tocar diseño o UI. |
 
 > **Regla de esta carpeta:** el `.md` es la fuente; el `.html` es una vista. Si cambia uno, se regenera el otro. No crear una tercera copia.
 
@@ -23,4 +24,4 @@ Esta carpeta contiene el resultado de la auditoría de documentación, agentes, 
 
 ## Siguiente paso
 
-**F3 ejecutado** en `test/sandbox-testeo` (`802131c`): un solo harness de 5 etapas, `ask_user_question`, `.claude` sincronizado y catálogo 19+14. Después, **F4: verdad del diseño** (paleta, 14 mandamientos y reglas de ARQ-07/08).
+**F4 ejecutado** en `test/sandbox-testeo` (`12f4dda`): `DISENO-SSOT`, 14 mandamientos en ARQ-07 §0, alcance MVP y regla de 6 bloques. Después, **F5: verdad del código** (POS persistente, arqueo y workers) y la decisión de paleta `DV-023`.

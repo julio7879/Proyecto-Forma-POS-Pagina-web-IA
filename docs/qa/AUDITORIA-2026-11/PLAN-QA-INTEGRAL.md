@@ -23,6 +23,8 @@ alcance: [docs/vault, harness, frontend, backend, infraestructura]
 
 > **F3 ejecutado (10-nov-2026, 17:11).** Commit `802131c`: `CLAUDE.md` puntero, **5 etapas**, `ask_user_question`, `.claude/skills` sincronizado (4/6 divergentes corregidas), catálogo **19 + 14** y `react-shadcn-admin` en `@Vitral-UI`. Evidencia en [`F3-EJECUCION.md`](F3-EJECUCION.md).
 
+> **F4 ejecutado (10-nov-2026, 17:15).** Commit `12f4dda`: `DISENO-SSOT` con ley por portal, **14 mandamientos en ARQ-07 §0**, paleta índigo vigente (Navy como anexo), guest checkout/PCI/360 en fase 2 y dashboard de 6 bloques. Evidencia en [`F4-EJECUCION.md`](F4-EJECUCION.md).
+
 **Cómo leer este documento**
 
 | Si tienes… | Lee… |
@@ -345,6 +347,7 @@ flowchart TD
 - **Evidencia:** `MOC:76`; `SKI-pos-ecommerce-ux-law:10-24`; `AGE-09:7`, `:12-25`; `ARQ-07:455-471`.
 - **Por qué importa:** no hay texto canónico que auditar; cada agente aplica su versión.
 - **Fix:** publicar en ARQ-07 la lista numerada 1-14; SKI y AGE-09 la citan textualmente; eliminar la referencia al artefacto inexistente.
+- **Estado:** ✅ Cerrado en F4 (`12f4dda`): 14 mandamientos en ARQ-07 §0; SKI y AGE-09 citan.
 
 #### P0-09 · Credenciales de administrador hardcodeadas en el bundle
 
@@ -367,12 +370,12 @@ flowchart TD
 | **P1-08** | El QA Gate del Sprint 2 está «certificado» sin resultados y su matriz sigue bloqueada; el informe de 30 hallazgos declara 100 % resuelto mientras persisten P0 de código | `docs/qa/SP2-07/README.md:22-51`; `Plan-de-pruebas-FORMA:47` | Se certifica lo no probado; posibles regresiones | Re-ejecutar y registrar «Obtenido»; separar «resuelto» de «verificado» |
 | **P1-09** | Tres catálogos de skills (19 / 28 / 31); 17 de 33 sin nota; `react-shadcn-admin` con dos dueños | `AGENTS.md:33-52`; `MOC:53-99`; `SKI-react-shadcn-admin:5` | Nadie sabe qué skill consultar ni quién la invoca | Catálogo único generado; un dueño por skill |
 | **P1-10** | `ask_question` no existe; la herramienta real es `ask_user_question` | `AGENTS.md:7,36`; `MOC:56`; `SKI-pos-clarification-interview:9`; canvas | La parada obligatoria no se puede ejecutar como está escrita | Renombrar en las 6 apariciones y documentar fallback |
-| **P1-11** | ARQ-01 excluye guest checkout y pasarela del MVP; ARQ-07 los exige; el checkout real exige login y solo permite transferencia/contraentrega | `ARQ-01:26`; `ARQ-07:322-323,343-351`; `CheckoutPage.tsx:158,442-445` | Dos normas opuestas para el mismo flujo | Decidir alcance y derogar una de las dos |
+| **P1-11** | ARQ-01 excluye guest checkout y pasarela del MVP; ARQ-07 los exige; el checkout real exige login y solo permite transferencia/contraentrega | `ARQ-01:26`; `ARQ-07:322-323,343-351`; `CheckoutPage.tsx:158,442-445` | Dos normas opuestas para el mismo flujo | ✅ F4: ARQ-07 §23.2/§25 como fase 2; ARQ-01 manda en MVP |
 | **P1-12** | CA-08 se usa para compra y traslado; CA-52/53 no tienen RF; `GESTIONAR_CATALOGO` no está en los 11 permisos | `Matriz-CA:21,100-101`; `MOD-05:7,21`; `MOD-03:50`; `RN-ROL-02:18,29-39` | Un criterio certifica dos flujos; el 403 es inalcanzable | Un CA por flujo; alinear permisos o la regla |
 | **P1-13** | El contrato de entorno valida solo 5 variables y el deploy no aplica migraciones | `env.ts:7-12`; `render.yaml:8-9` | Render arranca «healthy» sin Telegram/SMTP/Google y con el esquema sin migrar | Validar las 7 variables; `prisma migrate deploy` en build/start; `/health` refleja integraciones |
 | **P1-14** | CI con caché mal apuntado y sin job de deploy; dos `vercel.json` compiten | `.github/workflows/ci.yml:29,60`; `vercel.json`; `frontend/vercel.json` | El caché no se invalida al cambiar el lockfile; CI verde no despliega; el deploy depende de qué config lea Vercel | `cache-dependency-path: '**/package-lock.json'`; job de Deploy Hook; una sola config de Vercel |
 
-> **F2 cerró P1-01, P1-02 y P1-12; F3 cerró P1-09 y P1-10.** Quedan P1-03 a P1-08, P1-11, P1-13 y P1-14.
+> **F2 cerró P1-01, P1-02 y P1-12; F3 cerró P1-09 y P1-10; F4 cerró P0-08 y P1-11.** Quedan P1-03 a P1-08, P1-13 y P1-14.
 
 ### 5.3 P2 — Higiene (10)
 
@@ -587,7 +590,7 @@ flowchart TD
 | **F1** | Verdad operativa | ✅ Ejecutado 10-nov (`4db1e70`): backlog único, `PROGRESO` generado, `test` alineada, `develop` archivada y 2 ramas locales | El tablero coincide con git; flujo solo documentado; 0 tareas sin evidencia | Hecho |
 | **F2** | Verdad normativa | ✅ Ejecutado 10-nov (`d9e4f1f`): 0 IDs RN fantasma, arqueo único, 35/16, CA-08/52 y permiso corregidos | `check-ids` en verde; 0 contradicciones P0 | Hecho |
 | **F3** | Verdad del harness | ✅ Ejecutado 10-nov (`802131c`): `CLAUDE.md` puntero, 5 etapas, `ask_user_question`, `.claude` sincronizado y catálogo 19+14 | Paridad de skills; harness único | Hecho |
-| **F4** | Verdad del diseño | Paleta decidida; 14 mandamientos publicados; ARQ-01 vs ARQ-07 resuelto | 1 ley por portal; 0 paletas huérfanas | 3-5 días |
+| **F4** | Verdad del diseño | ✅ Ejecutado 10-nov (`12f4dda`): `DISENO-SSOT`, 14 mandamientos en ARQ-07 §0, alcance MVP y regla de 6 bloques | 1 ley por portal; DV-023 de paleta pendiente | Hecho |
 | **F5** | Verdad del código | POS persistente, QR seguro, idempotencia atómica, workers, RBAC | P0 cerrados; tests reproducibles | 1-2 semanas |
 | **F6** | Guardrails | CI con los 9 controles | Un cambio incompatible falla el PR | 3-5 días |
 
@@ -673,7 +676,7 @@ gantt
 | Proceso documentado | 6 personas / GitFlow | **1 persona / `test` → `main`** |
 | Secretos en el repo | 0 en el árbol; token en historial | **0** (token rotado) |
 | Conteos de tests distintos | 5-7 | **1** (salida de `vitest`) |
-| P0 abiertos | 2 (7 cerrados: 3 en F0, 2 en F1, 1 en F2, 1 en F3) | **0** |
+| P0 abiertos | 1 (8 cerrados: 3 en F0, 2 en F1, 1 en F2, 1 en F3, 1 en F4) | **0** |
 | Cobertura de trazabilidad RF → CA → QA | parcial | **100 %** de los 44 RF |
 | Tiempo de *onboarding* de un dev nuevo | horas | **< 1 hora** con el MOC + SSOT |
 
@@ -681,7 +684,9 @@ gantt
 
 > **F2 ya cumplió** los IDs RN (0 fantasma) y el conteo de modelos (35/16). Las demás métricas siguen abiertas.
 
-> **F3 ya cumplió** el harness único, la parada con `ask_user_question` y la paridad de skills. Quedan 2 P0.
+> **F3 ya cumplió** el harness único, la parada con `ask_user_question` y la paridad de skills. Quedan 2 P0 al cerrar F3.
+
+> **F4 ya cumplió** los 14 mandamientos y la precedencia visual; solo queda **P0-03** (POS en `localStorage`).
 
 ---
 
