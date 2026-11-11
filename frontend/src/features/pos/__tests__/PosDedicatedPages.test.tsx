@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+vi.mock('../../../api/apiClient', () => ({
+  apiRequest: vi.fn().mockResolvedValue({ ok: true, datos: [] }),
+}));
+
 import PosVentasHistorialPage from '../pages/PosVentasHistorialPage';
 import PosPedidosWebPage from '../pages/PosPedidosWebPage';
 import PosCambiosPage from '../pages/PosCambiosPage';
@@ -141,13 +146,13 @@ describe('Portal 2 (Sistema POS) - 5 Vistas Dedicadas con Datos 100% Reales', ()
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    it('permite tomar y bloquear el pedido en la sede al pulsar Iniciar Alistamiento', () => {
+    it('permite tomar y bloquear el pedido en la sede al pulsar Iniciar Alistamiento', async () => {
       render(<PosPedidosWebPage />);
       fireEvent.click(screen.getByText(/PED-2026-849201/));
       const iniciarAlistamientoBtn = screen.getByText('Iniciar Alistamiento / En Preparación');
       fireEvent.click(iniciarAlistamientoBtn);
 
-      const listosBtns = screen.getAllByText('Marcar como Listo para Despacho');
+      const listosBtns = await screen.findAllByText('Marcar como Listo para Despacho');
       expect(listosBtns.length).toBeGreaterThanOrEqual(1);
     });
 

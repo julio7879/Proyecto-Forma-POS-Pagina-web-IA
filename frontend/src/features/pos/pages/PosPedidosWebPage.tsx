@@ -17,8 +17,7 @@ import { DetailDrawer, type ActivityTimelineItem } from '../components/DetailDra
 import {
   getWebOrdersBySede,
   syncWebOrdersFromApi,
-  tomarPedidoWebEnSede,
-  transicionarPedidoWeb,
+  transicionarPedidoWebSeguro,
   updateWebOrder,
   nuevoEvento,
   sedeTieneStockParaPedido,
@@ -112,37 +111,48 @@ export const PosPedidosWebPage: React.FC = () => {
   }, [pedidos, pedidoSeleccionadoCodigo]);
 
   // Acciones de avance de estado persistidas en webOrdersStore
-  const handleAvanzarEstado = (codigo: string) => {
+  const handleAvanzarEstado = async (codigo: string) => {
     const p = pedidos.find((x) => x.codigo === codigo);
     if (!p) return;
+    setAlertaBloqueo(null);
 
-    if (p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO') {
-      setAlertaBloqueo(null);
-      const res = tomarPedidoWebEnSede(codigo, sedeActiva, usuarioNombre);
-      if (!res.ok) {
-        setAlertaBloqueo(
-          res.error || 'Este pedido ya fue tomado para alistamiento por otra sede.'
+    try {
+      if (p.estado === 'RECIBIDO' || p.estado === 'CONFIRMADO') {
+        await transicionarPedidoWebSeguro(
+          codigo,
+          'EN_PREPARACION',
+          usuarioNombre,
+          { sedeAsignada: sedeActiva },
+          `Alistamiento tomado y bloqueado para despacho exclusivo desde ${sedeActiva}.`
         );
-        return;
+      } else if (p.estado === 'EN_PREPARACION') {
+        const guiaGenerada =
+          p.guiaTransportadora ||
+          `TCC-${p.codigoDaneDestino || '54001'}-00${Math.floor(100 + Math.random() * 900)}`;
+        await transicionarPedidoWebSeguro(
+          codigo,
+          'LISTO_DESPACHO',
+          usuarioNombre,
+          {
+            guiaTransportadora: guiaGenerada,
+            transportadora: p.transportadora || 'Coordinadora / TCC Prioritario',
+          },
+          `Empacado y listo para despacho. Guía: ${guiaGenerada}`
+        );
+      } else if (p.estado === 'LISTO_DESPACHO') {
+        await transicionarPedidoWebSeguro(
+          codigo,
+          'DESPACHADO',
+          usuarioNombre,
+          {},
+          'Entregado físicamente al conductor de la transportadora para reparto.'
+        );
       }
-    } else if (p.estado === 'EN_PREPARACION') {
-      const guiaGenerada =
-        p.guiaTransportadora ||
-        `TCC-${p.codigoDaneDestino || '54001'}-00${Math.floor(100 + Math.random() * 900)}`;
-      transicionarPedidoWeb(
-        codigo,
-        'LISTO_DESPACHO',
-        usuarioNombre,
-        { guiaTransportadora: guiaGenerada, transportadora: p.transportadora || 'Coordinadora / TCC Prioritario' },
-        `Empacado y listo para despacho. Guía: ${guiaGenerada}`
-      );
-    } else if (p.estado === 'LISTO_DESPACHO') {
-      transicionarPedidoWeb(
-        codigo,
-        'DESPACHADO',
-        usuarioNombre,
-        {},
-        'Entregado físicamente al conductor de la transportadora para reparto.'
+    } catch (error) {
+      setAlertaBloqueo(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo actualizar el pedido en el servidor. No se modificó el inventario.'
       );
     }
   };

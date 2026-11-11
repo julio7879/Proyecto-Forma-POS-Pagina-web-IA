@@ -7,6 +7,7 @@ import {
   Package,
   Eye,
   Trash2,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   PageHeader,
@@ -27,7 +28,7 @@ import {
   syncWebOrdersFromApi,
   registrarPagoWeb,
   eliminarPedidoWeb,
-  transicionarPedidoWeb,
+  transicionarPedidoWebSeguro,
   obtenerStockSede,
   obtenerSedesConStockParaPedido,
   mismaSede,
@@ -82,6 +83,7 @@ export const AdminPedidosWebPage: React.FC = () => {
   const [pedidoAEliminar, setPedidoAEliminar] = useState<PedidoWebRecord | null>(null);
   const [referenciaBancaria, setReferenciaBancaria] = useState<string>('');
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  const [mensajeError, setMensajeError] = useState<string | null>(null);
 
   // DetailDrawer
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<PedidoWebRecord | null>(null);
@@ -189,34 +191,43 @@ export const AdminPedidosWebPage: React.FC = () => {
     setTimeout(() => setMensajeExito(null), 4000);
   };
 
-  const handleAvanzarEstadoAdmin = (nuevoEstado: EstadoPedidoWeb) => {
+  const handleAvanzarEstadoAdmin = async (nuevoEstado: EstadoPedidoWeb) => {
     if (!pedidoSeleccionado) return;
+    setMensajeError(null);
     const guia =
       pedidoSeleccionado.guiaTransportadora ||
       `TCC-${pedidoSeleccionado.codigoDaneDestino || '54001'}-00${Math.floor(100 + Math.random() * 900)}`;
 
-    const res = transicionarPedidoWeb(
-      pedidoSeleccionado.codigo,
-      nuevoEstado,
-      adminNombre,
-      {
-        sedeAsignada: 'Bodega Central',
-        ...(nuevoEstado === 'LISTO_DESPACHO'
-          ? {
-              guiaTransportadora: guia,
-              transportadora: pedidoSeleccionado.transportadora || 'Coordinadora / TCC Prioritario',
-            }
-          : {}),
-      },
-      nuevoEstado === 'EN_PREPARACION'
-        ? 'Alistamiento iniciado por Administración desde Bodega Central (Centro de Producción).'
-        : nuevoEstado === 'LISTO_DESPACHO'
-        ? `Empacado y listo para despacho desde Centro de Producción. Guía: ${guia}`
-        : 'Entregado a conductor de transportadora desde Bodega Central.'
-    );
-    if (res) {
-      setMensajeExito(`Pedido #${pedidoSeleccionado.codigo} avanzado a estado ${nuevoEstado}.`);
-      setTimeout(() => setMensajeExito(null), 4000);
+    try {
+      const res = await transicionarPedidoWebSeguro(
+        pedidoSeleccionado.codigo,
+        nuevoEstado,
+        adminNombre,
+        {
+          sedeAsignada: 'Bodega Central',
+          ...(nuevoEstado === 'LISTO_DESPACHO'
+            ? {
+                guiaTransportadora: guia,
+                transportadora: pedidoSeleccionado.transportadora || 'Coordinadora / TCC Prioritario',
+              }
+            : {}),
+        },
+        nuevoEstado === 'EN_PREPARACION'
+          ? 'Alistamiento iniciado por Administración desde Bodega Central (Centro de Producción).'
+          : nuevoEstado === 'LISTO_DESPACHO'
+          ? `Empacado y listo para despacho desde Centro de Producción. Guía: ${guia}`
+          : 'Entregado a conductor de transportadora desde Bodega Central.'
+      );
+      if (res) {
+        setMensajeExito(`Pedido #${pedidoSeleccionado.codigo} avanzado a estado ${nuevoEstado}.`);
+        setTimeout(() => setMensajeExito(null), 4000);
+      }
+    } catch (error) {
+      setMensajeError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo actualizar el pedido en el servidor. No se modificó el inventario.'
+      );
     }
   };
 
@@ -366,6 +377,16 @@ export const AdminPedidosWebPage: React.FC = () => {
         subtitle="Supervisión de despachos omnicanal, verificación de transferencias bancarias y control de recaudo contraentrega."
         badge="Operaciones Omnicanal"
       />
+
+      {mensajeError && (
+        <div
+          role="alert"
+          className="p-4 rounded-[14px] bg-[#B42318]/10 border border-[#B42318]/30 text-[#B42318] text-xs font-bold flex items-start gap-2.5 shadow-2xs"
+        >
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span>{mensajeError}</span>
+        </div>
+      )}
 
       {mensajeExito && (
         <div

@@ -400,7 +400,8 @@ export const transicionarPedidoWeb = (
   extra: Partial<
     Pick<PedidoWebRecord, 'guiaTransportadora' | 'transportadora' | 'observaciones' | 'sedeAsignada' | 'estadoCobro'>
   > = {},
-  nota?: string
+  nota?: string,
+  options: { skipBackendSync?: boolean; skipStockEffects?: boolean } = {}
 ): PedidoWebRecord | undefined => {
   const actual = getWebOrder(codigo);
   if (!actual) return undefined;
@@ -408,6 +409,7 @@ export const transicionarPedidoWeb = (
   const cambios: Partial<PedidoWebRecord> = { ...extra, estado: nuevoEstado };
 
   if (
+    !options.skipStockEffects &&
     nuevoEstado === 'DESPACHADO' &&
     actual.estado !== 'DESPACHADO' &&
     actual.estado !== 'EN_ENTREGA' &&
@@ -430,7 +432,10 @@ export const transicionarPedidoWeb = (
     cambios.estadoCobro = 'PAGADO';
   }
   if (nuevoEstado === 'NO_ENTREGADO') {
-    if (actual.estado === 'DESPACHADO' || actual.estado === 'EN_ENTREGA') {
+    if (
+      !options.skipStockEffects &&
+      (actual.estado === 'DESPACHADO' || actual.estado === 'EN_ENTREGA')
+    ) {
       const sNorm = normalizarSede(actual.sedeAsignada || '');
       const esBodegaCentral =
         sNorm.includes('bodega') ||
@@ -464,7 +469,7 @@ export const transicionarPedidoWeb = (
   const actualizado = updateWebOrder(codigo, cambios, nuevoEvento(titulos[nuevoEstado], usuario, nota, nuevoEstado));
 
   // Sincronización atómica con el motor PostgreSQL (PATCH /api/pedidos-web/:id/estado)
-  if (typeof window !== 'undefined' && actualizado) {
+  if (typeof window !== 'undefined' && actualizado && !options.skipBackendSync) {
     const estadoBackendMap: Record<EstadoPedidoWeb, string> = {
       RECIBIDO: 'CONFIRMADO',
       CONFIRMADO: 'CONFIRMADO',
@@ -515,10 +520,66 @@ export const transicionarPedidoWeb = (
   return actualizado;
 };
 
+/** Mapa de estados de la UI a estados persistidos por el backend. */
+const ESTADO_BACKEND_MAP: Record<EstadoPedidoWeb, string> = {
+  RECIBIDO: 'CONFIRMADO',
+  CONFIRMADO: 'CONFIRMADO',
+  EN_PREPARACION: 'EN_PREPARACION',
+  LISTO_DESPACHO: 'EN_PREPARACION',
+  DESPACHADO: 'ENVIADO',
+  EN_ENTREGA: 'ENVIADO',
+  ENTREGADO: 'ENTREGADO',
+  NO_ENTREGADO: 'CANCELADO',
+  CANCELADO: 'CANCELADO',
+};
+
 /**
- * Permite que la primera sede en hacer clic en "Iniciar Alistamiento" tome y bloquee el pedido.
- * Si otra sede ya lo tomó antes, devuelve ok: false para evitar doble despacho.
+ * Transición backend-first: primero actualiza PostgreSQL y solo si responde OK
+ * actualiza el store local. Si el backend falla, no se muestra un despacho que
+ * el Kardex nunca registró.
  */
+export const transicionarPedidoWebSeguro = async (
+  codigo: string,
+  nuevoEstado: EstadoPedidoWeb,
+  usuario: string,
+  extra: Partial<
+    Pick<PedidoWebRecord, 'guiaTransportadora' | 'transportadora' | 'observaciones' | 'sedeAsignada' | 'estadoCobro'>
+  > = {},
+  nota?: string
+): Promise<PedidoWebRecord> => {
+  const actual = getWebOrder(codigo);
+  if (!actual) {
+    throw new Error(`El pedido ${codigo} no existe en el almacén local.`);
+  }
+
+  const estadoBackend = ESTADO_BACKEND_MAP[nuevoEstado];
+  if (estadoBackend) {
+    try {
+      await apiRequest(`/pedidos-web/${encodeURIComponent(codigo)}/estado`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nuevoEstado: estadoBackend,
+          transportadora: extra.transportadora ?? actual.transportadora,
+          numeroGuia: extra.guiaTransportadora ?? actual.guiaTransportadora,
+          observacion: nota || `Transición a ${nuevoEstado}`,
+        }),
+      });
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+      throw new Error(`No se pudo actualizar el pedido en el servidor: ${mensaje}`);
+    }
+  }
+
+  const actualizado = transicionarPedidoWeb(codigo, nuevoEstado, usuario, extra, nota, {
+    skipBackendSync: true,
+    skipStockEffects: true,
+  });
+
+  if (!actualizado) {
+    throw new Error(`El pedido ${codigo} no existe en el almacén local.`);
+  }
+  return actualizado;
+};
 export const tomarPedidoWebEnSede = (
   codigo: string,
   sede: string,
