@@ -23,20 +23,20 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
     : ['$5M', '$4M', '$3M', '$1M', '0'];
 
   const sedesList = [
-    { key: 'Bodega Central', label: 'Bodega Central' },
+    { key: 'Bodega Central', label: 'Central' },
     { key: 'Punto Bucaramanga', label: 'Bucaramanga' },
-    { key: 'Punto Centro', label: 'Centro (Cúcuta)' },
-    { key: 'Punto Caobos', label: 'Caobos (Cúcuta)' },
+    { key: 'Punto Centro', label: 'Centro' },
+    { key: 'Punto Caobos', label: 'Caobos' },
     { key: 'Punto Ocaña', label: 'Ocaña' },
   ];
 
   return (
-    <div className="relative rounded-3xl p-5 sm:p-6 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 group text-[#0F172A] dark:text-white h-full flex flex-col justify-between">
+    <div className="relative rounded-3xl p-4 sm:p-5 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 group text-[#0F172A] dark:text-white h-full flex flex-col justify-between">
       {/* Bisel superior suave */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
       {/* Cabecera en Español: "Comparativa por Sucursales" */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
         <div>
           <h3 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-white tracking-wide font-sans">
             Comparativa por Sucursales
@@ -60,7 +60,7 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
       </div>
 
       {/* Área del Histograma de Barras */}
-      <div className="flex items-end gap-3 sm:gap-4 min-h-[200px] pt-4 pb-2">
+      <div className="flex items-end gap-3 sm:gap-4 min-h-[150px] pt-3 pb-1">
         {/* Eje Y */}
         <div className="flex flex-col justify-between h-44 text-[10px] sm:text-[11px] font-mono font-black text-[#475569] dark:text-slate-400 select-none pr-1 sm:pr-2">
           {yAxisTicks.map((tick, index) => (
@@ -135,9 +135,12 @@ export const AdminBarComparisonChart: React.FC<AdminBarComparisonChartProps> = (
                 </div>
 
                 {/* Etiqueta de la Sede en el Eje X */}
-                <span className={`text-[10px] sm:text-[11px] tracking-tight text-center truncate w-full ${
-                  isSelected ? 'text-[#741C2B] dark:text-[#C49A68] font-black' : 'text-[#0F172A] dark:text-slate-200 font-bold'
-                }`}>
+                <span
+                  title={s.label}
+                  className={`text-[9px] sm:text-[10px] tracking-tight text-center leading-tight w-full ${
+                    isSelected ? 'text-[#741C2B] dark:text-[#C49A68] font-black' : 'text-[#0F172A] dark:text-slate-200 font-bold'
+                  }`}
+                >
                   {s.label}
                 </span>
 

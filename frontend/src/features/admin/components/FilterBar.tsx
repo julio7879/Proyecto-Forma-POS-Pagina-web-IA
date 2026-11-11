@@ -20,7 +20,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 }) => {
   return (
     <div
-      className={`relative rounded-3xl bg-white border border-slate-200/90 p-3.5 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 overflow-hidden text-[#0F172A] ${className}`}
+      className={`relative rounded-3xl bg-white border border-slate-200/90 p-3.5 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center justify-between gap-3 overflow-hidden text-[#0F172A] ${className}`}
     >
       {/* Reflejo superior suave */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/15 to-transparent pointer-events-none" />
@@ -53,7 +53,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {actions && (
-        <div className="flex items-center gap-2 shrink-0 self-end md:self-center relative z-10">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-end md:self-center relative z-10 max-w-full">
           {actions}
         </div>
       )}

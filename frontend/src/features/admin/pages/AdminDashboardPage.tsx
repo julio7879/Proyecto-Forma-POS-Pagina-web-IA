@@ -82,7 +82,7 @@ const SEDES_COMERCIALES: SedeAdminFiltro[] = [
 
 const formatCOP = (num?: number | null): string => {
   const safe = typeof num === 'number' && !isNaN(num) ? num : 0;
-  return `$${safe.toLocaleString('es-CO')} COP`;
+  return `$ ${safe.toLocaleString('es-CO')} COP`;
 };
 
 const calcularVentasNetasPorSede = (sedeKey: SedeAdminFiltro) => {
@@ -384,7 +384,7 @@ export const AdminDashboardPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-3 pb-2 lining-nums">
       {/* Botones de píldoras accesibles para pruebas automatizadas (sin generar ruido visual) */}
       <div className="sr-only" aria-hidden="false">
         {SEDES_ADMIN_OPTIONS.map((sede) => (
@@ -407,7 +407,7 @@ export const AdminDashboardPage: React.FC = () => {
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
       >
         {/* KPI 1: Ventas Netas */}
-        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[84px] text-[#0F172A] dark:text-white">
           <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-black text-[#475569] dark:text-slate-400">Ventas Netas</span>
@@ -417,14 +417,14 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div
             data-testid="kpi-ventas-netas"
-            className="text-2xl sm:text-3xl font-display font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
+            className="text-2xl sm:text-3xl font-sans font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
           >
             {kpi.ventasNetasTexto}
           </div>
         </div>
 
         {/* KPI 2: Inventario Total */}
-        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[84px] text-[#0F172A] dark:text-white">
           <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-black text-[#475569] dark:text-slate-400">Inventario Físico</span>
@@ -434,14 +434,14 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div
             data-testid="kpi-inventario-unidades"
-            className="text-2xl sm:text-3xl font-display font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
+            className="text-2xl sm:text-3xl font-sans font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
           >
             {kpi.unidadesInventarioTexto}
           </div>
         </div>
 
         {/* KPI 3: Pedidos Web */}
-        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[84px] text-[#0F172A] dark:text-white">
           <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-black text-[#475569] dark:text-slate-400">Pedidos Web Activos</span>
@@ -449,14 +449,14 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div
             data-testid="kpi-pedidos-activos"
-            className="text-2xl sm:text-3xl font-display font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
+            className="text-2xl sm:text-3xl font-sans font-black text-[#0F172A] dark:text-white tracking-tight tabular-nums mt-1"
           >
             {kpi.pedidosActivosTexto}
           </div>
         </div>
 
         {/* KPI 4: Estado de Cajas */}
-        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[95px] text-[#0F172A] dark:text-white">
+        <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#741C2B]/30 hover:shadow-md transition-all group overflow-hidden flex flex-col justify-between min-h-[84px] text-[#0F172A] dark:text-white">
           <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/25 to-transparent pointer-events-none" />
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-black text-[#475569] dark:text-slate-400">Estado de Caja</span>
@@ -470,7 +470,7 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div
             data-testid="kpi-estado-caja"
-            className="text-xl sm:text-2xl font-display font-black text-[#0F172A] dark:text-white tracking-tight mt-1 truncate"
+            className="text-xl sm:text-2xl font-sans font-black text-[#0F172A] dark:text-white tracking-tight mt-1 truncate"
           >
             {kpi.cajaEstado}
           </div>
@@ -480,7 +480,7 @@ export const AdminDashboardPage: React.FC = () => {
       {/* =========================================================================
           FILA 2: LOS DOS DIAGRAMAS PRINCIPALES (HOURLY SALES + PARTICIPACIÓN POR SEDE)
           ========================================================================= */}
-      <section aria-label="Visualización Gráfica Avanzada" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <section aria-label="Visualización Gráfica Avanzada" className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Gráfico 1: Hourly Sales (Curva Fluida Doble Onda - 65% Ancho) */}
         <div className="lg:col-span-8">
           <AdminLineTrendChart
@@ -511,7 +511,7 @@ export const AdminDashboardPage: React.FC = () => {
           ========================================================================= */}
       <section
         aria-label="Comparación comercial y monitores operativos"
-        className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+        className="grid grid-cols-1 lg:grid-cols-12 gap-4"
       >
         {/* Mitad Izquierda (6 columnas): Histograma Comparativo de Sucursales */}
         <div className="lg:col-span-6 flex flex-col">
@@ -525,7 +525,7 @@ export const AdminDashboardPage: React.FC = () => {
         {/* Mitad Derecha (6 columnas): Monitores Operativos (Alertas + Actividad) */}
         <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Monitor 1: Alertas de Inventario Bajo */}
-          <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 overflow-hidden text-[#0F172A] dark:text-white flex flex-col justify-between">
+          <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 overflow-hidden text-[#0F172A] dark:text-white flex flex-col justify-between">
             <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
@@ -551,7 +551,7 @@ export const AdminDashboardPage: React.FC = () => {
               </Link>
             </div>
 
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
               {kpi.alertasInventario.map((item: AlertaInventarioItem) => (
                 <div
                   key={item.sku}
@@ -594,7 +594,7 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
 
           {/* Monitor 2: Actividad y Movimientos en Vivo */}
-          <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 overflow-hidden text-[#0F172A] dark:text-white flex flex-col justify-between">
+          <div className="relative rounded-3xl bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 overflow-hidden text-[#0F172A] dark:text-white flex flex-col justify-between">
             <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
             <div className="space-y-3">
@@ -632,7 +632,7 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
                   {kpi.movimientosRecientes.map((mov) => (
                     <div
                       key={mov.id}

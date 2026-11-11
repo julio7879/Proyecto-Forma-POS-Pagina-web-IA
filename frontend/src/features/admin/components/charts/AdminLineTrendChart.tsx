@@ -218,15 +218,15 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
   // Solo mostrar punto y tooltip si el usuario está interactuando mediante hover
   const selectedPoint = hoverIndex !== null && coordsGold[hoverIndex] ? coordsGold[hoverIndex] : null;
 
-  const formatCOP = (num: number) => `$${num.toLocaleString('es-CO')} COP`;
+  const formatCOP = (num: number) => `$ ${num.toLocaleString('es-CO')} COP`;
 
   return (
-    <div className="relative rounded-3xl p-6 sm:p-7 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 group text-[#0F172A] dark:text-white">
+    <div className="relative rounded-3xl p-4 sm:p-5 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 group text-[#0F172A] dark:text-white">
       {/* Bisel superior suave */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
       {/* Cabecera adaptativa según período */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <div>
           <h3 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-white tracking-wide font-sans">
             {periodoActivo === 'HOY'
@@ -272,7 +272,7 @@ export const AdminLineTrendChart: React.FC<AdminLineTrendChartProps> = ({
       </div>
 
       {/* Contenedor del Canvas SVG */}
-      <div className="relative w-full aspect-[640/240] select-none">
+      <div className="relative w-full aspect-[640/180] select-none">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
           <defs>
             <linearGradient id="goldCurveGrad" x1="0" y1="0" x2="0" y2="1">

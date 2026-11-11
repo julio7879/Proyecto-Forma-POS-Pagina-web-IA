@@ -62,7 +62,7 @@ export const ADMIN_NAV_GROUPS: NavGroupConfig[] = [
     ],
   },
   {
-    groupTitle: 'Inventario y abastecimiento',
+    groupTitle: 'Inventario',
     groupIcon: Package,
     items: [
       {
@@ -113,7 +113,7 @@ export const ADMIN_NAV_GROUPS: NavGroupConfig[] = [
     ],
   },
   {
-    groupTitle: 'Reportes y administración',
+    groupTitle: 'Reportes',
     groupIcon: BarChart3,
     items: [
       {
@@ -153,9 +153,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     const initial: Record<string, boolean> = {
       General: true,
       Operaciones: false,
-      'Inventario y abastecimiento': false,
+      Inventario: false,
       'Gestión del negocio': false,
-      'Reportes y administración': false,
+      Reportes: false,
     };
 
     // En entorno de test, abrir todos para verificación del DOM
@@ -163,9 +163,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       return {
         General: true,
         Operaciones: true,
-        'Inventario y abastecimiento': true,
+        Inventario: true,
         'Gestión del negocio': true,
-        'Reportes y administración': true,
+        Reportes: true,
       };
     }
 
@@ -213,7 +213,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       <aside
         className={`
           fixed md:sticky top-0 bottom-0 left-0 z-40 md:z-20 h-screen
-          ${collapsed ? 'md:w-[72px]' : 'md:w-64'} w-64
+          ${collapsed ? 'md:w-[72px]' : 'md:w-72'} w-64
           ${isLight ? 'bg-white/95 backdrop-blur-2xl border-r border-[#E2E8F0] shadow-xl text-[#0F172A]' : 'bg-[#0A0D14]/90 backdrop-blur-2xl border-r border-white/[0.08] shadow-2xl text-white'}
           flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}

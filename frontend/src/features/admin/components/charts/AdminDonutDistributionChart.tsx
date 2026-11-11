@@ -83,7 +83,7 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
     });
   }, [totalVentasCop, sedesData, sedeActiva]);
 
-  const size = 180;
+  const size = 150;
   const strokeWidth = 20;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -108,7 +108,7 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
   });
 
   return (
-    <div className="relative rounded-3xl p-6 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 flex flex-col justify-between h-full text-[#0F172A] dark:text-white">
+    <div className="relative rounded-3xl p-4 overflow-hidden bg-white dark:bg-[#151210] border border-slate-200/90 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all duration-300 hover:border-[#741C2B]/30 flex flex-col justify-between h-full text-[#0F172A] dark:text-white">
       {/* Bisel superior suave */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#741C2B]/20 to-transparent pointer-events-none" />
 
@@ -123,7 +123,7 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
       </div>
 
       {/* Anillo de Cristal */}
-      <div className="relative flex items-center justify-center my-4">
+      <div className="relative flex items-center justify-center my-2">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
           {/* Anillo de fondo suave */}
           <circle
@@ -179,7 +179,7 @@ export const AdminDonutDistributionChart: React.FC<AdminDonutDistributionChartPr
               ? totalVentasCop >= 1000000
                 ? `${(totalVentasCop / 1000000).toFixed(1)}M`
                 : `${totalVentasCop.toLocaleString('es-CO')} COP`
-              : '$0 COP'}
+              : '$ 0 COP'}
           </span>
           <span className="text-[10px] text-[#475569] dark:text-slate-400 font-mono font-bold mt-0.5">
             {totalVentasCop > 0 ? 'Ventas Netas' : 'Sin Ventas'}

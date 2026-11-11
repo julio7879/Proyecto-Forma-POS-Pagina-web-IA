@@ -173,7 +173,7 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
 
       // 4 KPIs presentes con datos reales en 0 cuando no hay ventas ni sesiones abiertas
       expect(screen.getByText('Ventas Netas')).toBeInTheDocument();
-      expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$0 COP');
+      expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$ 0 COP');
       expect(screen.getByText('Inventario Físico')).toBeInTheDocument();
       expect(screen.getByTestId('kpi-inventario-unidades')).toHaveTextContent(/Unidades/i);
       expect(screen.getByText('Pedidos Web Activos')).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
       expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent('0/4 Sedes Abiertas');
 
       // Verificar que NO existan los datos falsos antiguos
-      expect(screen.queryByText('$48.920.000 COP')).not.toBeInTheDocument();
+      expect(screen.queryByText('$ 48.920.000 COP')).not.toBeInTheDocument();
       expect(screen.queryByText('18 Pedidos Activos')).not.toBeInTheDocument();
       expect(screen.queryByText('4/4 Sedes Abiertas')).not.toBeInTheDocument();
     });
@@ -251,8 +251,8 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
         </MemoryRouter>
       );
 
-      // En consolidado: 180.000 POS + 120.000 Web Pagado = $300.000 COP, 1/4 Sedes Abiertas
-      expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$300.000 COP');
+      // En consolidado: 180.000 POS + 120.000 Web Pagado = $ 300.000 COP, 1/4 Sedes Abiertas
+      expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$ 300.000 COP');
       expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('1 Pedidos Activos');
       expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent('1/4 Sedes Abiertas');
 
@@ -261,7 +261,7 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
       fireEvent.click(puntoCentroBtn);
 
       await waitFor(() => {
-        expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$300.000 COP');
+        expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$ 300.000 COP');
         expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('1 Pedidos Activos');
         expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent(`Caja Abierta (${sesion.id})`);
       });
@@ -302,7 +302,7 @@ describe('AdminLayout & AdminDashboardPage Redesign', () => {
       fireEvent.click(tarjetaCaobos);
 
       await waitFor(() => {
-        expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$245.000 COP');
+        expect(screen.getByTestId('kpi-ventas-netas')).toHaveTextContent('$ 245.000 COP');
         expect(screen.getByTestId('kpi-pedidos-activos')).toHaveTextContent('0 Pedidos Activos');
         expect(screen.getByTestId('kpi-estado-caja')).toHaveTextContent('Caja Cerrada');
       });
