@@ -470,6 +470,13 @@ export const CheckoutPage: React.FC = () => {
             );
           }
         }
+        // En producción no se crea un pedido local si el backend no confirmó:
+        // existiría en Admin sin reserva ni trazabilidad de inventario.
+        if (!isTestEnv()) {
+          throw new Error(
+            'No se pudo registrar el pedido en el servidor. No se creó ninguna reserva de inventario; intenta de nuevo.'
+          );
+        }
       }
 
       const nuevoPedido = {

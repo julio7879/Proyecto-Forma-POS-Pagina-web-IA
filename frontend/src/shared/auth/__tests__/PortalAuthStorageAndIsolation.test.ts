@@ -223,4 +223,24 @@ describe('Aislamiento de Sesiones por Portal y Guardrails de Rol (DEF-01, DEF-02
       expect(detectPortalContext()).toBe('storefront');
     });
   });
+
+  describe('Canasta Storefront aislada por usuario', () => {
+    it('usa una clave distinta para cada correo del portal Storefront', async () => {
+      const { getCartStorageKey } = await import(
+        '../../../features/storefront/context/StorefrontCartContext'
+      );
+
+      setPortalAuth('storefront', {
+        token: 'token-a',
+        usuario: { id: 1, correo: 'ana@forma.com', rol: 'CLIENTE' },
+      });
+      expect(getCartStorageKey()).toBe('forma_cart_ana@forma.com');
+
+      setPortalAuth('storefront', {
+        token: 'token-b',
+        usuario: { id: 2, correo: 'beto@forma.com', rol: 'CLIENTE' },
+      });
+      expect(getCartStorageKey()).toBe('forma_cart_beto@forma.com');
+    });
+  });
 });

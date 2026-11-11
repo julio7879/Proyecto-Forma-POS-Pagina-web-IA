@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { CartItem, SedeInfo } from '../types';
+import {
+  getPortalAuth,
+  PORTAL_AUTH_EVENTS,
+} from '../../../shared/auth/portalAuthStorage';
 
 export const SEDES_OFICIALES: SedeInfo[] = [
   {
@@ -44,13 +48,12 @@ interface StorefrontCartContextType {
 
 export const getCartStorageKey = (): string => {
   try {
-    const rawUser = localStorage.getItem('usuario');
-    if (rawUser) {
-      const u = JSON.parse(rawUser);
-      const email = u?.correo || u?.email;
-      if (email && typeof email === 'string') {
-        return `forma_cart_${email.trim().toLowerCase()}`;
-      }
+    // La canasta pertenece al usuario del portal Storefront, no a la clave
+    // genérica 'usuario' (que puede quedar de otro contexto o de un login viejo).
+    const auth = getPortalAuth('storefront');
+    const email = auth.usuario?.correo || auth.usuario?.email;
+    if (email && typeof email === 'string') {
+      return `forma_cart_${email.trim().toLowerCase()}`;
     }
   } catch {
     // ignore storage errors
@@ -87,6 +90,12 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
     const syncCartWithSession = () => {
       const activeKey = getCartStorageKey();
       if (activeKey !== currentKey) {
+        // Los datos de envío son personales: no deben pasar a otra cuenta.
+        try {
+          localStorage.removeItem('forma_shipping_info');
+        } catch {
+          // ignore storage errors
+        }
         setCurrentKey(activeKey);
         setItems(loadCartItemsFromStorage(activeKey));
       }
@@ -94,11 +103,13 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
 
     window.addEventListener('storage', syncCartWithSession);
     window.addEventListener('focus', syncCartWithSession);
+    window.addEventListener(PORTAL_AUTH_EVENTS.STOREFRONT, syncCartWithSession);
     const interval = setInterval(syncCartWithSession, 800);
 
     return () => {
       window.removeEventListener('storage', syncCartWithSession);
       window.removeEventListener('focus', syncCartWithSession);
+      window.removeEventListener(PORTAL_AUTH_EVENTS.STOREFRONT, syncCartWithSession);
       clearInterval(interval);
     };
   }, [currentKey]);

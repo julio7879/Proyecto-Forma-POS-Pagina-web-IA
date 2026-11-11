@@ -7,6 +7,11 @@ import {
   useStorefrontCart,
 } from '../features/storefront/context/StorefrontCartContext';
 import { CartDrawer } from '../features/storefront/components/CartDrawer';
+import { apiRequest } from '../api/apiClient';
+import {
+  clearPortalAuth,
+  getPortalAuth,
+} from '../shared/auth/portalAuthStorage';
 
 const StorefrontShell: React.FC = () => {
   const location = useLocation();
@@ -27,6 +32,28 @@ const StorefrontShell: React.FC = () => {
       }
     }
   }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    // Una sesión cacheada puede apuntar a una cuenta ya borrada.
+    // Si /auth/me la rechaza, se limpia el portal en vez de mostrar un cliente fantasma.
+    const auth = getPortalAuth('storefront');
+    if (!auth.token) {
+      if (auth.usuario) clearPortalAuth('storefront');
+      return;
+    }
+
+    let activo = true;
+    apiRequest('/auth/me').catch((error: { status?: number } | null) => {
+      if (!activo) return;
+      if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
+        clearPortalAuth('storefront');
+      }
+    });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col forma-storefront-canvas text-[#171717]">
