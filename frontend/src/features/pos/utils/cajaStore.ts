@@ -29,6 +29,7 @@ export interface MovimientoCaja {
 
 export interface SesionCaja {
   id: string;
+  backendSesionCajaId?: number;
   sede: string;
   turnoNumero: number;
   estado: 'ABIERTA' | 'CERRADA';
@@ -133,6 +134,13 @@ const actualizarSesion = (id: string, fn: (s: SesionCaja) => SesionCaja) => {
   if (res) guardar(lista);
   return res;
 };
+
+/** Vincula la sesión local con la sesión creada en el backend. */
+export const vincularSesionCajaBackend = (
+  sesionId: string,
+  backendSesionCajaId: number
+): SesionCaja | undefined =>
+  actualizarSesion(sesionId, (s) => ({ ...s, backendSesionCajaId }));
 
 export const registrarMovimientoCaja = (
   sesionId: string,

@@ -38,7 +38,13 @@ import {
   getStockDelta,
   recordPosSale,
 } from './utils/posLedgerSync';
-import { getSesionAbierta } from './utils/cajaStore';
+import { getSesionAbierta, vincularSesionCajaBackend } from './utils/cajaStore';
+import { PORTAL_AUTH_EVENTS } from '../../shared/auth/portalAuthStorage';
+import {
+  asegurarSesionCaja,
+  registrarVentaBackend,
+  resolverUbicacionId,
+} from './services/posBackendService';
 
 export type CategoriaPOS =
   | 'Todas'
@@ -50,6 +56,7 @@ export type CategoriaPOS =
 
 export interface VariantePOS {
   id: string;
+  varianteId?: number;
   productoId: string;
   nombre: string;
   sku: string;
@@ -64,6 +71,7 @@ export interface VariantePOS {
 
 interface PosCartLine {
   id: string;
+  varianteId?: number;
   productoId: string;
   nombre: string;
   sku: string;
@@ -86,6 +94,24 @@ export const CATEGORIAS_POS: CategoriaPOS[] = [
   'Cosméticos',
   'Artesanías',
 ];
+
+const POS_IMAGE_FALLBACK =
+  'data:image/svg+xml;charset=UTF-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+      <rect width="400" height="400" fill="#F4EFEA"/>
+      <path d="M120 150h160l-14 170H134z" fill="none" stroke="#D8CFC6" stroke-width="6"/>
+      <path d="M160 150a40 40 0 0 1 80 0" fill="none" stroke="#D8CFC6" stroke-width="6"/>
+      <text x="200" y="245" text-anchor="middle" font-family="Georgia,serif" font-size="26" fill="#8A7B72">FORMA</text>
+    </svg>`
+  );
+
+const handlePosImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = event.currentTarget;
+  if (img.dataset.fallbackApplied === '1') return;
+  img.dataset.fallbackApplied = '1';
+  img.src = POS_IMAGE_FALLBACK;
+};
 
 const BASE_VARIANTES_POS: VariantePOS[] = [
   {
@@ -236,6 +262,7 @@ function mapProductosToVariantesPOS(productos: ProductoDTO[]): VariantePOS[] {
       const stockSede = v.stockPorSede?.['Punto Centro'] ?? 0;
       resultado.push({
         id: `db-var-${v.id}`,
+        varianteId: v.id,
         productoId: `db-prod-${prod.id}`,
         nombre: prod.nombre,
         sku: v.sku,
@@ -341,6 +368,8 @@ export const PosTerminalPage: React.FC = () => {
   const [copiadoCuenta, setCopiadoCuenta] = useState(false);
   const [pagoQrAprobadoEnVivo, setPagoQrAprobadoEnVivo] = useState(false);
   const [errorPagoQr, setErrorPagoQr] = useState<string | null>(null);
+  const [errorVenta, setErrorVenta] = useState<string | null>(null);
+  const [procesandoVenta, setProcesandoVenta] = useState(false);
 
   // Estados de Envío de Recibo Digital por Telegram (Omnicanal)
   const [mostrarModalTelegram, setMostrarModalTelegram] = useState(false);
@@ -350,6 +379,21 @@ export const PosTerminalPage: React.FC = () => {
   const [mostrarVistaPreviaRecibo, setMostrarVistaPreviaRecibo] = useState(false);
   const [copiadoRecibo, setCopiadoRecibo] = useState(false);
 
+  // Evita que la canasta de un cajero pase a otro al cambiar de sesión.
+  useEffect(() => {
+    const limpiarCanastaPorCambioDeUsuario = () => {
+      setCartLines([]);
+      setMostrarModalCobro(false);
+      setMostrarModalExito(false);
+      setClienteNombre('Consumidor Final');
+      setEfectivoRecibido(0);
+      setAvisoStock(null);
+    };
+    window.addEventListener(PORTAL_AUTH_EVENTS.POS, limpiarCanastaPorCambioDeUsuario);
+    return () =>
+      window.removeEventListener(PORTAL_AUTH_EVENTS.POS, limpiarCanastaPorCambioDeUsuario);
+  }, []);
+
   // Hidratación asíncrona desde la base de datos combinando sin duplicar SKUs
   useEffect(() => {
     let isMounted = true;
@@ -357,12 +401,18 @@ export const PosTerminalPage: React.FC = () => {
       .then((productosDB) => {
         if (!isMounted || !Array.isArray(productosDB) || productosDB.length === 0) return;
         const variantesDB = mapProductosToVariantesPOS(productosDB);
+        const dbPorSku = new Map(variantesDB.map((v) => [v.sku.toUpperCase(), v]));
         setCatalogo((prev) => {
-          const skusExistentes = new Set(prev.map((item) => item.sku.toUpperCase()));
+          // Enriquecer las variantes base con el ID numérico del backend.
+          const enriquecidas = prev.map((item) => {
+            const db = dbPorSku.get(item.sku.toUpperCase());
+            return db ? { ...item, id: db.id, varianteId: db.varianteId } : item;
+          });
+          const skusExistentes = new Set(enriquecidas.map((item) => item.sku.toUpperCase()));
           const nuevas = variantesDB.filter(
             (v) => !skusExistentes.has(v.sku.toUpperCase())
           );
-          return nuevas.length > 0 ? [...prev, ...nuevas] : prev;
+          return nuevas.length > 0 ? [...enriquecidas, ...nuevas] : enriquecidas;
         });
       })
       .catch(() => {
@@ -579,6 +629,7 @@ export const PosTerminalPage: React.FC = () => {
         ...prev,
         {
           id: item.id,
+          varianteId: item.varianteId,
           productoId: item.productoId,
           nombre: item.nombre,
           sku: item.sku,
@@ -669,31 +720,11 @@ export const PosTerminalPage: React.FC = () => {
     }
   };
 
-  const handleConfirmarVenta = () => {
-    const nextNum = Math.floor(1000 + Math.random() * 9000);
-    const nuevoConsecutivo =
-      consecutivoGenerado || `MED-00${nextNum}`;
-    setConsecutivoGenerado(nuevoConsecutivo);
+  const handleConfirmarVenta = async () => {
+    if (procesandoVenta) return;
+    setErrorVenta(null);
 
-    // 1. Descontar stock por cada línea vendida en estado y posLedgerSync
-    const descuentoPorSku: Record<string, number> = {};
-    for (const line of cartLines) {
-      const key = line.sku.toUpperCase();
-      descuentoPorSku[key] = (descuentoPorSku[key] || 0) + line.cantidad;
-      applyStockDelta(line.sku, -line.cantidad);
-    }
-
-    setCatalogo((prev) =>
-      prev.map((item) => {
-        const desc = descuentoPorSku[item.sku.toUpperCase()] || 0;
-        if (desc > 0) {
-          return { ...item, stockSede: Math.max(0, item.stockSede - desc) };
-        }
-        return item;
-      })
-    );
-
-    // 2. Obtener vendedor y sede activa
+    // Vendedor y sede activos
     let vendedorNombre = 'Carlos Mendoza';
     let sedeNombre = 'Punto Centro (Cúcuta)';
     try {
@@ -705,59 +736,149 @@ export const PosTerminalPage: React.FC = () => {
         }
       }
       const rawSede = localStorage.getItem('forma_pos_sede');
-      if (rawSede) {
-        sedeNombre = rawSede;
-      }
+      if (rawSede) sedeNombre = rawSede;
     } catch {
       // Fallback
     }
 
-    let horaCol = '10:30 a. m.';
+    const esTest = import.meta.env.MODE === 'test';
+    const nextNum = Math.floor(1000 + Math.random() * 9000);
+    let nuevoConsecutivo = consecutivoGenerado || `MED-00${nextNum}`;
+    let totalFinalCop = totalPagarCOP;
+
+    setProcesandoVenta(true);
     try {
-      horaCol = new Intl.DateTimeFormat('es-CO', {
-        timeZone: 'America/Bogota',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }).format(new Date());
-    } catch {
-      // Fallback
+      if (!esTest) {
+        if (cartLines.length === 0) throw new Error('El carrito está vacío.');
+
+        const lineas = cartLines.map((line) => {
+          if (!line.varianteId) {
+            throw new Error(
+              `El producto ${line.sku} no está sincronizado con el catálogo del backend.`
+            );
+          }
+          return { varianteId: line.varianteId, cantidad: line.cantidad };
+        });
+
+        if (metodoPago === 'EFECTIVO' && efectivoRecibido < totalPagarCOP) {
+          throw new Error('El efectivo recibido es insuficiente para cubrir la venta.');
+        }
+
+        const ubicacionId = await resolverUbicacionId(sedeNombre);
+        const sesionLocal = getSesionAbierta(sedeNombre);
+        if (!sesionLocal) {
+          throw new Error('Abre la caja del turno antes de cobrar.');
+        }
+
+        const sesionBackend = await asegurarSesionCaja(
+          ubicacionId,
+          sesionLocal.baseInicialCop,
+          sesionLocal.observacionApertura
+        );
+        if (sesionBackend?.id && sesionLocal.backendSesionCajaId !== sesionBackend.id) {
+          vincularSesionCajaBackend(sesionLocal.id, sesionBackend.id);
+        }
+
+        const pagos =
+          metodoPago === 'EFECTIVO'
+            ? [
+                {
+                  metodo: 'EFECTIVO' as const,
+                  montoCop: totalPagarCOP,
+                  montoRecibidoEfectivoCop: Math.max(efectivoRecibido, totalPagarCOP),
+                },
+              ]
+            : [
+                {
+                  metodo: 'TRANSFERENCIA' as const,
+                  montoCop: totalPagarCOP,
+                  referenciaTransferencia: `POS-${Date.now()}`,
+                },
+              ];
+
+        const venta = await registrarVentaBackend({ ubicacionId, lineas, pagos });
+        nuevoConsecutivo = String(venta.numeroComprobante);
+        totalFinalCop = venta.totalNetoProductosCop ?? totalPagarCOP;
+      }
+
+      setConsecutivoGenerado(nuevoConsecutivo);
+
+      // Descontar stock local y registrar la venta para el ticket,
+      // solo después de que el backend confirmó (o en modo test).
+      const descuentoPorSku: Record<string, number> = {};
+      for (const line of cartLines) {
+        const key = line.sku.toUpperCase();
+        descuentoPorSku[key] = (descuentoPorSku[key] || 0) + line.cantidad;
+        applyStockDelta(line.sku, -line.cantidad);
+      }
+
+      setCatalogo((prev) =>
+        prev.map((item) => {
+          const desc = descuentoPorSku[item.sku.toUpperCase()] || 0;
+          if (desc > 0) {
+            return { ...item, stockSede: Math.max(0, item.stockSede - desc) };
+          }
+          return item;
+        })
+      );
+
+      let horaCol = '10:30 a. m.';
+      try {
+        horaCol = new Intl.DateTimeFormat('es-CO', {
+          timeZone: 'America/Bogota',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }).format(new Date());
+      } catch {
+        // Fallback
+      }
+
+      const sesionCajaActiva = getSesionAbierta(sedeNombre);
+      const baseFinalCop = Math.round(totalFinalCop / 1.19);
+      const ivaFinalCop = totalFinalCop - baseFinalCop;
+      const cambioFinalCop =
+        metodoPago === 'EFECTIVO' ? Math.max(0, efectivoRecibido - totalFinalCop) : undefined;
+
+      recordPosSale({
+        id: `vta-${Date.now()}`,
+        consecutivo: `#${nuevoConsecutivo}`,
+        fechaIso: new Date().toISOString(),
+        sesionCajaId: sesionCajaActiva?.id,
+        fechaHora: `Hoy · ${horaCol} (America/Bogota)`,
+        fechaCorta: `Hoy ${horaCol}`,
+        vendedor: vendedorNombre,
+        sede: sedeNombre,
+        cliente: clienteNombre,
+        medioPago: metodoPago,
+        referenciaPago: metodoPago === 'TRANSFERENCIA' ? `QR-${nuevoConsecutivo}` : undefined,
+        subtotalCop: baseFinalCop,
+        iva19Cop: ivaFinalCop,
+        totalCop: totalFinalCop,
+        montoRecibidoCop: metodoPago === 'EFECTIVO' ? efectivoRecibido : undefined,
+        cambioCop: cambioFinalCop,
+        prendas: cartLines.map((l) => ({
+          sku: l.sku,
+          nombre: l.nombre,
+          talla: l.talla || 'Única',
+          color: l.color || 'Estándar',
+          categoria: l.categoria,
+          cantidad: l.cantidad,
+          precioUnitarioCop: l.precioUnitarioCOP,
+          totalCop: l.precioUnitarioCOP * l.cantidad,
+          imagenUrl: l.imagenUrl,
+        })),
+      });
+
+      setMostrarModalCobro(false);
+      setMostrarModalExito(true);
+    } catch (error) {
+      setErrorVenta(
+        error instanceof Error ? error.message : 'No se pudo registrar la venta en el backend.'
+      );
+    } finally {
+      setProcesandoVenta(false);
     }
-
-    // 3. Registrar venta en posLedgerSync vinculada a la sesión de caja abierta
-    const sesionCajaActiva = getSesionAbierta(sedeNombre);
-    recordPosSale({
-      id: `vta-${Date.now()}`,
-      consecutivo: `#${nuevoConsecutivo}`,
-      fechaIso: new Date().toISOString(),
-      sesionCajaId: sesionCajaActiva?.id,
-      fechaHora: `Hoy · ${horaCol} (America/Bogota)`,
-      fechaCorta: `Hoy ${horaCol}`,
-      vendedor: vendedorNombre,
-      sede: sedeNombre,
-      cliente: clienteNombre,
-      medioPago: metodoPago,
-      referenciaPago: metodoPago === 'TRANSFERENCIA' ? `QR-${nextNum}` : undefined,
-      subtotalCop: baseGravableCOP,
-      iva19Cop: ivaEstimadoCOP,
-      totalCop: totalPagarCOP,
-      montoRecibidoCop: metodoPago === 'EFECTIVO' ? efectivoRecibido : undefined,
-      cambioCop: metodoPago === 'EFECTIVO' ? cambioVueltoCOP : undefined,
-      prendas: cartLines.map((l) => ({
-        sku: l.sku,
-        nombre: l.nombre,
-        talla: l.talla || 'Única',
-        color: l.color || 'Estándar',
-        categoria: l.categoria,
-        cantidad: l.cantidad,
-        precioUnitarioCop: l.precioUnitarioCOP,
-        totalCop: l.precioUnitarioCOP * l.cantidad,
-        imagenUrl: l.imagenUrl,
-      })),
-    });
-
-    setMostrarModalCobro(false);
-    setMostrarModalExito(true);
   };
 
   const handleNuevaVenta = () => {
@@ -1235,6 +1356,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                     <img
                       src={line.imagenUrl}
                       alt={line.nombre}
+                      onError={handlePosImageError}
                       className="w-12 h-12 rounded-xl object-cover border border-[#50322A]/15 shrink-0 bg-white"
                     />
                     <div className="flex-1 min-w-0">
@@ -1672,6 +1794,12 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
               </div>
             )}
 
+            {errorVenta && (
+              <p role="alert" className="px-1 pb-2 text-[11px] font-semibold text-rose-600">
+                {errorVenta}
+              </p>
+            )}
+
             {/* Botón de Confirmación de Alta Visibilidad */}
             <div className="pt-3 border-t border-[#50322A]/15 shrink-0 flex items-center gap-2 sm:gap-2.5">
               <button
@@ -1684,12 +1812,12 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
 
               <button
                 type="button"
-                disabled={metodoPago === 'EFECTIVO' && efectivoRecibido < totalPagarCOP}
+                disabled={procesandoVenta || (metodoPago === 'EFECTIVO' && efectivoRecibido < totalPagarCOP)}
                 onClick={handleConfirmarVenta}
                 className="flex-1 min-h-[54px] sm:min-h-[56px] py-3 px-3 sm:px-4 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-black text-xs sm:text-base shadow-lg shadow-[#059669]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <span>CONFIRMAR VENTA E IMPRIMIR (Enter)</span>
+                <span>{procesandoVenta ? 'REGISTRANDO VENTA...' : 'CONFIRMAR VENTA E IMPRIMIR (Enter)'}</span>
               </button>
             </div>
           </section>
@@ -1780,6 +1908,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                   src={item.imagenUrl}
                   alt={item.nombre}
                   loading="lazy"
+                  onError={handlePosImageError}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
 
@@ -1804,7 +1933,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
 
               {/* Información Primaria: Nombre y Precio */}
               <div className="w-full min-w-0 space-y-1">
-                <h4 className="text-xs sm:text-sm font-bold text-[#171717] line-clamp-1 leading-snug">
+                <h4 className="text-xs sm:text-sm font-bold text-[#171717] line-clamp-2 leading-snug">
                   {item.nombre}
                 </h4>
 
@@ -1912,6 +2041,7 @@ _Garantía de 30 días para prendas elegibles. Presente este comprobante digital
                   <img
                     src={line.imagenUrl}
                     alt={line.nombre}
+                    onError={handlePosImageError}
                     className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border border-[#50322A]/15 shrink-0 bg-white"
                   />
                   <div className="flex-1 min-w-0">

@@ -686,7 +686,7 @@ export const PosLayout: React.FC = () => {
                   className="flex items-center gap-1.5 shrink-0 group min-w-0"
                   aria-label="Terminal FORMA POS"
                 >
-                  <FormaLogo variant="horizontal" size="xs" theme="dark" />
+                  <FormaLogo variant="horizontal" size="xs" theme="light" />
                   <span className="px-1.5 py-0.5 rounded-md bg-[#661521] border border-[#D19650]/40 text-[#D19650] font-black text-[9px] font-mono shrink-0">
                     POS
                   </span>

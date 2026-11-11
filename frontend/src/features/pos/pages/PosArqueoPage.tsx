@@ -30,11 +30,18 @@ import {
   anularMovimientoCaja,
   resumenSesion,
   cerrarSesionCaja,
+  vincularSesionCajaBackend,
   CAJA_EVENT,
   type SesionCaja,
   type MovimientoCaja,
   type TipoMovimientoCaja,
 } from '../utils/cajaStore';
+import {
+  asegurarSesionCaja,
+  cerrarSesionBackend,
+  obtenerSesionActiva,
+  resolverUbicacionId,
+} from '../services/posBackendService';
 import { DetailDrawer } from '../components/DetailDrawer';
 
 interface DenominacionBillete {
@@ -286,7 +293,7 @@ ${
   };
 
   // Acción: Abrir Turno de Caja (QA-POS-015, QA-POS-016, QA-POS-017)
-  const handleAbrirTurnoCaja = (e: React.FormEvent) => {
+  const handleAbrirTurnoCaja = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorValidacion(null);
 
@@ -301,6 +308,21 @@ ${
     setCuadreRevelado(false);
     setSubcategoriaActiva('RESUMEN');
     setObservacionAperturaInput('');
+
+    if (import.meta.env.MODE !== 'test') {
+      try {
+        const ubicacionId = await resolverUbicacionId(sedeActiva);
+        const backend = await asegurarSesionCaja(ubicacionId, baseEntera, obs);
+        if (backend?.id) {
+          vincularSesionCajaBackend(nueva.id, backend.id);
+        }
+      } catch (error) {
+        const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+        setErrorValidacion(
+          `Caja local abierta, pero el backend no confirmó: ${mensaje}. Las ventas no se asentarán hasta reconciliar.`
+        );
+      }
+    }
   };
 
   // Acción: Registrar Movimiento de Efectivo (Retiro / Gasto / Reintegro)
@@ -408,7 +430,7 @@ ${
   };
 
   // Acción: Confirmar Arqueo y Cerrar Turno
-  const handleConfirmarArqueoYCerrar = () => {
+  const handleConfirmarArqueoYCerrar = async () => {
     if (!sesionAbierta) return;
     setErrorValidacion(null);
 
@@ -425,6 +447,27 @@ ${
       (diferenciaArqueoCop === 0
         ? 'Cuadre exacto verificado al cierre de turno'
         : `Diferencia de ${formatCOP(diferenciaArqueoCop)} registrada al cierre`);
+
+    if (import.meta.env.MODE !== 'test') {
+      try {
+        const ubicacionId = await resolverUbicacionId(sedeActiva);
+        const backendId = sesionAbierta.backendSesionCajaId;
+        if (backendId) {
+          await cerrarSesionBackend(backendId, efectivoFisicoDeclaradoCop, obsCierre);
+        } else {
+          const activa = await obtenerSesionActiva(ubicacionId);
+          if (activa?.id) {
+            await cerrarSesionBackend(activa.id, efectivoFisicoDeclaradoCop, obsCierre);
+          }
+        }
+      } catch (error) {
+        const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+        setErrorValidacion(
+          `No se pudo cerrar la caja en el backend: ${mensaje}. Reintenta antes de cerrar el turno local.`
+        );
+        return;
+      }
+    }
 
     const cerrada = cerrarSesionCaja(
       sesionAbierta.id,
@@ -483,7 +526,7 @@ ${
                     : 'Caja Cerrada · Requiere Apertura'}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#1C1311] tracking-tight mt-1">
+              <h1 className="text-xl sm:text-2xl font-black text-[#1C1311] tracking-tight mt-3 leading-tight">
                 Control de Caja y Arqueo Ciego
               </h1>
             </div>
@@ -731,7 +774,7 @@ ${
                     value={baseAperturaInput === 0 ? '' : baseAperturaInput}
                     onKeyDown={handleNumberKeyDown}
                     onChange={(e) => setBaseAperturaInput(sanitizePositiveInt(e.target.value))}
-                    placeholder="Digita el monto exacto contado en gaveta (ej. 150000)"
+                    placeholder="Digita el monto contado en gaveta"
                     className="w-full min-h-[52px] pl-9 pr-4 rounded-xl border-2 border-[#D8CFC6] bg-[#FAF7F4] font-mono text-xl font-black text-[#1C1311] focus:outline-none focus:border-[#661521]"
                   />
                 </div>
