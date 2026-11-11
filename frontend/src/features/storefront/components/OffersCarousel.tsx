@@ -189,11 +189,11 @@ export const OffersCarousel: React.FC<OffersCarouselProps> = ({
               {/* Información y Precios */}
               <div className="p-3 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
                 <div>
-                  <h3 className="font-bold text-xs sm:text-sm text-[#1C1311] line-clamp-1 group-hover:text-[#661521] transition-colors">
+                  <h3 className="font-bold text-xs sm:text-sm text-[#1C1311] group-hover:text-[#661521] transition-colors">
                     <span className="text-[#661521] text-[10px] font-semibold block uppercase tracking-wider mb-0.5">
                       Oferta Especial
                     </span>
-                    <span>{`Edición Oferta · ${prod.nombre}`}</span>
+                    <span className="block line-clamp-2 leading-snug">{`Oferta: ${prod.nombre}`}</span>
                   </h3>
                   <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
                     {prod.descripcion || 'Confección de alta costura y diseño de autor.'}
